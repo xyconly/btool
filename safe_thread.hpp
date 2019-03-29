@@ -49,9 +49,12 @@ namespace BTool
         }
 
         template<typename _Callable, typename... _Args>
-        void start(_Callable&& _Fx, _Args&&... _args)
+        bool start(_Callable&& _Fx, _Args&&... _args)
         {
+            if (m_thread.joinable())
+                return false;
             m_thread = std::thread(std::forward<_Callable>(_Fx), std::forward<_Args>(_args)...);
+            return true;
         }
 
         void stop() {
@@ -64,11 +67,13 @@ namespace BTool
         }
 
         void join() {
-            m_thread.join();
+            if (m_thread.joinable())
+                m_thread.join();
         }
 
         void detach() {
-            m_thread.detach();
+            if (m_thread.joinable())
+                m_thread.detach();
         }
 
         void swap(std::thread& _Other) noexcept {
@@ -76,6 +81,10 @@ namespace BTool
         }
 
         void swap(SafeThread& _Other) noexcept {
+            m_thread.swap(_Other.m_thread);
+        }
+
+        void swap(SafeThread&& _Other) noexcept {
             m_thread.swap(_Other.m_thread);
         }
 

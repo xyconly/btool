@@ -5,6 +5,7 @@
 #pragma once
 
 #ifdef _WIN32	/* Microsoft Windows OS */
+#include <string>
 # ifndef __COMM_WINDOWS__
 #   define __COMM_WINDOWS__
 # endif

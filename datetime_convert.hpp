@@ -9,6 +9,10 @@ Note:    目前文本类型仅支持标准北京时间(DTK_Local)
 #include <stdarg.h>
 #include <codecvt>
 #include <chrono>
+#ifdef  __linux
+# include <string.h>  // for memcpy
+# include <stdexcept> // for std::domain_error
+#endif
 
 namespace BTool
 {

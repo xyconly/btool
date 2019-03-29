@@ -108,6 +108,13 @@ namespace BTool
                                     ,std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
             }
 
+            // 客户端开启连接,同时开启读取
+            void reconnect()
+            {
+                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(m_connect_ip), m_connect_port)
+                    , std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
+            }
+
             // 服务端开启连接,同时开启读取
             void start()
             {
