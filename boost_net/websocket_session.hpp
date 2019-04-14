@@ -364,8 +364,9 @@ namespace BTool
                     return;
                 }
 
-                m_connect_ip = get_socket().remote_endpoint().address().to_v4().to_string();
-                m_connect_port = get_socket().remote_endpoint().port();
+                boost::system::error_code errc;
+                m_connect_ip = get_socket().remote_endpoint(errc).address().to_v4().to_string();
+                m_connect_port = get_socket().remote_endpoint(errc).port();
 
                 read();
 

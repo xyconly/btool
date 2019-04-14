@@ -48,6 +48,7 @@ namespace BTool
             m_safe_exit = safe_exit;
         }
 
+        // 开启任务,如果原先任务已存在且未结束则返回false
         template<typename _Callable, typename... _Args>
         bool start(_Callable&& _Fx, _Args&&... _args)
         {
@@ -55,6 +56,15 @@ namespace BTool
                 return false;
             m_thread = std::thread(std::forward<_Callable>(_Fx), std::forward<_Args>(_args)...);
             return true;
+        }
+
+        // 开启任务,如果原先任务已存在且未结束则等待结束后才会开启,存在阻塞,谨慎使用
+        template<typename _Callable, typename... _Args>
+        void restart(_Callable&& _Fx, _Args&&... _args)
+        {
+            if (m_thread.joinable())
+                m_thread.join();
+            m_thread = std::thread(std::forward<_Callable>(_Fx), std::forward<_Args>(_args)...);
         }
 
         void stop() {

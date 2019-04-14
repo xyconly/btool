@@ -123,8 +123,9 @@ namespace BTool
                     return;
                 }
 
-                m_connect_ip = m_socket.remote_endpoint().address().to_v4().to_string();
-                m_connect_port = m_socket.remote_endpoint().port();
+                boost::system::error_code ec;
+                m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
+                m_connect_port = m_socket.remote_endpoint(ec).port();
 
                 read();
 
