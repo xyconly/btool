@@ -151,6 +151,43 @@ public:
 
         return rslt;
     }
+
+    static std::vector<std::string> get_ips() {
+        std::vector<std::string> result;
+        IP_ADAPTER_INFO *pAdpFree = NULL;
+        IP_ADAPTER_INFO *pIpAdpInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
+        unsigned long ulBufLen = sizeof(IP_ADAPTER_INFO);
+        int ret;
+        //第一次调用获取需要开辟的内存空间大小
+        if ((ret = GetAdaptersInfo(pIpAdpInfo, &ulBufLen)) == ERROR_BUFFER_OVERFLOW) {
+            free(pIpAdpInfo);
+            //分配实际所需要的内存空间
+            pIpAdpInfo = (IP_ADAPTER_INFO*)malloc(ulBufLen);
+            if (NULL == pIpAdpInfo) {
+                return result;
+            }
+        }
+
+        if ((ret = GetAdaptersInfo(pIpAdpInfo, &ulBufLen)) == NO_ERROR) {
+            pAdpFree = pIpAdpInfo;
+
+            for (int i = 0; pIpAdpInfo; i++) {
+                std::string addr;
+                IP_ADDR_STRING *pIps = &pIpAdpInfo->IpAddressList;
+                while (pIps) {
+                    addr = pIps->IpAddress.String;
+                    pIps = pIps->Next;
+                }
+                result.push_back(addr);
+                pIpAdpInfo = pIpAdpInfo->Next;
+            }
+        }
+        if (pAdpFree) {
+            free(pAdpFree);
+        }
+        return result;
+
+    }
 };
 
 #else

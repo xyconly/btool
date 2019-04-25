@@ -66,8 +66,8 @@ namespace BTool
             }
 
             ~WebsocketSession() {
-                shutdown();
                 m_handler = nullptr;
+                shutdown();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理

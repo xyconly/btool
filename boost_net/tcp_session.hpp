@@ -60,8 +60,8 @@ namespace BTool
             }
 
             ~TcpSession() {
-                shutdown();
                 m_handler = nullptr;
+                shutdown();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -167,27 +167,23 @@ namespace BTool
                     return false;
                 }
 
-                m_write_mtx.lock();
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
 
                 if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
-                    m_write_mtx.unlock();
                     return false;
                 }
 
                 if (!m_write_buf.append(send_msg, size)) {
-                    m_write_mtx.unlock();
                     return false;
                 }
 
                 bool expected = false;
                 // 是否处于发送状态中
                 if (!m_sending_flag.compare_exchange_strong(expected, true)) {
-                    m_write_mtx.unlock();
                     return true;
                 }
 
                 write();
-                m_write_mtx.unlock();
                 return true;
             }
 
@@ -344,15 +340,12 @@ namespace BTool
                     return;
                 }
 
-                m_write_mtx.lock();
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (m_write_buf.size() == 0) {
                     m_sending_flag.exchange(false);
-                    m_write_mtx.unlock();
                     return;
                 }
-
                 write();
-                m_write_mtx.unlock();
             }
 
         private:

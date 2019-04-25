@@ -23,7 +23,7 @@ namespace BTool {
         MemoryStream(const MemoryStream& rhs) = delete;
 
     public:
-        // 内存管理流
+        // 内存管理流,此后将自动管理内存释放
         MemoryStream()
             : m_buffer_size(0)
             , m_offset(0)
@@ -33,7 +33,7 @@ namespace BTool {
         {
         }
 
-        // 内存管理流
+        // 内存管理流,此时将不再自动管理内存释放
         // buffer: 指向内存
         // len: 长度
         MemoryStream(char* buffer, size_t len)
@@ -65,21 +65,26 @@ namespace BTool {
             return m_capacity;
         }
         // 获取内存去除漂移后剩余长度
-        size_t get_length() const {
-            return m_capacity - m_offset;
+        size_t get_res_length() const {
+            return m_buffer_size - m_offset;
         }
-
-        // 获取当前漂移位
+        // 获取当前数据长度
+        size_t get_length() const {
+            return m_buffer_size;
+        }
+        // 获取当前漂移位数
         size_t get_offset() const {
             return m_offset;
         }
-
-        // 重置当前漂移位
+        // 重置当前漂移位至指定位置
         void reset_offset(int offset) {
             m_offset = offset;
         }
-
-        // 重置内存指向
+        // 重置当前漂移位至最新位置
+        void reset_offset() {
+            m_offset = m_buffer_size;
+        }
+        // 重置内存指向,此时将不再自动管理内存释放
         void attach(char* src, size_t len) {
             if (m_buffer && m_auto_delete)
                 free(m_buffer);
@@ -90,17 +95,14 @@ namespace BTool {
             m_offset = 0;
             m_auto_delete = false;
         }
-
-        // 释放当前内存区域生命周期的管理
+        // 释放当前内存区域生命周期的管理,此后将自动管理内存释放
         char* detach() {
             char* buffer = m_buffer;
-
             m_buffer_size = 0;
             m_offset = 0;
             m_capacity = 0;
             m_buffer = nullptr;
             m_auto_delete = true;
-
             return buffer;
         }
 
@@ -115,7 +117,23 @@ namespace BTool {
             m_auto_delete = true;
         }
 
-        // 追加数据至内存,返回追加长度
+        // 追加数据至指定位置的内存处
+        void append(const void* buffer, size_t len, size_t offset) {
+            if (!buffer || len == 0)
+                return;
+
+            // 超长
+            size_t new_capacity = offset + len;
+            while (new_capacity > m_capacity) {
+                reset_capacity(m_capacity == 0 ? new_capacity : m_capacity * 2);
+            }
+
+            memcpy(m_buffer + offset, buffer, len);
+
+            if(offset + len > m_buffer_size)
+                m_buffer_size = offset + len;
+        }
+        // 追加数据至最新位置的内存处
         void append(const void* buffer, size_t len) {
             if (!buffer || len == 0)
                 return;
@@ -130,86 +148,28 @@ namespace BTool {
             m_offset += len;
             m_buffer_size += len;
         }
-        void append_int8(int8_t src) {
-            return append(&src, sizeof(int8_t));
-        }
-        void append_uint8(uint8_t src) {
-            return append(&src, sizeof(uint8_t));
-        }
-        void append_int16(int16_t src) {
-            return append(&src, sizeof(int16_t));
-        }
-        void append_uint16(uint16_t src) {
-            return append(&src, sizeof(uint16_t));
-        }
-        void append_int32(int32_t src) {
-            return append(&src, sizeof(int32_t));
-        }
-        void append_uint32(uint32_t src) {
-            return append(&src, sizeof(uint32_t));
-        }
-        void append_int64(int64_t src) {
-            return append(&src, sizeof(int64_t));
-        }
-        void append_uint64(uint64_t src) {
-            return append(&src, sizeof(uint64_t));
-        }
-        void append_int(int src) {
-            return append(&src, sizeof(int));
-        }
-        void append_uint(unsigned int src) {
-            return append(&src, sizeof(unsigned int));
-        }
-        void append_float(float src) {
-            return append(&src, sizeof(float));
-        }
-        void append_double(double src) {
-            return append(&src, sizeof(double));
-        }
-        void append_char(char src) {
-            return append(&src, sizeof(char));
+        // 追加数据至最新位置的内存处
+        template<typename Type>
+        void append(Type src) {
+            return append(&src, sizeof(Type));
         }
 
-        // 读取数据至内存
-        void read(void* buffer, size_t len) {
+        // 读取数据当前漂移位下参数数值
+        // offset_flag : 是否需要漂移当前漂移位
+        void read(void* buffer, size_t len, bool offset_flag = true) {
             if (len == 0)
                 return;
 
             memcpy(buffer, m_buffer + m_offset, len);
+
+            if (offset_flag)
+                m_offset += len;
         }
-        // 读取当前漂移位下参数数值,并将漂移位下移
-        void read_int8(int8_t* pDst) {
-            read(pDst, sizeof(int8_t));
-        }
-        void read_uint8(uint8_t* pDst) {
-            read(pDst, sizeof(uint8_t));
-        }
-        void read_int16(int16_t* pDst) {
-            read(pDst, sizeof(int16_t));
-        }
-        void read_uint16(uint16_t* pDst) {
-            read(pDst, sizeof(uint16_t));
-        }
-        void read_int32(int32_t* pDst) {
-            read(pDst, sizeof(int32_t));
-        }
-        void read_uint32(uint32_t* pDst) {
-            read(pDst, sizeof(uint32_t));
-        }
-        void read_int64(int64_t* pDst) {
-            read(pDst, sizeof(int64_t));
-        }
-        void read_uint64(uint64_t* pDst) {
-            read(pDst, sizeof(int8_t));
-        }
-        void read_float(float* pDst) {
-            read(pDst, sizeof(float));
-        }
-        void read_double(double* pDst) {
-            read(pDst, sizeof(double));
-        }
-        void read_char(char* pDst) {
-            read(pDst, sizeof(char));
+        template<typename Type>
+        // 读取当前漂移位下参数数值
+        // offset_flag : 是否需要漂移当前漂移位
+        void read(Type* pDst, bool offset_flag = true) {
+            read(pDst, sizeof(Type), offset_flag);
         }
 
     protected:

@@ -1,18 +1,21 @@
 /******************************************************************************
-File name:  http_session.hpp
+File name:  https_session.hpp
 Author:	    AChar
-Purpose:    http连接类
-Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
+Purpose:    https连接类, http的ssl实现
+Note:       客户端可直接使用HttpsClientSession,调用HttpClientNetCallBack回调
 
 示例代码:
         class TestHttpClient : public BTool::BoostNet::HttpClientNetCallBack
         {
-            BTool::BoostNet::HttpClientSession      session_type;
+            BTool::BoostNet::HttpsClientSession     session_type;
             typedef std::shared_ptr<session_type>   session_ptr_type;
         public:
             TestHttpClient()
+                : m_context({ boost::asio::ssl::context::sslv23_client })
             {
-                m_session = std::make_shared<session_type>(get_io_service());
+                boost::system::error_code ignore_ec;
+                load_root_certificates(m_context, ignore_ec);
+                m_session = std::make_shared<session_type>(get_io_service(), m_context);
                 m_session->register_cbk(this);
                 m_session->connect(ip, port);
             }
@@ -32,12 +35,13 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
 
         private:
             session_ptr_type            m_session;
+            boost::asio::ssl::context   m_context;
         }
 
 备注:
         也可直接自定义发送及返回消息类型, 如
             using SelfHttpClientNetCallBack = HttpNetCallBack<false, boost::beast::http::file_body, boost::beast::http::string_body>;
-            using SelfHttpClientSession = HttpSession<false, boost::beast::http::file_body, boost::beast::http::string_body>
+            using SelfHttpsClientSession = HttpsSession<false, boost::beast::http::file_body, boost::beast::http::string_body>
 *****************************************************************************/
 
 #pragma once
@@ -48,44 +52,46 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/asio/ssl.hpp>
 #include "http_net_callback.hpp"
 
 namespace BTool
 {
     namespace BoostNet
     {
-        // Http连接对象
-        template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
-        class HttpSession : public std::enable_shared_from_this<HttpSession<isRequest, ReadType, WriteType, Fields>>
+        // Https连接对象
+        template<bool isRequest, typename ReadType, typename WriteType = ReadType, typename Fields = boost::beast::http::fields>
+        class HttpsSession : public std::enable_shared_from_this<HttpsSession<isRequest, ReadType, WriteType, Fields>>
         {
         public:
             typedef boost::asio::ip::tcp::socket                                socket_type;
+            typedef boost::asio::ssl::stream<socket_type>                       ssl_socket_type;
             typedef boost::asio::io_service                                     ios_type;
             typedef boost::asio::strand<boost::asio::io_context::executor_type> strand_type;
             typedef boost::beast::flat_buffer                                   read_buffer_type;
 
-            typedef HttpSession<isRequest, ReadType, WriteType, Fields>         SessionType;
-            typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
-            typedef typename callback_type::read_msg_type                       read_msg_type;
-            typedef typename callback_type::send_msg_type                       send_msg_type;
-            typedef typename callback_type::SessionID                           SessionID;
+            typedef HttpsSession<isRequest, ReadType, WriteType, Fields>                SessionType;
+            typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>             callback_type;
+            typedef typename callback_type::read_msg_type                               read_msg_type;
+            typedef typename callback_type::send_msg_type                               send_msg_type;
+            typedef typename callback_type::SessionID                                   SessionID;
 
         public:
             // Http连接对象
             // ios: io读写动力服务
             // max_rbuffer_size:单次读取最大缓冲区大小
-            HttpSession(ios_type& ios)
-                : m_socket(ios)
+            HttpsSession(ios_type& ios, boost::asio::ssl::context& context)
+                : m_resolver(ios)
+                , m_ssl_socket(ios, context)
                 , m_started_flag(false)
                 , m_stop_flag(true)
                 , m_handler(nullptr)
                 , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
-                , m_strand(m_socket.get_executor())
             {
             }
 
-            ~HttpSession() {
+            ~HttpsSession() {
                 m_handler = nullptr;
                 shutdown();
             }
@@ -96,18 +102,18 @@ namespace BTool
             }
 
             // 获得socket
-            socket_type& get_socket() {
-                return m_socket;
+            socket_type::lowest_layer_type& get_socket() {
+                return m_ssl_socket.lowest_layer();
             }
 
             // 获得io_service
             ios_type& get_io_service() {
-                return m_socket.get_io_service();
+                return m_ssl_socket.get_io_service();
             }
 
             // 是否已开启
             bool is_open() const {
-                return  m_started_flag.load() && m_socket.is_open();
+                return  m_started_flag.load();
             }
 
             // 获取连接ID
@@ -128,17 +134,25 @@ namespace BTool
             // 客户端开启连接,同时开启读取
             void connect(const char* ip, unsigned short port)
             {
+                if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
+                {
+                    boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+                    close();
+                    return;
+                }
+
                 m_connect_ip = ip;
                 m_connect_port = port;
-                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port)
-                                    ,std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
+
+                m_resolver.async_resolve(ip, std::to_string(port),
+                    std::bind(&SessionType::handle_resolve, SessionType::shared_from_this()
+                        , std::placeholders::_1, std::placeholders::_2));
             }
 
             // 客户端开启连接,同时开启读取
             void reconnect()
             {
-                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(m_connect_ip), m_connect_port)
-                    , std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
+                connect(m_connect_ip.c_str(), m_connect_port);
             }
 
             // 服务端开启连接,同时开启读取
@@ -150,8 +164,8 @@ namespace BTool
                 }
 
                 boost::system::error_code ec;
-                m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
-                m_connect_port = m_socket.remote_endpoint(ec).port();
+                m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
+                m_connect_port = get_socket().remote_endpoint(ec).port();
 
                 read();
 
@@ -181,15 +195,12 @@ namespace BTool
                 m_send_msg = std::forward<send_msg_type>(msg);
 
                 boost::beast::http::async_write(
-                    m_socket, m_send_msg
-                    , boost::asio::bind_executor(
-                        m_strand,
-                        std::bind(
-                            &SessionType::handle_write,
-                            SessionType::shared_from_this(),
-                            std::placeholders::_1,
-                            std::placeholders::_2,
-                            m_send_msg.need_eof())));
+                    m_ssl_socket, m_send_msg
+                    , std::bind(&SessionType::handle_write
+                        , SessionType::shared_from_this()
+                        , std::placeholders::_1
+                        , std::placeholders::_2
+                        , m_send_msg.need_eof()));
 
                 return true;
             }
@@ -219,29 +230,57 @@ namespace BTool
                 try {
                     m_read_msg = {};
 
-                    boost::beast::http::async_read(m_socket, m_read_buf, m_read_msg,
-                        boost::asio::bind_executor(
-                            m_strand,
-                            std::bind(
-                                &SessionType::handle_read,
-                                SessionType::shared_from_this(),
-                                std::placeholders::_1,
-                                std::placeholders::_2)));
+                    boost::beast::http::async_read(m_ssl_socket, m_read_buf, m_read_msg,
+                        std::bind(
+                            &SessionType::handle_read,
+                            SessionType::shared_from_this(),
+                            std::placeholders::_1,
+                            std::placeholders::_2));
                 }
                 catch (...) {
                     shutdown();
                 }
             }
 
+            // 
+            void handle_resolve(const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
+            {
+                if (ec)
+                    return close();
+
+                boost::asio::async_connect(m_ssl_socket.next_layer(), results.begin(), results.end()
+                    , std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
+            }
+
             // 处理连接回调
             void handle_connect(const boost::system::error_code& ec)
             {
-                if (ec) {
-                    close();
+                if (ec)
+                    return close();
+
+                m_ssl_socket.async_handshake(boost::asio::ssl::stream_base::client
+                    , std::bind(&SessionType::handle_handshake, SessionType::shared_from_this(), std::placeholders::_1));
+            }
+
+            // 处理连接回调
+            void handle_handshake(boost::system::error_code ec)
+            {
+                if (ec)
+                    return close();
+
+                bool expected = false;
+                if (!m_started_flag.compare_exchange_strong(expected, true)) {
                     return;
                 }
 
-                start();
+                m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
+                m_connect_port = get_socket().remote_endpoint(ec).port();
+
+                m_stop_flag.exchange(false);
+
+                if (m_handler) {
+                    m_handler->on_open_cbk(m_session_id);
+                }
             }
 
             // 处理读回调
@@ -260,8 +299,11 @@ namespace BTool
             void handle_write(const boost::system::error_code& ec, size_t /*bytes_transferred*/, bool close)
             {
                 if (ec || close) {
+                    auto mmm = ec.message();
                     return shutdown();
                 }
+
+                read();
 
                 if (m_handler)
                     m_handler->on_write_cbk(m_session_id, m_send_msg);
@@ -269,8 +311,10 @@ namespace BTool
 
         private:
             // asio的socket封装
-            socket_type             m_socket;
+            ssl_socket_type         m_ssl_socket;
             SessionID               m_session_id;
+
+            boost::asio::ip::tcp::resolver m_resolver;
 
             // 读缓冲
             read_buffer_type        m_read_buf;
@@ -288,13 +332,12 @@ namespace BTool
             // 连接者Port
             unsigned short          m_connect_port;
 
-            strand_type             m_strand;
             read_msg_type           m_read_msg;
             send_msg_type           m_send_msg;
         };
 
         // 默认的客户端, 发送请求,读取应答
-        using HttpClientSession = HttpSession<false, boost::beast::http::string_body>;
+        using HttpsClientSession = HttpsSession<false, boost::beast::http::string_body>;
 
     }
 }

@@ -1,16 +1,16 @@
 /******************************************************************************
-File name:  http_server.hpp
+File name:  https_server.hpp
 Author:	    AChar
 Purpose:    http服务类
-Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
+Note:       可直接使用HttpsService,调用HttpServiceNetCallBack回调
 
 示例代码:
-        class TestHttpService : public BTool::BoostNet::HttpServiceNetCallBack
+        class TestHttpsService : public BTool::BoostNet::HttpServiceNetCallBack
         {
-            BTool::BoostNet::HttpService            service_type;
+            BTool::BoostNet::HttpsService           service_type;
             typedef std::shared_ptr<service_type>   service_ptr_type;
         public:
-            TestHttpService()
+            TestHttpsService()
             {
                 m_service = std::make_shared<service_type>(get_io_service());
                 m_service->register_cbk(this);
@@ -37,7 +37,7 @@ Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
 备注:
         也可直接自定义发送及返回消息类型, 如
             using SelfHttpServiceNetCallBack = HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
-            using SelfHttpServer = HttpServer<true, boost::beast::http::string_body, boost::beast::http::file_body>
+            using SelfHttpsServer = HttpsServer<true, boost::beast::http::string_body, boost::beast::http::file_body>
 *****************************************************************************/
 
 #pragma once
@@ -45,7 +45,8 @@ Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
 #include <mutex>
 #include <map>
 #include "../io_service_pool.hpp"
-#include "http_session.hpp"
+#include "https_session.hpp"
+#include "http_net_callback.hpp"
 
 namespace BTool
 {
@@ -53,14 +54,10 @@ namespace BTool
     {
         // Http服务
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
-        class HttpServer : public HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
+        class HttpsServer : public HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
         {
-            typedef AsioServicePool::ios_type                       ios_type;
-            typedef boost::asio::io_context                         io_context_type;
-            typedef boost::asio::ip::tcp::acceptor                  accept_type;
-
             // 自身命名
-            typedef HttpServer<isRequest, ReadType, WriteType, Fields>          ServerType;
+            typedef HttpsServer<isRequest, ReadType, WriteType, Fields>         ServerType;
 
             // 回调相关命名
             typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
@@ -69,35 +66,36 @@ namespace BTool
             typedef typename callback_type::SessionID                           SessionID;
 
             // Session命名
-            typedef HttpSession<isRequest, ReadType, WriteType, Fields>         session_type;
+            typedef HttpsSession<isRequest, ReadType, WriteType, Fields>        session_type;
             typedef std::shared_ptr<session_type>                               session_ptr_type;
             typedef std::map<SessionID, session_ptr_type>                       session_map_type;
 
         public:
             // Http服务
             // handler: session返回回调
-            HttpServer(AsioServicePool& ios)
+            HttpsServer(AsioServicePool& ios, boost::asio::ssl::context& ssl_context)
                 : m_ios_pool(ios)
                 , m_acceptor(ios.get_io_service())
                 , m_handler(nullptr)
+                , m_ssl_context(ssl_context)
             {
             }
 
-            ~HttpServer() {
+            ~HttpsServer() {
                 m_handler = nullptr;
                 stop();
                 m_acceptor.close();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
-            void register_cbk(callback_type* handler) {
+            void register_cbk(HttpNetCallBack* handler) {
                 m_handler = handler;
             }
 
             // 非阻塞式启动服务,
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
-            bool start(const char* ip = nullptr, unsigned short port = 80)
+            bool start(const char* ip = nullptr, unsigned short port = 443)
             {
                 if (!start_listen(ip, port)) {
                     return false;
@@ -107,7 +105,7 @@ namespace BTool
             }
 
             // 阻塞式启动服务,使用join_all等待
-            void run(const char* ip = nullptr, unsigned short port = 80)
+            void run(const char* ip = nullptr, unsigned short port = 443)
             {
                 if (!start_listen(ip, port)) {
                     return;
@@ -203,7 +201,7 @@ namespace BTool
             void start_accept()
             {
                 try {
-                    session_ptr_type session = std::make_shared<session_type>(m_ios_pool.get_io_service());
+                    HttpSessionPtr session = std::make_shared<HttpsSession>(m_ios_pool.get_io_service(), m_ssl_context, m_max_rbuffer_size);
                     m_acceptor.async_accept(session->get_socket(), bind(&ServerType::handle_accept, this, boost::placeholders::_1, session));
                 }
                 catch (std::exception&) {
@@ -234,12 +232,12 @@ namespace BTool
             }
 
             // 查找连接对象
-            session_ptr_type find_session(SessionID session_id) const
+            HttpSessionPtr find_session(SessionID session_id) const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
                 if (iter == m_sessions.end()) {
-                    return session_ptr_type();
+                    return HttpSessionPtr();
                 }
                 return iter->second;
             }
@@ -266,10 +264,10 @@ namespace BTool
                     m_handler->on_close_cbk(session_id);
             }
             // 读取消息回调
-            virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) override
+            virtual void on_read_cbk(SessionID session_id, const request_type& request) override
             {
                 if (m_handler)
-                    m_handler->on_read_cbk(session_id, read_msg);
+                    m_handler->on_read_cbk(session_id, request);
             }
 
         private:
@@ -277,12 +275,14 @@ namespace BTool
             accept_type                             m_acceptor;
             callback_type*                          m_handler;
 
+            boost::asio::ssl::context&              m_ssl_context;
+
             mutable std::mutex                      m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间
             session_map_type                        m_sessions;
         };
 
         // 默认的服务端, 读取请求,发送应答
-        using HttpService = HttpServer<true, boost::beast::http::string_body>;
+        using HttpsService = HttpsServer<true, boost::beast::http::string_body>;
     }
 }

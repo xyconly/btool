@@ -15,6 +15,7 @@ Description:    提供具有相同属性任务串行有序执行的线程池
 #include <list>
 #include <vector>
 #include <set>
+#include <map>
 #include <condition_variable>
 #include <boost/noncopyable.hpp>
 #include <boost/concept_check.hpp>
@@ -105,6 +106,18 @@ namespace BTool
                 TTuple      tuple_;
                 Function    fun_cbk_;
             };
+
+            // 任务属性及对应连续个数结构体
+            struct PropCountItem {
+                PropType    prop_;
+                size_t      count_;
+
+                PropCountItem(const PropType& prop) : prop_(prop), count_(1) {}
+                inline size_t add() { return ++count_; }
+                inline size_t reduce() { return --count_; }
+                inline const PropType& get_prop_type() const { return prop_; }
+            };
+//             typedef std::shared_ptr<PropCountItem> PropCountItemPtr;
 #pragma endregion
 
         public:
@@ -115,8 +128,7 @@ namespace BTool
             {
             }
             ~SerialTaskList() {
-                writeLock locker(m_tasks_mtx);
-                m_wait_tasks.clear();
+                clear();
             }
 
 #if (defined __linux)
@@ -174,26 +186,19 @@ namespace BTool
             void remove_prop(const PropType& prop)
             {
                 writeLock locker(m_tasks_mtx);
-                auto iter = m_wait_tasks.begin();
-                while (iter != m_wait_tasks.end())
-                {
-                    if (prop != (*iter)->get_prop_type())
-                    {
-                        iter++;
-                        continue;
-                    }
-                    m_wait_tasks.erase(iter++);
-                }
+                auto iter = m_wait_tasks.find(prop);
+                if (iter == m_wait_tasks.end())
+                    return;
+
+                m_wait_task_count -= iter->second.size();
+                m_wait_tasks.erase(prop);
                 m_cv_not_full.notify_one();
             }
 
             // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
             void pop_task()
             {
-                {
-                    std::unique_lock<std::mutex> locker(m_cv_mtx);
-                    m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
-                }
+                wait_for_can_pop();
 
                 if (m_bstop.load())
                     return;
@@ -203,32 +208,38 @@ namespace BTool
 
                 {
                     writeLock locker(m_tasks_mtx);
-                    auto iter = m_wait_tasks.begin();
-                    while (iter != m_wait_tasks.end())
+                    auto prop_count_iter = m_prop_counts.begin();
+                    while (prop_count_iter != m_prop_counts.end())
                     {
-                        prop_type = (*iter)->get_prop_type();
-
-                        if (!add_cur_prop(prop_type))
-                        {
-                            iter++;
+                        prop_type = prop_count_iter->get_prop_type();
+                        if (!add_cur_prop(prop_type)) {
+                            prop_count_iter++;
                             continue;
                         }
-                        next_task = *iter;
-                        m_wait_tasks.erase(iter);
-                        m_cv_not_full.notify_one();
+                        auto wait_task_iter = m_wait_tasks.find(prop_type);
+                        if (wait_task_iter != m_wait_tasks.end())
+                        {
+                            next_task = wait_task_iter->second.front();
+                            wait_task_iter->second.pop_front();
+                            m_wait_task_count--;
+                            if (wait_task_iter->second.empty())
+                                m_wait_tasks.erase(wait_task_iter);
+
+                            if (prop_count_iter->reduce() == 0)
+                                m_prop_counts.erase(prop_count_iter);
+                        }
                         break;
                     }
                 }
 
-                if (next_task)
-                {
+                if (next_task) {
                     next_task->invoke();
                     remove_cur_prop(prop_type);
+                    m_cv_not_full.notify_one();
                 }
             }
 
-            void stop()
-            {
+            void stop() {
                 // 是否已终止判断
                 bool target(false);
                 if (!m_bstop.compare_exchange_strong(target, true))
@@ -238,30 +249,38 @@ namespace BTool
                 m_cv_not_empty.notify_all();
             }
 
-            bool empty() const
-            {
+            bool empty() const {
                 readLock locker(m_tasks_mtx);
                 return m_wait_tasks.empty();
             }
 
-            bool full() const
-            {
+            bool full() const {
                 readLock locker(m_tasks_mtx);
-                return m_max_task_count != 0 && m_wait_tasks.size() >= m_max_task_count;
+                return m_max_task_count != 0 && m_wait_task_count >= m_max_task_count;
             }
 
-            size_t size() const
-            {
+            size_t size() const {
                 readLock locker(m_tasks_mtx);
                 return m_wait_tasks.size();
             }
 
+            void clear() {
+                writeLock locker(m_tasks_mtx);
+                m_wait_task_count = 0;
+                m_wait_tasks.clear();
+                m_cv_not_full.notify_all();
+            }
+
         private:
             // 等待直到可加入新的任务至队列
-            void wait_for_can_add()
-            {
+            void wait_for_can_add() {
                 std::unique_lock<std::mutex> locker(m_cv_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+            }
+            // 等待直到可pop新的任务
+            void wait_for_can_pop() {
+                std::unique_lock<std::mutex> locker(m_cv_mtx);
+                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
             }
 
             // 新增任务至队列
@@ -270,9 +289,21 @@ namespace BTool
                 if (!new_task_item)
                     return false;
 
+                const PropType& prop = new_task_item->get_prop_type();
                 {
                     writeLock locker(m_tasks_mtx);
-                    m_wait_tasks.push_back(std::forward<TaskPtr>(new_task_item));
+                    if (!m_prop_counts.empty())
+                    {
+                        auto& prop_count_ref = m_prop_counts.back();
+                        if (prop_count_ref.get_prop_type() == prop)
+                            prop_count_ref.add();
+                        else
+                            m_prop_counts.push_back(PropCountItem(prop));
+                    }
+                    else
+                        m_prop_counts.push_back(PropCountItem(prop));
+                    m_wait_tasks[prop].push_back(std::forward<TaskPtr>(new_task_item));
+                    m_wait_task_count++;
                 }
 
                 m_cv_not_empty.notify_one();
@@ -286,6 +317,7 @@ namespace BTool
                 std::lock_guard<std::mutex> locker(m_props_mtx);
                 if (m_cur_props.find(prop_type) != m_cur_props.end())
                     return false;
+
                 m_cur_props.insert(prop_type);
                 return true;
             }
@@ -301,40 +333,44 @@ namespace BTool
             }
 
             // 是否处于未满状态
-            bool not_full() const
-            {
+            bool not_full() const {
+                readLock lock(m_tasks_mtx);
                 return m_max_task_count == 0 || m_wait_tasks.size() < m_max_task_count;
             }
 
             // 是否处于空状态
-            bool not_empty() const
-            {
+            bool not_empty() const {
+                readLock lock(m_tasks_mtx);
                 return !m_wait_tasks.empty();
             }
 
         private:
             // 是否已终止标识符
-            std::atomic<bool>           m_bstop;
+            std::atomic<bool>                           m_bstop;
+            // 最大任务个数,当为0时表示无限制
+            size_t                                      m_max_task_count;
 
             // 任务队列锁
-            mutable rwMutex             m_tasks_mtx;
+            mutable rwMutex                             m_tasks_mtx;
+            // 总待执行任务队列总个数
+            size_t                                      m_wait_task_count;
             // 总待执行任务队列,包含所有的待执行任务
-            std::list<TaskPtr>          m_wait_tasks;
-            // 最大任务个数,当为0时表示无限制
-            size_t                      m_max_task_count;
+            std::map<PropType, std::list<TaskPtr>>      m_wait_tasks;
+            // 当前按顺序插入的,待执行的 任务属性及其连续任务个数
+            // 当连续数为0时,删除该PropCountItemPtr
+            std::list<PropCountItem>                    m_prop_counts;
 
             // 条件阻塞锁
-            std::mutex                  m_cv_mtx;
+            std::mutex                                  m_cv_mtx;
             // 不为空的条件变量
-            std::condition_variable     m_cv_not_empty;
+            std::condition_variable                     m_cv_not_empty;
             // 没有满的条件变量
-            std::condition_variable     m_cv_not_full;
+            std::condition_variable                     m_cv_not_full;
 
             // 当前执行任务属性队列锁
-            std::mutex                  m_props_mtx;
+            std::mutex                                  m_props_mtx;
             // 当前正在执行中的任务属性
-            std::set<PropType>          m_cur_props;
-
+            std::set<PropType>                          m_cur_props;
         };
 
 #pragma endregion

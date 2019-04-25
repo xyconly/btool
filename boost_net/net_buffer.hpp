@@ -88,9 +88,8 @@ namespace BTool
                 if (!memory_stream)
                     return false;
                 memory_stream->append(msg, len);
-                m_all_len += len;
-                m_send_items.push(memory_stream);
-                return true;
+
+                return append(memory_stream);
             }
             bool append(const WriteMemoryStreamPtr& memory_stream) {
                 if (!memory_stream)
