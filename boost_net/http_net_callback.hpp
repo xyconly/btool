@@ -17,6 +17,7 @@ namespace BTool
         {
         public:
             typedef unsigned long long  SessionID;
+            typedef boost::beast::http::verb                                     method_type;
 
             typedef boost::beast::http::message<isRequest, ReadType, Fields>     read_msg_type;
             typedef boost::beast::http::message<!isRequest, WriteType, Fields>   send_msg_type;

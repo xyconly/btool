@@ -717,6 +717,41 @@ namespace BTool
             return rslt;
         }
 
+        // 返回漂移毫秒数后时间
+        // style必须包含DTS_YMDHMS,否则无效
+        DateTimeConvert get_add_millsecond(long long millsecs) const
+        {
+            if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
+                return DateTimeConvert();
+
+            std::time_t ltime = to_time_t();
+
+            int res_millsec = millsecs % 1000 + m_millsecond;
+            int new_millsec = res_millsec % 1000;
+            long long secs(res_millsec / 1000 + millsecs / 1000);
+            ltime = ltime + secs;
+
+#ifdef __linux
+            std::tm* tp_p = localtime(&ltime);
+            std::tm tmcur = *tp_p;
+#else
+            std::tm tmcur;
+            localtime_s(&tmcur, &ltime);
+#endif          
+            DateTimeConvert rslt(tmcur, m_style);
+            if (m_style & DTS_mSec)
+            {
+                rslt.m_millsecond = res_millsec;
+            }
+
+            if (m_style & DTS_uSec)
+            {
+                rslt.m_microsecond = m_microsecond;
+            }
+
+            return rslt;
+        }
+
         std::string to_local_string(DateTimeStyle style = DTS_YMDHMS) const
         {
             char szDate[11] = { 0 };

@@ -11,8 +11,11 @@ Note:       可直接使用HttpsService,调用HttpServiceNetCallBack回调
             typedef std::shared_ptr<service_type>   service_ptr_type;
         public:
             TestHttpsService()
+                : m_context({ boost::asio::ssl::context::sslv23 })
             {
-                m_service = std::make_shared<service_type>(get_io_service());
+                boost::system::error_code ignore_ec;
+                load_server_certificate(m_context, ignore_ec);
+                m_service = std::make_shared<service_type>(get_io_service(), m_context);
                 m_service->register_cbk(this);
                 bool rslt = m_service->start(ip);
             }
@@ -31,6 +34,7 @@ Note:       可直接使用HttpsService,调用HttpServiceNetCallBack回调
             virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) override;
 
         private:
+            boost::asio::ssl::context   m_context;
             service_ptr_type            m_service;
         }
 

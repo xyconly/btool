@@ -147,6 +147,21 @@ namespace BTool
                 }
             }
 
+            // 设置支持的请求方法
+            void set_allow_method(const std::vector<method_type>& methods) {
+
+            }
+
+            // 新增支持的请求方法
+            void add_allow_method(method_type method) {
+
+            }
+
+            // 获取是否支持该请求方法
+            bool is_allow_method(method_type method) {
+
+            }
+
             // 获取连接者IP
             bool get_ip(SessionID session_id, std::string& ip) const {
                 auto sess_ptr = find_session(session_id);
@@ -276,6 +291,8 @@ namespace BTool
             AsioServicePool&                        m_ios_pool;
             accept_type                             m_acceptor;
             callback_type*                          m_handler;
+            // 服务支持的方法类型
+            std::set<allow_method_type>             m_allow_methods;
 
             mutable std::mutex                      m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间

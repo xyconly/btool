@@ -4,6 +4,27 @@ Author:	    AChar
 Purpose:    websocket连接类
 Note:       为了外部尽可能的无缓存,外部操作读取数据后需要主动调用consume_read_buf,
             以此来删除读缓存
+
+Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放ios对象
+            这就导致外部单独使用使用需要先声明ios对象,然后声明该对象,例如:
+                class WebsocketClient{
+                    ...
+                private:
+                    ios_type            m_ios;
+                    WebsocketSession    m_session;
+                };
+            当然如果外部主动控制其先后顺序会更好,例如:
+                class WebsocketClient {
+                public:
+                    WebsocketClient(ios_type& ios) {
+                        m_session = std::make_shared<WebsocketSession>(ios);
+                    }
+                    ~WebsocketClient() {
+                        m_session.reset();
+                    }
+                private:
+                    std::shared_ptr<WebsocketSession> m_session;
+                };
 *****************************************************************************/
 
 #pragma once
@@ -23,17 +44,10 @@ namespace BTool
         // Websocket连接对象
         class WebsocketSession : public std::enable_shared_from_this<WebsocketSession>
         {
-//             struct TcpKeepAliveST
-//             {
-//                 unsigned long onoff;
-//                 unsigned long keepalivetime;
-//                 unsigned long keepaliveinterval;
-//             };
-
         public:
-            typedef boost::beast::websocket::stream<boost::asio::ip::tcp::socket>   WebsocketSocketStream;
-            typedef WebsocketSocketStream::lowest_layer_type                        SocketType;
-            typedef boost::asio::io_service                                         IosType;
+            typedef boost::beast::websocket::stream<boost::asio::ip::tcp::socket>   websocket_stream_type;
+            typedef websocket_stream_type::lowest_layer_type                        socket_type;
+            typedef boost::asio::io_service                                         ios_type;
             typedef ReadBuffer                                                      ReadBufferType;
             typedef WriteBuffer                                                     WriteBufferType;
             typedef WriteBuffer::WriteMemoryStreamPtr                               WriteMemoryStreamPtr;
@@ -47,9 +61,10 @@ namespace BTool
 
         public:
             // Websocket连接对象
-            // ios: io读写动力服务
-            // max_buffer_size: 最大写缓冲区大小
-            WebsocketSession(IosType& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
+            // ios: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ios对象
+            // max_wbuffer_size: 最大写缓冲区大小
+            // max_rbuffer_size: 单次读取最大缓冲区大小
+            WebsocketSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_socket(ios)
                 , m_resolver(ios)
                 , m_started_flag(false)
@@ -76,12 +91,12 @@ namespace BTool
             }
 
             // 获得socket
-            SocketType& get_socket() {
+            socket_type& get_socket() {
                 return m_socket.lowest_layer();
             }
 
             // 获得io_service
-            IosType& get_io_service() {
+            ios_type& get_io_service() {
                 return get_socket().get_io_service();
             }
 
@@ -152,7 +167,6 @@ namespace BTool
 
                 boost::system::error_code ignored_ec;
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-//                 m_socket.next_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
 
                 m_started_flag.exchange(false);
@@ -202,56 +216,6 @@ namespace BTool
 
                 m_read_buf.consume(bytes_transferred);
             }
-
-            // 设置心跳检测选项；ultime: KeepAlive探测的时间间隔(毫秒)
-//             bool setkeepalive(unsigned long ultime)
-//             {
-//                 // 开启 KeepAlive
-//                 boost::asio::ip::tcp::socket::keep_alive option(true);
-//                 get_socket().set_option(option);
-// 
-// #if defined(_WINDOWS_) // WINDOWS的API实现
-//                 // KeepAlive实现心跳
-//                 //SOCKET st = reinterpret_cast<SOCKET>(work_socket_.native().as_handle());
-//                 SOCKET st = get_socket().native_handle();
-// 
-//                 TcpKeepAliveST inKeepAlive = { 0 }; //输入参数
-//                 unsigned long ulInLen = sizeof(TcpKeepAliveST);
-// 
-//                 TcpKeepAliveST outKeepAlive = { 0 }; //输出参数
-//                 unsigned long ulOutLen = sizeof(TcpKeepAliveST);
-//                 unsigned long ulBytesReturn = 0;
-// 
-//                 //设置socket的keep alive为3秒
-//                 inKeepAlive.onoff = 1;
-//                 inKeepAlive.keepaliveinterval = ultime;	//两次KeepAlive探测间的时间间隔
-//                 inKeepAlive.keepalivetime = 3000;		//开始首次KeepAlive探测前的TCP空闲时间
-// 
-//                 if (WSAIoctl(st, _WSAIOW(IOC_VENDOR, 4), (LPVOID)&inKeepAlive, ulInLen, (LPVOID)&outKeepAlive, ulOutLen, &ulBytesReturn, NULL, NULL) == SOCKET_ERROR)
-//                 {
-//                     return false;
-//                 }
-// #elif
-//                 ////KeepAlive实现，单位秒
-//                 int keepAlive = 1;//设定KeepAlive
-//                 int keepIdle = 3;//开始首次KeepAlive探测前的TCP空闭时间
-//                 int keepInterval = ultime / 1000;//两次KeepAlive探测间的时间间隔
-//                 int keepCount = 3;//判定断开前的KeepAlive探测次数
-//                 if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive)) == -1) {
-//                     return false;
-//                 }
-//                 if (setsockopt(s, SOL_TCP, TCP_KEEPIDLE, (void *)&keepIdle, sizeof(keepIdle)) == -1) {
-//                     return false;
-//                 }
-//                 if (setsockopt(s, SOL_TCP, TCP_KEEPINTVL, (void *)&keepInterval, sizeof(keepInterval)) == -1) {
-//                     return false;
-//                 }
-//                 if (setsockopt(s, SOL_TCP, TCP_KEEPCNT, (void *)&keepCount, sizeof(keepCount)) == -1) {
-//                     return false;
-//                 }
-// #endif
-//                 return true;
-//             }
 
         protected:
             static SessionID GetNextSessionID()
@@ -375,8 +339,6 @@ namespace BTool
                 if (m_handler) {
                     m_handler->on_open_cbk(m_session_id);
                 }
-
-//                 setkeepalive(1000);
             }
 
             // 处理读回调
@@ -439,7 +401,7 @@ namespace BTool
             // TCP解析器
             boost::asio::ip::tcp::resolver m_resolver;
             // asio的socket封装
-            WebsocketSocketStream   m_socket;
+            websocket_stream_type   m_socket;
             // 连接ID
             SessionID               m_session_id;
 

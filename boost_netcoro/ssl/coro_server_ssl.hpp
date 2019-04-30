@@ -131,7 +131,7 @@ namespace BTool
 //                 ctx.use_private_key_file("server.pem", boost::asio::ssl::context::pem);
 //                 ctx.use_tmp_dh_file("dh512.pem");
 
-                            // Spawn a listening port
+                // Spawn a listening port
                 boost::asio::spawn(ios,
                     boost::bind(
                         &CoroServerSsl<TSessionSsl>::do_listen, shared_from_this(),

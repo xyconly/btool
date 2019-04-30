@@ -34,8 +34,8 @@ Note:       客户端可直接使用HttpsClientSession,调用HttpClientNetCallBack回调
             virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) override;
 
         private:
-            session_ptr_type            m_session;
             boost::asio::ssl::context   m_context;
+            session_ptr_type            m_session;
         }
 
 备注:

@@ -35,7 +35,7 @@
 
 namespace NPHttpJsonPackage
 {
-#define HEAD_MSG_ContentType       "Content-Type"   // 内容类型,一般为application/json
+#define HEAD_MSG_ContentType       "Content-Type"   // 内容类型,一般为application/json,get请求时无需该参数
 #define HEAD_MSG_Nonce             "Nonce"          // 唯一码,公钥
 #define HEAD_MSG_CurTime           "CurTime"        // 当前时间(unix时间戳),秒
 #define HEAD_MSG_CheckSum          "CheckSum"       // 校验码(Secret(私钥)+Nonce+CurTime(字符串),SHA1 ,然后全小写)
@@ -111,33 +111,34 @@ namespace NPHttpJsonPackage
                 m_path = request.target().to_string();
                 std::transform(m_path.begin(), m_path.end(), m_path.begin(), ::tolower);
             }
-
+            
             auto content_type_iter = request.find(HEAD_MSG_ContentType);
             m_cur_isvaild = content_type_iter != request.end();
-            if (!m_cur_isvaild)
+            if (m_cur_isvaild)
+                m_head.content_type_ = content_type_iter->value().to_string();
+            else if(m_method != boost::beast::http::verb::get)
                 return;
-            m_head.content_type_ = content_type_iter->value().to_string();
 
             auto nonce_iter = request.find(HEAD_MSG_Nonce);
-            m_cur_isvaild &= nonce_iter != request.end();
+            m_cur_isvaild = nonce_iter != request.end();
             if (!m_cur_isvaild)
                 return;
             m_head.nonce_ = nonce_iter->value().to_string();
 
             auto cur_time_iter = request.find(HEAD_MSG_CurTime);
-            m_cur_isvaild &= cur_time_iter != request.end();
+            m_cur_isvaild = cur_time_iter != request.end();
             if (!m_cur_isvaild)
                 return;
             m_head.cur_time_ = cur_time_iter->value().to_string();
 
             auto check_sum_iter = request.find(HEAD_MSG_CheckSum);
-            m_cur_isvaild &= check_sum_iter != request.end();
+            m_cur_isvaild = check_sum_iter != request.end();
             if (!m_cur_isvaild)
                 return;
             m_head.check_sum_ = check_sum_iter->value().to_string();
             std::transform(m_head.check_sum_.begin(), m_head.check_sum_.end(), m_head.check_sum_.begin(), ::tolower);
 
-            m_cur_isvaild &= generate_checksum(secret, m_head.nonce_, m_head.cur_time_) == m_head.check_sum_;
+            m_cur_isvaild = generate_checksum(secret, m_head.nonce_, m_head.cur_time_) == m_head.check_sum_;
             if (!m_cur_isvaild)
                 return;
 
