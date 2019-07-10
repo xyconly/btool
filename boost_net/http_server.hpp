@@ -67,6 +67,7 @@ namespace BTool
             typedef typename callback_type::read_msg_type                       read_msg_type;
             typedef typename callback_type::send_msg_type                       send_msg_type;
             typedef typename callback_type::SessionID                           SessionID;
+            typedef typename callback_type::method_type                         allow_method_type;
 
             // Session命名
             typedef HttpSession<isRequest, ReadType, WriteType, Fields>         session_type;
@@ -97,9 +98,10 @@ namespace BTool
             // 非阻塞式启动服务,
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
-            bool start(const char* ip = nullptr, unsigned short port = 80)
+            // reuse_address: 是否启用端口复用
+            bool start(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = false)
             {
-                if (!start_listen(ip, port)) {
+                if (!start_listen(ip, port, reuse_address)) {
                     return false;
                 }
                 m_ios_pool.start();
@@ -107,9 +109,12 @@ namespace BTool
             }
 
             // 阻塞式启动服务,使用join_all等待
-            void run(const char* ip = nullptr, unsigned short port = 80)
+            // ip: 监听IP,默认本地IPV4地址
+            // port: 监听端口
+            // reuse_address: 是否启用端口复用
+            void run(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = false)
             {
-                if (!start_listen(ip, port)) {
+                if (!start_listen(ip, port, reuse_address)) {
                     return;
                 }
                 m_ios_pool.run();
@@ -148,18 +153,18 @@ namespace BTool
             }
 
             // 设置支持的请求方法
-            void set_allow_method(const std::vector<method_type>& methods) {
-
+            void set_allow_method(const std::set<allow_method_type>& methods) {
+                m_allow_methods = methods;
             }
 
             // 新增支持的请求方法
-            void add_allow_method(method_type method) {
-
+            void add_allow_method(allow_method_type method) {
+                m_allow_methods.emplace(method);
             }
 
             // 获取是否支持该请求方法
-            bool is_allow_method(method_type method) {
-
+            bool is_allow_method(allow_method_type method) {
+                return m_allow_methods.find(method) != m_allow_methods.end();
             }
 
             // 获取连接者IP
@@ -184,7 +189,7 @@ namespace BTool
 
         private:
             // 启动监听端口
-            bool start_listen(const char* ip, unsigned short port)
+            bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::system::error_code ec;
                 boost::asio::ip::tcp::endpoint endpoint;
@@ -196,16 +201,19 @@ namespace BTool
                     if (ec)
                         return false;
                 }
-                
+
                 try {
                     m_acceptor.open(endpoint.protocol());
-                    m_acceptor.set_option(boost::asio::socket_base::reuse_address(true));
+                    m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(reuse_address));
                     m_acceptor.bind(endpoint);
-                    m_acceptor.listen(boost::asio::socket_base::max_listen_connections);
+                    m_acceptor.listen();
                 }
-                catch (...) {
+                catch (boost::system::system_error&) {
                     return false;
                 }
+//                 catch (...) {
+//                     return false;
+//                 }
 
                 if (!m_acceptor.is_open())
                     return false;

@@ -242,7 +242,7 @@ namespace BTool
                 }
             }
 
-            // 
+            // ½âÎöIP»Øµ÷
             void handle_resolve(const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
             {
                 if (ec)

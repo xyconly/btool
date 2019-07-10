@@ -135,6 +135,10 @@ namespace BTool
                 m_queue.stop();
             }
 
+            void clear() {
+                m_queue.clear();
+            }
+
             bool empty() const {
                 return m_queue.empty();
             }
@@ -213,6 +217,12 @@ namespace BTool
             m_atomic_switch.store_start_flag(false);
         }
 		
+        // 清空任务队列
+        void clear()
+        {
+            m_task_queue.clear();
+        }
+
 #if (defined __linux)
         // 新增任务队列,超出最大任务数时存在阻塞
         template<typename Function, typename... Args>

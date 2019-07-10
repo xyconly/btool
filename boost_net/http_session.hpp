@@ -75,7 +75,8 @@ namespace BTool
             // ios: io读写动力服务
             // max_rbuffer_size:单次读取最大缓冲区大小
             HttpSession(ios_type& ios)
-                : m_socket(ios)
+                : m_resolver(ios)
+                , m_socket(ios)
                 , m_started_flag(false)
                 , m_stop_flag(true)
                 , m_handler(nullptr)
@@ -130,8 +131,10 @@ namespace BTool
             {
                 m_connect_ip = ip;
                 m_connect_port = port;
-                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port)
-                                    ,std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
+
+                m_resolver.async_resolve(ip, std::to_string(port),
+                    std::bind(&SessionType::handle_resolve, SessionType::shared_from_this()
+                        , std::placeholders::_1, std::placeholders::_2));
             }
 
             // 客户端开启连接,同时开启读取
@@ -153,7 +156,9 @@ namespace BTool
                 m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
                 m_connect_port = m_socket.remote_endpoint(ec).port();
 
-                read();
+                // 服务端解析请求信息,当服务端开启时先开启读端口
+                if(isRequest)
+                    read(false);
 
                 m_stop_flag.exchange(false);
 
@@ -214,7 +219,8 @@ namespace BTool
             }
 
             // 异步读
-            void read()
+            // close: 读取完毕后是否关闭
+            void read(bool close)
             {
                 try {
                     m_read_msg = {};
@@ -226,11 +232,22 @@ namespace BTool
                                 &SessionType::handle_read,
                                 SessionType::shared_from_this(),
                                 std::placeholders::_1,
-                                std::placeholders::_2)));
+                                std::placeholders::_2, 
+                                close)));
                 }
                 catch (...) {
                     shutdown();
                 }
+            }
+
+            // 解析IP回调
+            void handle_resolve(const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
+            {
+                if (ec)
+                    return close();
+
+                boost::asio::async_connect(m_socket, results.begin(), results.end()
+                    , std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
             }
 
             // 处理连接回调
@@ -245,7 +262,7 @@ namespace BTool
             }
 
             // 处理读回调
-            void handle_read(const boost::system::error_code& ec, size_t bytes_transferred)
+            void handle_read(const boost::system::error_code& ec, size_t bytes_transferred, bool close)
             {
                 if (ec) {
                     shutdown();
@@ -254,20 +271,33 @@ namespace BTool
 
                 if (m_handler)
                     m_handler->on_read_cbk(m_session_id, m_read_msg);
+
+                if(close)
+                    shutdown();
             }
 
             // 处理写回调
             void handle_write(const boost::system::error_code& ec, size_t /*bytes_transferred*/, bool close)
             {
-                if (ec || close) {
+                if (ec) {
                     return shutdown();
                 }
 
                 if (m_handler)
                     m_handler->on_write_cbk(m_session_id, m_send_msg);
+
+                // 客户端解析应答信息,当客户端写出数据后等待读取之后退出
+                // 否则直接退出
+                if (!isRequest)
+                    return read(close);
+
+                if (close)
+                    return shutdown();
             }
 
         private:
+            boost::asio::ip::tcp::resolver m_resolver;
+
             // asio的socket封装
             socket_type             m_socket;
             SessionID               m_session_id;

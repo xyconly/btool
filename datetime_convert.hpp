@@ -553,7 +553,6 @@ namespace BTool
         bool operator >= (const DateTimeConvert& dt) const
         {
             return operator==(dt) || operator>(dt);
-            return false;
         }
 
     public:

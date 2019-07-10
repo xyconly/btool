@@ -158,7 +158,7 @@ namespace BTool
                 typedef std::tuple<typename std::_Unrefwrap_t<Args>...> _Ttype;
 #  endif
 
-                return add_task_tolist(std::make_shared<TaskItem<Function, _Ttype>>(std::forward<PropType>(prop), std::forward<Function>(func), std::make_tuple(std::forward<Args>(args)...)));
+                return add_task_tolist(std::make_shared<TaskItem<Function, _Ttype>>(std::forward<PropType>(prop), std::forward<Function>(func), std::forward_as_tuple(std::forward<Args>(args)...)));
             }
 
             // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
@@ -178,7 +178,7 @@ namespace BTool
                 typedef std::tuple<typename std::_Unrefwrap_t<Args>...> _Ttype;
 #  endif
 
-                return add_task_tolist(std::make_shared<TaskItem<Function, _Ttype>>(prop, std::forward<Function>(func), std::make_tuple(std::forward<Args>(args)...)));
+                return add_task_tolist(std::make_shared<TaskItem<Function, _Ttype>>(prop, std::forward<Function>(func), std::forward_as_tuple(std::forward<Args>(args)...)));
             }
 #endif
 

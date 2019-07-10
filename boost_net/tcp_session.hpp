@@ -164,6 +164,7 @@ namespace BTool
 
                 m_read_buf.consume(m_read_buf.size());
                 m_write_buf.clear();
+                m_sending_flag.exchange(false);
 
                 m_started_flag.exchange(false);
 

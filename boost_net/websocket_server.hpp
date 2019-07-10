@@ -54,9 +54,10 @@ namespace BTool
             // 非阻塞式启动服务
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
-            bool start(const char* ip = nullptr, unsigned short port = 0)
+            // reuse_address: 是否启用端口复用
+            bool start(const char* ip = nullptr, unsigned short port = 0, bool reuse_address = false)
             {
-                if (!start_listen(ip, port)) {
+                if (!start_listen(ip, port, reuse_address)) {
                     return false;
                 }
                 m_ios_pool.start();
@@ -64,9 +65,12 @@ namespace BTool
             }
 
             // 阻塞式启动服务,使用join_all等待
-            void run(const char* ip = nullptr, unsigned short port = 0)
+            // ip: 监听IP,默认本地IPV4地址
+            // port: 监听端口
+            // reuse_address: 是否启用端口复用
+            void run(const char* ip = nullptr, unsigned short port = 0, bool reuse_address = false)
             {
-                if (!start_listen(ip, port)) {
+                if (!start_listen(ip, port, reuse_address)) {
                     return;
                 }
                 m_ios_pool.run();
@@ -135,29 +139,35 @@ namespace BTool
 
         private:
             // 启动监听端口
-            bool start_listen(const char* ip = nullptr, unsigned short port = 0)
+            // reuse_address: 是否启用端口复用
+            bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
+                boost::system::error_code ec;
                 boost::asio::ip::tcp::endpoint endpoint;
                 if (!ip) {
                     endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
                 }
                 else {
-                    endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port);
+                    endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip, ec), port);
+                    if (ec)
+                        return false;
                 }
 
                 try {
                     m_acceptor.open(endpoint.protocol());
-                    m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+                    m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(reuse_address));
                     m_acceptor.bind(endpoint);
-
-                    boost::system::error_code ec;
-                    m_acceptor.listen(boost::asio::socket_base::max_connections, ec);
-                    if (ec)
-                        return false;
+                    m_acceptor.listen();
                 }
-                catch (...) {
+                catch (boost::system::system_error&) {
                     return false;
                 }
+//                 catch (...) {
+//                     return false;
+//                 }
+
+                if (!m_acceptor.is_open())
+                    return false;
 
                 start_accept();
                 return true;

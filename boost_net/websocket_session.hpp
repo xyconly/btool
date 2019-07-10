@@ -137,11 +137,6 @@ namespace BTool
             // 客户端重连
             void reconnect()
             {
-                bool expected = false;
-                if (!m_started_flag.compare_exchange_strong(expected, true)) {
-                    return;
-                }
-
                 connect(m_host.c_str(), m_connect_port, m_hand_addr.c_str());
             }
             // 服务端开启连接,同时开启读取
@@ -168,6 +163,10 @@ namespace BTool
                 boost::system::error_code ignored_ec;
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
+
+                m_read_buf.consume(m_read_buf.size());
+                m_write_buf.clear();
+                m_sending_flag.exchange(false);
 
                 m_started_flag.exchange(false);
 
