@@ -70,6 +70,7 @@ namespace BTool
                 , m_handler(nullptr)
                 , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
+                , m_current_send_msg(nullptr)
             {
             }
 
@@ -116,8 +117,14 @@ namespace BTool
             // 客户端开启连接,同时开启读取
             void connect(const char* ip, unsigned short port)
             {
+                bool expected = false;
+                if (!m_started_flag.compare_exchange_strong(expected, true)) {
+                    return;
+                }
+
                 m_connect_ip = ip;
                 m_connect_port = port;
+
                 m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port)
                                     ,std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
             }
@@ -125,8 +132,9 @@ namespace BTool
             // 客户端开启连接,同时开启读取
             void reconnect()
             {
-                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(m_connect_ip), m_connect_port)
-                    , std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
+                connect(m_connect_ip.c_str(), m_connect_port);
+//                 m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(m_connect_ip), m_connect_port)
+//                     , std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
             }
 
             // 服务端开启连接,同时开启读取
@@ -137,17 +145,7 @@ namespace BTool
                     return;
                 }
 
-                boost::system::error_code ec;
-                m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
-                m_connect_port = m_socket.remote_endpoint(ec).port();
-
-                read();
-
-                m_stop_flag.exchange(false);
-
-                if (m_handler) {
-                    m_handler->on_open_cbk(m_session_id);
-                }
+                handle_start();
             }
 
             // 同步关闭
@@ -157,20 +155,7 @@ namespace BTool
                 if (!m_stop_flag.compare_exchange_strong(expected, true)) {
                     return;
                 }
-
-                boost::system::error_code ignored_ec;
-                m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-                m_socket.close(ignored_ec);
-
-                m_read_buf.consume(m_read_buf.size());
-                m_write_buf.clear();
-                m_sending_flag.exchange(false);
-
-                m_started_flag.exchange(false);
-
-                if (m_handler) {
-                    m_handler->on_close_cbk(m_session_id);
-                }
+                close();
             }
 
             // 写入
@@ -219,52 +204,57 @@ namespace BTool
 
         private:
             // 异步读
-            void read()
+            bool read()
             {
                 try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
                         std::bind(&TcpSession::handle_read, shared_from_this(),
                             std::placeholders::_1, std::placeholders::_2));
+                    return true;
                 }
                 catch (...) {
                     shutdown();
+                    return false;
                 }
             }
 
             // 异步写
             void write()
             {
-                auto send_msg = m_write_buf.pop_front();
-                if (!send_msg) {
+                m_current_send_msg = m_write_buf.pop_front();
+                if (!m_current_send_msg) {
                     return;
                 }
                 
-                boost::asio::async_write(m_socket, boost::asio::buffer(send_msg->data(), send_msg->size())
+                boost::asio::async_write(m_socket, boost::asio::buffer(m_current_send_msg->data(), m_current_send_msg->size())
                     , std::bind(&TcpSession::handle_write, shared_from_this()
                         , std::placeholders::_1
                         , std::placeholders::_2));
-      
-                if (m_handler) {
-                    m_handler->on_write_cbk(m_session_id, send_msg->data(), send_msg->size());
-                }
             }
 
             // 处理连接回调
             void handle_connect(const boost::system::error_code& error)
             {
-                if (error)
-                {
-                    boost::system::error_code ignored_ec;
-                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-                    m_socket.close(ignored_ec);
-
-                    if (m_handler) {
-                        m_handler->on_close_cbk(m_session_id);
-                    }
+                if (error) {
+                    close();
                     return;
                 }
 
-                start();
+                handle_start();
+            }
+
+            // 处理开始
+            void handle_start()
+            {
+                boost::system::error_code ec;
+                m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
+                m_connect_port = m_socket.remote_endpoint(ec).port();
+
+                m_stop_flag.exchange(false);
+
+                if (read() && m_handler) {
+                    m_handler->on_open_cbk(m_session_id);
+                }
             }
 
             // 处理读回调
@@ -303,12 +293,34 @@ namespace BTool
                     return;
                 }
 
+                if (m_handler && m_current_send_msg) {
+                    m_handler->on_write_cbk(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
+                }
+                m_current_send_msg.reset();
+                
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (m_write_buf.size() == 0) {
                     m_sending_flag.exchange(false);
                     return;
                 }
                 write();
+            }
+
+            void close()
+            {
+                boost::system::error_code ignored_ec;
+                m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+                m_socket.close(ignored_ec);
+
+                m_read_buf.consume(m_read_buf.size());
+                m_write_buf.clear();
+                m_sending_flag.exchange(false);
+                m_started_flag.exchange(false);
+                m_stop_flag.exchange(true);
+
+                if (m_handler) {
+                    m_handler->on_close_cbk(m_session_id);
+                }
             }
 
         private:
@@ -325,6 +337,8 @@ namespace BTool
             std::recursive_mutex    m_write_mtx;
             // 写缓冲
             WriteBufferType         m_write_buf;
+            // 当前正在发送的缓存
+            WriteMemoryStreamPtr    m_current_send_msg;
             // 最大写缓冲区大小
             size_t                  m_max_wbuffer_size;
 

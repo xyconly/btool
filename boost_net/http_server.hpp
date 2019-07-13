@@ -140,7 +140,7 @@ namespace BTool
                 if (!sess_ptr) {
                     return false;
                 }
-                return sess_ptr->write(std::forward<send_msg_type>(msg));
+                return sess_ptr->async_write(std::forward<send_msg_type>(msg));
             }
 
             // 同步关闭连接,注意此时的close_cbk依旧在当前线程下

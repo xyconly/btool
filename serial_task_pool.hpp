@@ -341,7 +341,8 @@ namespace BTool
             // 是否处于空状态
             bool not_empty() const {
                 readLock lock(m_tasks_mtx);
-                return !m_wait_tasks.empty();
+                std::lock_guard<std::mutex> locker(m_props_mtx);
+                return !m_wait_tasks.empty() && m_cur_props.size() < m_wait_tasks.size();
             }
 
         private:
@@ -368,7 +369,7 @@ namespace BTool
             std::condition_variable                     m_cv_not_full;
 
             // 当前执行任务属性队列锁
-            std::mutex                                  m_props_mtx;
+            mutable std::mutex                          m_props_mtx;
             // 当前正在执行中的任务属性
             std::set<PropType>                          m_cur_props;
         };

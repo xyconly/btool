@@ -128,16 +128,22 @@ namespace BTool
                     return;
                 }
 
-                m_host = ip;
+                m_connect_ip = ip;
+                m_connect_port = port;
                 m_hand_addr = addr;
 
-                do_resolve(ip, port);
+                m_resolver.async_resolve({ boost::asio::ip::address::from_string(ip), port },
+                    std::bind(
+                        &WebsocketSession::handle_resolve,
+                        shared_from_this(),
+                        std::placeholders::_1,
+                        std::placeholders::_2));
             }
 
             // 客户端重连
             void reconnect()
             {
-                connect(m_host.c_str(), m_connect_port, m_hand_addr.c_str());
+                connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
             }
             // 服务端开启连接,同时开启读取
             void start()
@@ -159,20 +165,7 @@ namespace BTool
                 if (!m_stop_flag.compare_exchange_strong(expected, true)) {
                     return;
                 }
-
-                boost::system::error_code ignored_ec;
-                get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-                m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
-
-                m_read_buf.consume(m_read_buf.size());
-                m_write_buf.clear();
-                m_sending_flag.exchange(false);
-
-                m_started_flag.exchange(false);
-
-                if (m_handler) {
-                    m_handler->on_close_cbk(m_session_id);
-                }
+                close();
             }
 
             // 写入
@@ -182,27 +175,23 @@ namespace BTool
                     return false;
                 }
 
-                m_write_mtx.lock();
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
 
                 if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
-                    m_write_mtx.unlock();
                     return false;
                 }
 
                 if (!m_write_buf.append(send_msg, size)) {
-                    m_write_mtx.unlock();
                     return false;
                 }
 
                 bool expected = false;
                 // 是否处于发送状态中
                 if (!m_sending_flag.compare_exchange_strong(expected, true)) {
-                    m_write_mtx.unlock();
                     return true;
                 }
 
                 write();
-                m_write_mtx.unlock();
                 return true;
             }
 
@@ -226,15 +215,17 @@ namespace BTool
 
         private:
             // 异步读
-            void read()
+            bool read()
             {
                 try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
                         std::bind(&WebsocketSession::handle_read, shared_from_this(),
                             std::placeholders::_1, std::placeholders::_2));
+                    return true;
                 }
                 catch (...) {
                     shutdown();
+                    return false;
                 }
             }
 
@@ -250,33 +241,18 @@ namespace BTool
                     , std::bind(&WebsocketSession::handle_write, shared_from_this()
                         , std::placeholders::_1
                         , std::placeholders::_2));
-            }
 
-            void do_resolve(char const* host, unsigned short port)
-            {
-                m_resolver.async_resolve({ boost::asio::ip::address::from_string(host), port },
-                    std::bind(
-                        &WebsocketSession::handle_resolve,
-                        shared_from_this(),
-                        std::placeholders::_1,
-                        std::placeholders::_2));
             }
 
             void handle_resolve(
                 boost::system::error_code ec,
                 boost::asio::ip::tcp::resolver::iterator result)
             {
-                if (ec)
-                {
-                    shutdown();
+                if (ec) {
+                    close();
                     return;
                 }
 
-                do_connect(result);
-            }
-
-            void do_connect(boost::asio::ip::tcp::resolver::iterator result)
-            {
                 boost::asio::async_connect(
                     get_socket(),
                     result,
@@ -289,53 +265,39 @@ namespace BTool
             void handle_connect(const boost::system::error_code& error)
             {
                 if (error) {
-                    shutdown();
+                    close();
                     return;
                 }
 
-                do_handshake();
-            }
-
-            void do_handshake()
-            {
                 if (m_hand_addr.empty())
                     m_hand_addr = "/";
 
-                m_socket.async_handshake(m_host, m_hand_addr,
+                m_socket.async_handshake(m_connect_ip, m_hand_addr,
                     std::bind(&WebsocketSession::handle_handshake
                         , shared_from_this()
                         , std::placeholders::_1));
-
             }
 
             void handle_handshake(const boost::system::error_code& ec)
             {
-                if (ec)
-                {
-                    shutdown();
+                if (ec) {
+                    close();
                     return;
                 }
 
                 handle_start(ec);
             }
 
-            // 服务端开启连接,同时开启读取
-            void handle_start(const boost::system::error_code& ec)
+            // 处理开始
+            void handle_start(const boost::system::error_code& error)
             {
-                if (ec) {
-                    shutdown();
-                    return;
-                }
-
-                boost::system::error_code errc;
-                m_connect_ip = get_socket().remote_endpoint(errc).address().to_v4().to_string();
-                m_connect_port = get_socket().remote_endpoint(errc).port();
-
-                read();
+                boost::system::error_code ec;
+                m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
+                m_connect_port = get_socket().remote_endpoint(ec).port();
 
                 m_stop_flag.exchange(false);
 
-                if (m_handler) {
+                if (read() && m_handler) {
                     m_handler->on_open_cbk(m_session_id);
                 }
             }
@@ -379,22 +341,40 @@ namespace BTool
                 if (m_handler && m_current_send_msg) {
                     m_handler->on_write_cbk(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
                 }
-
                 m_current_send_msg.reset();
 
-                m_write_mtx.lock();
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (m_write_buf.size() == 0) {
                     m_sending_flag.exchange(false);
-                    m_write_mtx.unlock();
                     return;
                 }
-
                 write();
-                m_write_mtx.unlock();
+            }
+
+            // 关闭
+            void close()
+            {
+                boost::system::error_code ignored_ec;
+                get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+                m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
+
+                m_read_buf.consume(m_read_buf.size());
+                m_write_buf.clear();
+                m_sending_flag.exchange(false);
+                m_started_flag.exchange(false);
+                m_stop_flag.exchange(true);
+
+                if (m_handler) {
+                    m_handler->on_close_cbk(m_session_id);
+                }
             }
 
         private:
-            std::string             m_host;
+            // 连接者IP
+            std::string             m_connect_ip;
+            // 连接者Port
+            unsigned short          m_connect_port;
+            // 地址
             std::string             m_hand_addr;
 
             // TCP解析器
@@ -429,11 +409,6 @@ namespace BTool
 
             // 是否正在发送中
             std::atomic<bool>	    m_sending_flag;
-
-            // 连接者IP
-            std::string             m_connect_ip;
-            // 连接者Port
-            unsigned short          m_connect_port;
         };
     }
 }

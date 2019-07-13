@@ -181,7 +181,7 @@ namespace BTool
             }
 
             // 异步写
-            bool write(send_msg_type&& msg)
+            bool async_write(send_msg_type&& msg)
             {
                 m_send_msg = std::forward<send_msg_type>(msg);
 
@@ -195,6 +195,79 @@ namespace BTool
                             std::placeholders::_1,
                             std::placeholders::_2,
                             m_send_msg.need_eof())));
+
+                return true;
+            }
+
+            // 使用ip+port同步发送,仅用于客户端
+            bool sync_write(const char* ip, unsigned short port, send_msg_type&& msg)
+            {
+                try
+                {
+                    // 连接
+                    auto const results = m_resolver.resolve(ip, std::to_string(port));
+                    boost::asio::connect(m_socket, results.begin(), results.end());
+
+                    // 发送消息
+                    m_send_msg = std::forward<send_msg_type>(msg);
+                    boost::beast::http::write(m_socket, m_send_msg);
+
+                    // 读取应答
+                    boost::beast::http::read(m_socket, m_read_buf, m_read_msg);
+
+                    if (m_handler)
+                        m_handler->on_read_cbk(m_session_id, m_read_msg);
+
+                    boost::system::error_code ec;
+                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                    if (ec == boost::asio::error::eof)
+                    {
+                        ec.assign(0, ec.category());
+                    }
+                    if (ec)
+                        throw boost::system::system_error{ ec };
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return false;
+                }
+
+                return true;
+            }
+            // 使用域名同步发送,仅用于客户端
+            bool sync_write(const char* host, send_msg_type&& msg)
+            {
+                try
+                {
+                    // 连接
+                    boost::asio::ip::tcp::resolver::query query(host, "http");
+                    boost::asio::connect(m_socket, m_resolver.resolve(query));
+
+                    // 发送消息
+                    m_send_msg = std::forward<send_msg_type>(msg);
+                    boost::beast::http::write(m_socket, m_send_msg);
+
+                    // 读取应答
+                    boost::beast::http::read(m_socket, m_read_buf, m_read_msg);
+
+                    if (m_handler)
+                        m_handler->on_read_cbk(m_session_id, m_read_msg);
+
+                    boost::system::error_code ec;
+                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                    if (ec == boost::asio::error::eof)
+                    {
+                        ec.assign(0, ec.category());
+                    }
+                    if (ec)
+                        throw boost::system::system_error{ ec };
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return false;
+                }
 
                 return true;
             }

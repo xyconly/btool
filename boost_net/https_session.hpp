@@ -132,7 +132,7 @@ namespace BTool
             }
 
             // 客户端开启连接,同时开启读取
-            void connect(const char* ip, unsigned short port)
+            void async_connect(const char* ip, unsigned short port)
             {
                 if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
                 {
@@ -150,9 +150,9 @@ namespace BTool
             }
 
             // 客户端开启连接,同时开启读取
-            void reconnect()
+            void async_reconnect()
             {
-                connect(m_connect_ip.c_str(), m_connect_port);
+                async_connect(m_connect_ip.c_str(), m_connect_port);
             }
 
             // 服务端开启连接,同时开启读取
@@ -189,8 +189,8 @@ namespace BTool
                 m_started_flag.exchange(false);
             }
 
-            // 异步写
-            bool write(send_msg_type&& msg)
+            // 异步写,开启异步写之前先确保开启异步连接
+            bool async_write(send_msg_type&& msg)
             {
                 m_send_msg = std::forward<send_msg_type>(msg);
 
@@ -205,7 +205,98 @@ namespace BTool
                 return true;
             }
 
-        protected:
+            // 使用ip+port同步发送,仅用于客户端
+            bool sync_write(const char* ip, unsigned short port, send_msg_type&& msg)
+            {
+                try
+                {
+                    // 证书
+                    if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
+                    {
+                        boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+                        close();
+                        return false;
+                    }
+
+                    // 连接
+                    auto const results = m_resolver.resolve(ip, std::to_string(port));
+                    boost::asio::connect(m_ssl_socket.next_layer(), results.begin(), results.end());
+                    m_ssl_socket.handshake(boost::asio::ssl::stream_base::client);
+
+                    // 发送消息
+                    m_send_msg = std::forward<send_msg_type>(msg);
+                    boost::beast::http::write(m_ssl_socket, m_send_msg);
+
+                    // 读取应答
+                    boost::beast::http::read(m_ssl_socket, m_read_buf, m_read_msg);
+
+                    if (m_handler)
+                        m_handler->on_read_cbk(m_session_id, m_read_msg);
+
+                    boost::system::error_code ec;
+                    m_ssl_socket.shutdown(ec);
+                    if (ec == boost::asio::error::eof)
+                    {
+                        ec.assign(0, ec.category());
+                    }
+                    if (ec)
+                        throw boost::system::system_error{ ec };
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return false;
+                }
+
+                return true;
+            }
+            // 使用域名同步发送,仅用于客户端
+            bool sync_write(const char* host, send_msg_type&& msg)
+            {
+                try
+                {
+                    // 设置server_name扩展
+                    if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), host))
+                    {
+                        boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+                        close();
+                        return false;
+                    }
+
+                    // 连接
+                    boost::asio::ip::tcp::resolver::query query(host, "https");
+                    boost::asio::connect(m_ssl_socket.next_layer(), m_resolver.resolve(query));
+                    m_ssl_socket.handshake(boost::asio::ssl::stream_base::client);
+
+                    // 发送消息
+                    m_send_msg = std::forward<send_msg_type>(msg);
+                    boost::beast::http::write(m_ssl_socket, m_send_msg);
+
+                    // 读取应答
+                    boost::beast::http::read(m_ssl_socket, m_read_buf, m_read_msg);
+
+                    if (m_handler)
+                        m_handler->on_read_cbk(m_session_id, m_read_msg);
+
+                    boost::system::error_code ec;
+                    m_ssl_socket.shutdown(ec);
+                    if (ec == boost::asio::error::eof)
+                    {
+                        ec.assign(0, ec.category());
+                    }
+                    if (ec)
+                        throw boost::system::system_error{ ec };
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return false;
+                }
+
+                return true;
+            }
+
+       protected:
             static SessionID GetNextSessionID()
             {
                 static std::atomic<SessionID> next_session_id(callback_type::InvalidSessionID);
