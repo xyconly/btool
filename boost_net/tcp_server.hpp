@@ -177,7 +177,7 @@ namespace BTool
             {
                 try {
                     TcpSessionPtr session = std::make_shared<TcpSession>(m_ios_pool.get_io_service(), m_max_wbuffer_size, m_max_rbuffer_size);
-                    m_acceptor.async_accept(session->get_socket(), bind(&TcpServer::handle_accept, this, boost::placeholders::_1, session));
+                    m_acceptor.async_accept(session->get_socket(), boost::bind(&TcpServer::handle_accept, this, boost::placeholders::_1, session));
                 }
                 catch (std::exception&) {
                     stop();

@@ -109,7 +109,8 @@ namespace BTool
 
             // Çå¿ÕÊý¾Ý
             void clear() {
-                m_send_items = std::queue<WriteMemoryStreamPtr>();
+                if (!m_send_items.empty())
+                    m_send_items = std::queue<WriteMemoryStreamPtr>();
                 m_all_len = 0;
             }
 

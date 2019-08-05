@@ -76,7 +76,7 @@ namespace BTool
 
             ~TcpSession() {
                 m_handler = nullptr;
-                shutdown();
+                close();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -223,6 +223,7 @@ namespace BTool
             {
                 m_current_send_msg = m_write_buf.pop_front();
                 if (!m_current_send_msg) {
+                    m_sending_flag.exchange(false);
                     return;
                 }
                 
@@ -312,10 +313,15 @@ namespace BTool
                 m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(ignored_ec);
 
-                m_read_buf.consume(m_read_buf.size());
-                m_write_buf.clear();
                 m_sending_flag.exchange(false);
                 m_started_flag.exchange(false);
+
+                m_read_buf.consume(m_read_buf.size());
+                {
+                    std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+                    m_write_buf.clear();
+                }
+
                 m_stop_flag.exchange(true);
 
                 if (m_handler) {
@@ -326,7 +332,7 @@ namespace BTool
         private:
             // asio的socket封装
             socket_type              m_socket;
-            SessionID               m_session_id;
+            SessionID                m_session_id;
 
             // 读缓冲
             ReadBufferType          m_read_buf;

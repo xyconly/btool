@@ -82,7 +82,7 @@ namespace BTool
 
             ~WebsocketSession() {
                 m_handler = nullptr;
-                shutdown();
+                close();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -234,6 +234,7 @@ namespace BTool
             {
                 m_current_send_msg = m_write_buf.pop_front();
                 if (!m_current_send_msg) {
+                    m_sending_flag.exchange(false);
                     return;
                 }
 
@@ -358,10 +359,15 @@ namespace BTool
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
 
-                m_read_buf.consume(m_read_buf.size());
-                m_write_buf.clear();
                 m_sending_flag.exchange(false);
                 m_started_flag.exchange(false);
+
+                m_read_buf.consume(m_read_buf.size());
+                {
+                    std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+                    m_write_buf.clear();
+                }
+
                 m_stop_flag.exchange(true);
 
                 if (m_handler) {

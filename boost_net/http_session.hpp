@@ -42,6 +42,7 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
 
 #pragma once
 
+#include <tuple>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
@@ -88,7 +89,7 @@ namespace BTool
 
             ~HttpSession() {
                 m_handler = nullptr;
-                shutdown();
+                close();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -180,10 +181,24 @@ namespace BTool
                 m_started_flag.exchange(false);
             }
 
+            // 获取待发送post请求信息
+            // target: 路径,包含Query
+            // version: https协议版本
+            send_msg_type get_send_post_request(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
+                return get_send_request(boost::beast::http::verb::post, target, content_type, version);
+            }
+            // 获取待发送get请求信息
+            // target: 路径,包含Query
+            // version: https协议版本
+            send_msg_type get_send_get_request(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
+                return get_send_request(boost::beast::http::verb::get, target, content_type, version);
+            }
+
             // 异步写
             bool async_write(send_msg_type&& msg)
             {
                 m_send_msg = std::forward<send_msg_type>(msg);
+                m_send_msg.set(boost::beast::http::field::host, m_connect_ip);
 
                 boost::beast::http::async_write(
                     m_socket, m_send_msg
@@ -200,8 +215,9 @@ namespace BTool
             }
 
             // 使用ip+port同步发送,仅用于客户端
-            bool sync_write(const char* ip, unsigned short port, send_msg_type&& msg)
+            std::tuple<bool, read_msg_type> sync_write(const char* ip, unsigned short port, send_msg_type&& send_msg)
             {
+                read_msg_type read_msg = {};
                 try
                 {
                     // 连接
@@ -209,35 +225,61 @@ namespace BTool
                     boost::asio::connect(m_socket, results.begin(), results.end());
 
                     // 发送消息
-                    m_send_msg = std::forward<send_msg_type>(msg);
-                    boost::beast::http::write(m_socket, m_send_msg);
+                    send_msg.set(boost::beast::http::field::host, ip);
+                    boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
 
                     // 读取应答
-                    boost::beast::http::read(m_socket, m_read_buf, m_read_msg);
-
-                    if (m_handler)
-                        m_handler->on_read_cbk(m_session_id, m_read_msg);
-
-                    boost::system::error_code ec;
-                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-                    if (ec == boost::asio::error::eof)
-                    {
-                        ec.assign(0, ec.category());
-                    }
-                    if (ec)
-                        throw boost::system::system_error{ ec };
+                    read_buffer_type read_buf;
+                    auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg);
                 }
                 catch (std::exception const&)
                 {
                     close();
-                    return false;
+                    return std::forward_as_tuple(false, std::move(read_msg));
                 }
 
-                return true;
+                return std::forward_as_tuple(true, std::move(read_msg));
+            }
+            // 使用ip+port同步发送,仅用于客户端
+            std::tuple<bool, std::vector<read_msg_type>> sync_write_end_of_stream(const char* ip, unsigned short port, send_msg_type&& send_msg)
+            {
+                std::vector<read_msg_type> rslt;
+                try
+                {
+                    // 连接
+                    auto const results = m_resolver.resolve(ip, std::to_string(port));
+                    boost::asio::connect(m_socket, results.begin(), results.end());
+
+                    // 发送消息
+                    send_msg.set(boost::beast::http::field::host, ip);
+                    boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
+
+                    // 读取应答
+                    boost::system::error_code ec;
+                    for (;;)
+                    {
+                        read_msg_type read_msg = {};
+                        read_buffer_type read_buf;
+                        auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg, ec);
+                        if (ec == boost::beast::http::error::end_of_stream)
+                            break;
+                        rslt.push_back(std::move(read_msg));
+                        if (ec)
+                            return std::forward_as_tuple(false, std::move(rslt));
+                    }
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return std::forward_as_tuple(false, std::move(rslt));
+                }
+
+                return std::forward_as_tuple(true, std::move(rslt));
             }
             // 使用域名同步发送,仅用于客户端
-            bool sync_write(const char* host, send_msg_type&& msg)
+            std::tuple<bool, read_msg_type> sync_write(const char* host, send_msg_type&& send_msg)
             {
+                read_msg_type read_msg = {};
                 try
                 {
                     // 连接
@@ -245,31 +287,56 @@ namespace BTool
                     boost::asio::connect(m_socket, m_resolver.resolve(query));
 
                     // 发送消息
-                    m_send_msg = std::forward<send_msg_type>(msg);
-                    boost::beast::http::write(m_socket, m_send_msg);
+                    send_msg.set(boost::beast::http::field::host, host);
+                    boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
 
                     // 读取应答
-                    boost::beast::http::read(m_socket, m_read_buf, m_read_msg);
-
-                    if (m_handler)
-                        m_handler->on_read_cbk(m_session_id, m_read_msg);
-
-                    boost::system::error_code ec;
-                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-                    if (ec == boost::asio::error::eof)
-                    {
-                        ec.assign(0, ec.category());
-                    }
-                    if (ec)
-                        throw boost::system::system_error{ ec };
+                    read_buffer_type read_buf;
+                    auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg);
                 }
                 catch (std::exception const&)
                 {
                     close();
-                    return false;
+                    return std::forward_as_tuple(false, std::move(read_msg));
                 }
 
-                return true;
+                return std::forward_as_tuple(true, std::move(read_msg));
+            }
+            // 使用域名同步发送,仅用于客户端
+            std::tuple<bool, std::vector<read_msg_type>> sync_write_end_of_stream(const char* host, send_msg_type&& send_msg)
+            {
+                std::vector<read_msg_type> rslt;
+                try
+                {
+                    // 连接
+                    boost::asio::ip::tcp::resolver::query query(host, "http");
+                    boost::asio::connect(m_socket, m_resolver.resolve(query));
+
+                    // 发送消息
+                    send_msg.set(boost::beast::http::field::host, host);
+                    boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
+
+                    // 读取应答
+                    boost::system::error_code ec;
+                    for (;;)
+                    {
+                        read_msg_type read_msg = {};
+                        read_buffer_type read_buf;
+                        auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg, ec);
+                        if (ec == boost::beast::http::error::end_of_stream)
+                            break;
+                        rslt.push_back(std::move(read_msg));
+                        if (ec)
+                            return std::forward_as_tuple(false, std::move(rslt));
+                    }
+                }
+                catch (std::exception const&)
+                {
+                    close();
+                    return std::forward_as_tuple(false, std::move(rslt));
+                }
+
+                return std::forward_as_tuple(true, std::move(rslt));
             }
 
         protected:
@@ -280,6 +347,18 @@ namespace BTool
             }
 
         private:
+            send_msg_type get_send_request(boost::beast::http::verb verb, const std::string& target, const std::string& content_type, int version)
+            {
+                send_msg_type send_req;
+                send_req.version(version);
+                send_req.method(verb);
+                send_req.target(target);
+                send_req.keep_alive(false);
+                send_req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+                send_req.set(boost::beast::http::field::content_type, content_type);
+                return send_req;
+            }
+
             void close()
             {
                 boost::system::error_code ignored_ec;
