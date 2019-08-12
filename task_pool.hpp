@@ -20,16 +20,12 @@ namespace BTool
     class TaskPoolVirtual
     {
         enum {
-            STP_MAX_THREAD = 2000,   // 最大线程数
+            TP_MAX_THREAD = 2000,   // 最大线程数
         };
 
     public:
-        TaskPoolVirtual()
-            : m_cur_thread_ver(0)
-        {}
-        virtual ~TaskPoolVirtual() {
-            stop();
-        }
+        TaskPoolVirtual() : m_cur_thread_ver(0) {}
+        virtual ~TaskPoolVirtual() {}
 
     public:
         // 是否已启动
@@ -72,20 +68,24 @@ namespace BTool
 
             stop_inner();
 
-            std::lock_guard<std::mutex> lck(m_threads_mtx);
-            for (auto& thread : m_cur_thread) {
+            std::vector<SafeThread*> tmp_threads;
+            {
+                std::lock_guard<std::mutex> lck(m_threads_mtx);
+                tmp_threads.swap(m_cur_thread);
+            }
+            for (auto& thread : tmp_threads) {
                 delete thread;
                 thread = nullptr;
             }
-            m_cur_thread.clear();
+            tmp_threads.clear();
             m_atomic_switch.store_start_flag(false);
         }
 
     protected:
         // 内部执行stop操作
-        virtual void stop_inner() {}
+        virtual void stop_inner() = 0;
         // 内部执行pop任务操作,若无可pop内容时需阻塞
-        virtual void pop_task_inner() {}
+        virtual void pop_task_inner() = 0;
 
     private:
         // 创建线程
@@ -94,7 +94,7 @@ namespace BTool
                 thread_num = std::thread::hardware_concurrency();
             }
             m_cur_thread_ver++;
-            thread_num = thread_num < STP_MAX_THREAD ? thread_num : STP_MAX_THREAD;
+            thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
             for (size_t i = 0; i < thread_num; i++) {
                 SafeThread* thd = new SafeThread(std::bind(&TaskPoolVirtual::thread_fun, this, m_cur_thread_ver));
                 m_cur_thread.push_back(thd);
@@ -150,21 +150,12 @@ namespace BTool
 
         virtual ~ParallelTaskPool() {
             clear();
+            stop();
         }
 
         // 清空任务队列
         void clear() {
             m_task_queue.clear();
-        }
-
-        // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename Function, typename... Args>
-        bool add_task(const Function& func, Args&&... args) {
-            if (!has_start())
-                return false;
-
-            return m_task_queue.add_task(func, std::forward<Args>(args)...);
         }
 
         // 新增任务队列,超出最大任务数时存在阻塞
@@ -178,7 +169,7 @@ namespace BTool
         }
 
     protected:
-        void stop_inner() override {
+        void stop_inner() override final {
             m_task_queue.stop();
         }
 
@@ -241,6 +232,7 @@ namespace BTool
 
         ~LastTaskPool() {
             clear();
+            stop();
         }
 
         void clear() {
@@ -249,31 +241,20 @@ namespace BTool
 
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        bool add_task(const TPropType& prop, TFunction&& func, Args&&... args) {
+        template<typename AsTPropType, typename TFunction, typename... Args>
+        bool add_task(AsTPropType&& prop, TFunction&& func, Args&&... args) {
             if (!has_start())
                 return false;
-            return m_task_queue.add_task(prop, std::forward<TFunction>(func), std::forward<Args>(args)...);
-        }
-        // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        bool add_task(TPropType&& prop, TFunction&& func, Args&&... args) {
-            if (!has_start())
-                return false;
-            return m_task_queue.add_task(std::forward<TPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...);
+            return m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...);
         }
 
-        void remove_prop(const TPropType& prop) {
-            m_task_queue.remove_prop(prop);
-        }
-
-        void remove_prop(TPropType&& prop) {
-            m_task_queue.remove_prop(std::forward<TPropType>(prop));
+        template<typename AsTPropType>
+        void remove_prop(AsTPropType&& prop) {
+            m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
 
     protected:
-        void stop_inner() override {
+        void stop_inner() override final {
             m_task_queue.stop();
         }
 
@@ -309,6 +290,7 @@ namespace BTool
 
         ~SerialTaskPool() {
             clear();
+            stop();
         }
 
         // 清空任务队列
@@ -317,34 +299,22 @@ namespace BTool
         }
 
         // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        bool add_task(const TPropType& prop, TFunction&& func, Args&&... args) {
-            if (!has_start())
-                return false;
-
-            return m_task_queue.add_task(prop, std::forward<TFunction>(func), std::forward<Args>(args)...);
-        }
-
-        // 新增任务队列,超出最大任务数时存在阻塞
        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        bool add_task(TPropType&& prop, TFunction&& func, Args&&... args) {
+        template<typename AsTPropType, typename TFunction, typename... Args>
+        bool add_task(AsTPropType&& prop, TFunction&& func, Args&&... args) {
             if (!has_start())
                 return false;
 
-            return m_task_queue.add_task(std::forward<TPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...);
+            return m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...);
         }
 
-        void remove_prop(const TPropType& prop) {
-            m_task_queue.remove_prop(prop);
-        }
-        void remove_prop(TPropType&& prop) {
-            m_task_queue.remove_prop(std::forward<TPropType>(prop));
+        template<typename AsTPropType>
+        void remove_prop(AsTPropType&& prop) {
+            m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
 
     protected:
-        void stop_inner() override {
+        void stop_inner() override final {
             m_task_queue.stop();
         }
 
