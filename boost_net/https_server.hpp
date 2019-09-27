@@ -7,7 +7,7 @@ Note:       可直接使用HttpsService,调用HttpServiceNetCallBack回调
 示例代码:
         class TestHttpsService : public BTool::BoostNet::HttpServiceNetCallBack
         {
-            BTool::BoostNet::HttpsService           service_type;
+            typedef BTool::BoostNet::HttpsService   service_type;
             typedef std::shared_ptr<service_type>   service_ptr_type;
         public:
             TestHttpsService()
@@ -60,6 +60,10 @@ namespace BTool
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
         class HttpsServer : public HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
         {
+            typedef AsioServicePool::ios_type                       ios_type;
+            typedef boost::asio::ssl::context                       io_context_type;
+            typedef boost::asio::ip::tcp::acceptor                  accept_type;
+
             // 自身命名
             typedef HttpsServer<isRequest, ReadType, WriteType, Fields>         ServerType;
 
@@ -77,7 +81,7 @@ namespace BTool
         public:
             // Http服务
             // handler: session返回回调
-            HttpsServer(AsioServicePool& ios, boost::asio::ssl::context& ssl_context)
+            HttpsServer(AsioServicePool& ios, io_context_type& ssl_context)
                 : m_ios_pool(ios)
                 , m_acceptor(ios.get_io_service())
                 , m_handler(nullptr)
@@ -92,7 +96,7 @@ namespace BTool
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
-            void register_cbk(HttpNetCallBack* handler) {
+            void register_cbk(callback_type* handler) {
                 m_handler = handler;
             }
 
@@ -212,7 +216,7 @@ namespace BTool
             void start_accept()
             {
                 try {
-                    HttpSessionPtr session = std::make_shared<HttpsSession>(m_ios_pool.get_io_service(), m_ssl_context, m_max_rbuffer_size);
+                    session_ptr_type session = std::make_shared<session_type>(m_ios_pool.get_io_service(), m_ssl_context);
                     m_acceptor.async_accept(session->get_socket(), bind(&ServerType::handle_accept, this, boost::placeholders::_1, session));
                 }
                 catch (std::exception&) {
@@ -243,12 +247,12 @@ namespace BTool
             }
 
             // 查找连接对象
-            HttpSessionPtr find_session(SessionID session_id) const
+            session_ptr_type find_session(SessionID session_id) const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
                 if (iter == m_sessions.end()) {
-                    return HttpSessionPtr();
+                    return session_ptr_type();
                 }
                 return iter->second;
             }
@@ -275,7 +279,7 @@ namespace BTool
                     m_handler->on_close_cbk(session_id);
             }
             // 读取消息回调
-            virtual void on_read_cbk(SessionID session_id, const request_type& request) override
+            virtual void on_read_cbk(SessionID session_id, const read_msg_type& request) override
             {
                 if (m_handler)
                     m_handler->on_read_cbk(session_id, request);
@@ -286,7 +290,7 @@ namespace BTool
             accept_type                             m_acceptor;
             callback_type*                          m_handler;
 
-            boost::asio::ssl::context&              m_ssl_context;
+            io_context_type&                        m_ssl_context;
 
             mutable std::mutex                      m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间

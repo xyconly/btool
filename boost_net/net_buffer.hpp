@@ -99,6 +99,25 @@ namespace BTool
                 return true;
             }
 
+            // 在当前消息尾追加
+            // max_package_size:最大包长,0表示无限制
+            bool append_tail(const char* const msg, size_t len, size_t max_package_size = 0) {
+                if (m_send_items.empty())
+                    return append(msg, len);
+
+                auto item = m_send_items.back();
+                if(max_package_size != 0 && item->get_length() + len >= max_package_size)
+                    return append(msg, len);
+
+                item->append(msg, len);
+                return true;
+            }
+
+            // 获取数据
+            WriteMemoryStreamPtr front() const {
+                return m_send_items.front();
+            }
+
             // 获取并移除数据
             WriteMemoryStreamPtr pop_front() {
                 auto msg = m_send_items.front();
@@ -112,6 +131,11 @@ namespace BTool
                 if (!m_send_items.empty())
                     m_send_items = std::queue<WriteMemoryStreamPtr>();
                 m_all_len = 0;
+            }
+
+            // 是否为空
+            bool empty() const {
+                return m_send_items.empty();
             }
 
         private:

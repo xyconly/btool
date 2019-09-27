@@ -226,6 +226,7 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
+                    read_msg.body() = "set tlsext host name error";
                     // 证书
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
                     {
@@ -234,15 +235,21 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(read_msg));
                     }
 
+                    read_msg.body() = "connect error";
                     // 连接
                     auto const results = m_resolver.resolve(ip, std::to_string(port));
                     boost::asio::connect(m_ssl_socket.next_layer(), results.begin(), results.end());
+
+                    // 握手
+                    read_msg.body() = "handshake error";
                     m_ssl_socket.handshake(boost::asio::ssl::stream_base::client);
 
+                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, ip);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
+                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_ssl_socket, read_buf, read_msg);
@@ -306,6 +313,7 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
+                    read_msg.body() = "set tlsext host name error";
                     // 设置server_name扩展
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), host))
                     {
@@ -314,15 +322,19 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(read_msg));
                     }
 
+                    read_msg.body() = "connect error";
                     // 连接
                     boost::asio::ip::tcp::resolver::query query(host, "https");
                     boost::asio::connect(m_ssl_socket.next_layer(), m_resolver.resolve(query));
+                    read_msg.body() = "handshake error";
                     m_ssl_socket.handshake(boost::asio::ssl::stream_base::client);
 
+                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
+                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_ssl_socket, read_buf, read_msg);

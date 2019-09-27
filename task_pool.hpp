@@ -24,7 +24,9 @@ namespace BTool
         };
 
     public:
-        TaskPoolVirtual() : m_cur_thread_ver(0) {}
+        TaskPoolVirtual() : m_cur_thread_ver(0) {
+            m_atomic_switch.init();
+        }
         virtual ~TaskPoolVirtual() {}
 
     public:
@@ -196,15 +198,24 @@ namespace BTool
         // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
         ParallelWaitTaskPool(size_t max_task_count = 0)
             : ParallelTaskPool(max_task_count)
+            , m_sleep_millseconds(1000)
         {}
 
         ~ParallelWaitTaskPool() {}
 
+        // 设置间隔时间
+        void set_sleep_milliseconds(long long millseconds) {
+            m_sleep_millseconds = millseconds;
+        }
+
     protected:
         void pop_task_inner() override {
             ParallelTaskPool::pop_task_inner();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(m_sleep_millseconds));
         }
+
+    private:
+        long long m_sleep_millseconds;
     };
 
 

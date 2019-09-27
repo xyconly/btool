@@ -55,7 +55,10 @@ namespace BTool
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
-            bool start(const char* ip = nullptr, unsigned short port = 0, bool reuse_address = false)
+            bool start(unsigned short port, bool reuse_address = false) {
+                return start(nullptr, port, reuse_address);
+            }
+            bool start(const char* ip, unsigned short port, bool reuse_address = false)
             {
                 if (!start_listen(ip, port, reuse_address)) {
                     return false;
@@ -68,7 +71,10 @@ namespace BTool
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
-            void run(const char* ip = nullptr, unsigned short port = 0, bool reuse_address = false)
+            void run(unsigned short port, bool reuse_address = false) {
+                run(nullptr, port, reuse_address);
+            }
+            void run(const char* ip, unsigned short port, bool reuse_address = false)
             {
                 if (!start_listen(ip, port, reuse_address)) {
                     return;
@@ -97,6 +103,17 @@ namespace BTool
                     return false;
                 }
                 return sess_ptr->write(send_msg, size);
+            }
+
+            // 在当前消息尾追加
+            // max_package_size: 单个消息最大包长
+            bool write_tail(SessionID session_id, const char* send_msg, size_t size, size_t max_package_size = 65535)
+            {
+                auto sess_ptr = find_session(session_id);
+                if (!sess_ptr) {
+                    return false;
+                }
+                return sess_ptr->write_tail(send_msg, size, max_package_size);
             }
 
             // 消费掉指定长度的读缓存

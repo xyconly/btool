@@ -4,42 +4,36 @@ Author:     AChar
 Version:
 Date:
 Purpose: 单实例公共基类,提供懒惰算法的instance及unInstance获取方法
-Note:    外部使用时直接使用instance()获取,不要将instance()做临时存储,那将会导致无法正常析构
+Note:    外部使用时直接使用instance()获取
+         volatile对于VS可有可无,加不加都不会倍优化,但是在gcc下会被优化掉
 *************************************************/
 
 #pragma once
 
-#include <memory>
 #include <mutex>
 
 namespace BTool
 {
     // 单实例公共基类
     template<class _Ty>
-    class instance_base
-    {
+    class instance_base {
     public:
-        static std::shared_ptr<_Ty> instance()
-        {
-            if (!_pInstance)
-            {
-                std::lock_guard<std::recursive_mutex> lock(_mtx_pres_);
-                if (!_pInstance)
-                {
-                    _pInstance = std::make_shared<_Ty>();
+        static _Ty* instance() {
+            if (!m_pInstance) {
+                std::lock_guard<std::mutex> lock(m_mtx_pres);
+                if (!m_pInstance) {
+                    m_pInstance = new _Ty();
                 }
             }
-            return _pInstance;
+            return m_pInstance;
         }
 
-        static void unInstance()
-        {
-            if (_pInstance)
-            {
-                std::lock_guard<std::recursive_mutex> lock(_mtx_pres_);
-                if (_pInstance)
-                {
-                    _pInstance.reset();
+        static void unInstance() {
+            if (m_pInstance) {
+                std::lock_guard<std::mutex> lock(m_mtx_pres);
+                if (m_pInstance) {
+                    delete m_pInstance;
+                    m_pInstance = nullptr;
                 }
             }
         }
@@ -47,13 +41,14 @@ namespace BTool
     protected:
         instance_base() {}
         ~instance_base() {}
+
     private:
-        static std::shared_ptr<_Ty>  _pInstance; // Instance
-        static std::recursive_mutex  _mtx_pres_; // Instance Lock, Achieve thread-safety
+        static _Ty* volatile m_pInstance; // Instance
+        static std::mutex    m_mtx_pres;  // Instance Lock, Achieve thread-safety
     };
 
     template<class _Ty>
-    std::shared_ptr<_Ty> instance_base<_Ty>::_pInstance = nullptr;
+    _Ty* volatile instance_base<_Ty>::m_pInstance = nullptr;
     template<class _Ty>
-    std::recursive_mutex instance_base<_Ty>::_mtx_pres_;
+    std::mutex instance_base<_Ty>::m_mtx_pres;
 }

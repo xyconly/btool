@@ -220,14 +220,17 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
+                    read_msg.body() = "connect error";
                     // 连接
                     auto const results = m_resolver.resolve(ip, std::to_string(port));
                     boost::asio::connect(m_socket, results.begin(), results.end());
 
+                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, ip);
                     boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
 
+                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg);
@@ -282,14 +285,17 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
+                    read_msg.body() = "connect error";
                     // 连接
                     boost::asio::ip::tcp::resolver::query query(host, "http");
                     boost::asio::connect(m_socket, m_resolver.resolve(query));
 
+                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(m_socket, std::forward<send_msg_type>(send_msg));
 
+                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_socket, read_buf, read_msg);
@@ -417,6 +423,7 @@ namespace BTool
             void handle_read(const boost::system::error_code& ec, size_t bytes_transferred, bool close)
             {
                 if (ec) {
+                    std::string tmp = ec.message();
                     shutdown();
                     return;
                 }

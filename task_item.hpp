@@ -7,6 +7,7 @@ Description:    提供各类任务基类,避免外界重复创建
 *************************************************/
 #pragma once
 #include <type_traits>
+#include <future>
 
 namespace BTool
 {
@@ -18,6 +19,24 @@ namespace BTool
         virtual void invoke() = 0;
     };
     typedef std::shared_ptr<TaskVirtual>  TaskPtr;
+
+    //////////////////////////////////////////////////////////////////////////
+    // 带属性任务基类
+    template<typename TPropType>
+    class PropTaskVirtual : public TaskVirtual
+    {
+    public:
+        template<typename AsTPropType>
+        PropTaskVirtual(AsTPropType&& prop) : m_prop(std::forward<AsTPropType>(prop)) {}
+        virtual ~PropTaskVirtual() {}
+
+        // 获取任务属性
+        const TPropType& get_prop_type() const {
+            return m_prop;
+        }
+    private:
+        TPropType m_prop;
+    };
 
     //////////////////////////////////////////////////////////////////////////
     // 元祖执行类
@@ -55,6 +74,31 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
+    // 打包执行类
+//     class PackagedInvoke : public TaskVirtual
+//     {
+//     public:
+//         typedef  std::future<void>    future_type;
+// 
+//         template<typename TFunction, typename... Args>
+//         PackagedInvoke(TFunction&& func, Args&&... args) {
+//             typedef typename std::result_of<TFunction(Args&&...)>::type  result_type;
+//             auto task = std::make_shared<std::packaged_task<result_type()>>(
+//                 std::bind(std::forward<TFunction>(func), std::forward<Args>(args)...)
+//                 );
+//             m_invoke = std::async(std::launch::deferred, [task] {(*task)(); });
+//         }
+//         ~PackagedInvoke() {}
+// 
+//         void invoke() {
+//             m_invoke.get();
+//         }
+// 
+//     private:
+//         future_type m_invoke;
+//     };
+
+    //////////////////////////////////////////////////////////////////////////
     // 元祖任务类
     template<typename TFunction, typename TTuple>
     class TupleTask : public TaskVirtual
@@ -71,22 +115,20 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // 带属性任务基类
-    template<typename TPropType>
-    class PropTaskVirtual : public TaskVirtual
-    {
-    public:
-        template<typename AsTPropType>
-        PropTaskVirtual(AsTPropType&& prop) : m_prop(std::forward<AsTPropType>(prop)) {}
-        virtual ~PropTaskVirtual() {}
-
-        // 获取任务属性
-        const TPropType& get_prop_type() const {
-            return m_prop;
-        }
-    private:
-        TPropType m_prop;
-    };
+    // 打包任务类
+//     class PackagedTask : public TaskVirtual
+//     {
+//     public:
+//         template<typename TFunction, typename... Args>
+//         PackagedTask(TFunction&& func, Args&&... args)
+//             : m_invoke(std::forward<TFunction>(func), std::forward<Args>(args)...)
+//         {}
+//         void invoke() override {
+//             m_invoke.invoke();
+//         }
+//     private:
+//         PackagedInvoke  m_invoke;
+//     };
 
     //////////////////////////////////////////////////////////////////////////
     // 带属性元祖任务类
@@ -106,6 +148,27 @@ namespace BTool
     private:
         TupleInvoke<TFunction, TTuple>  m_invoke;
     };
+
+    //////////////////////////////////////////////////////////////////////////
+    // 带属性打包任务类
+//     template<typename TPropType>
+//     class PropPackagedTask : public PropTaskVirtual<TPropType>
+//     {
+//     public:
+//         template<typename AsTPropType, typename TFunction, typename... Args>
+//         PropPackagedTask(AsTPropType&& prop, TFunction&& func, Args&&... args)
+//             : PropTaskVirtual<TPropType>(std::forward<AsTPropType>(prop))
+//             , m_invoke(std::forward<TFunction>(func), std::forward<Args>(args)...)
+//         {
+//         }
+// 
+//         void invoke() override {
+//             m_invoke.invoke();
+//         }
+// 
+//     private:
+//         PackagedInvoke  m_invoke;
+//     };
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -224,7 +287,7 @@ namespace BTool
 #  else
         // 执行调用函数
         void invoke(const system_time_point& time_point) {
-            std::apply(get_id(), time_point, std::forward<TFunction>(m_fun_cbk), std::forward<TTuple>(*m_tuple.get()));
+            std::apply(std::forward<TFunction>(m_fun_cbk), get_id(), time_point, std::forward<TTuple>(*m_tuple.get()));
         }
 #  endif
 
@@ -232,5 +295,56 @@ namespace BTool
         std::shared_ptr<TTuple>         m_tuple;
         TFunction                       m_fun_cbk;
     };
+
+    //////////////////////////////////////////////////////////////////////////
+    // 打包定时器任务类, 由于std::future仅能执行单次,shared_future不便存储,故而暂时不用
+//     class PackagedTimerTask : public TimerTaskVirtual
+//     {
+//         // 打包执行类
+//         class PackagedTimerInvoke
+//         {
+//         public:
+//             typedef  std::function<void(TimerId id, const system_time_point& time_point)>    function_type;
+// 
+//             template<typename TFunction, typename... Args>
+//             PackagedTimerInvoke(TFunction&& func, Args&&... args) {
+//                 typedef typename std::result_of<TFunction(TimerId, const system_time_point&, Args&&...)>::type  result_type;
+//                 auto task = std::make_shared<std::packaged_task<result_type(TimerId, const system_time_point&)>>(
+//                     std::bind(std::forward<TFunction>(func), std::placeholders::_1, std::placeholders::_2, std::forward<Args>(args)...)
+//                     );
+// 
+//                 m_invoke = function_type([task](TimerId id, const system_time_point& time_point) {
+//                     (*task)(id, time_point);
+//                 });
+//             }
+//             ~PackagedTimerInvoke() {}
+// 
+//             void invoke(TimerId id, const system_time_point& time_point) {
+//                 m_invoke(id, time_point);
+//             }
+// 
+//         private:
+//             function_type m_invoke;
+//         };
+// 
+//     public:
+//         template<typename TFunction, typename... Args>
+//         PackagedTimerTask(unsigned int interval_ms, int loop_count, TimerId id
+//             , const system_time_point& time_point
+//             , TFunction&& func, Args&&... args)
+//             : TimerTaskVirtual(interval_ms, loop_count, id, time_point)
+//             , m_invoke(std::forward<TFunction>(func), std::forward<Args>(args)...)
+//         {}
+// 
+//         ~PackagedTimerTask() {}
+// 
+//         // 执行调用函数
+//         void invoke(const system_time_point& time_point) override {
+//             m_invoke.invoke(get_id(), time_point);
+//         }
+// 
+//     private:
+//         PackagedTimerInvoke  m_invoke;
+//     };
 
 }

@@ -30,12 +30,14 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 #pragma once
 
 #include <mutex>
+#include <string>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/cast.hpp>
 
 #include "net_callback.hpp"
 #include "net_buffer.hpp"
+#include "../atomic_switch.hpp"
 
 namespace BTool
 {
@@ -65,11 +67,9 @@ namespace BTool
             // max_wbuffer_size: 最大写缓冲区大小
             // max_rbuffer_size: 单次读取最大缓冲区大小
             WebsocketSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_socket(ios)
-                , m_resolver(ios)
-                , m_started_flag(false)
-                , m_stop_flag(true)
-                , m_sending_flag(false)
+                : m_io_service(ios)
+                , m_socket(ios)
+				, m_resolver(ios)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_handler(nullptr)
@@ -82,7 +82,7 @@ namespace BTool
 
             ~WebsocketSession() {
                 m_handler = nullptr;
-                close();
+                shutdown();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -97,12 +97,12 @@ namespace BTool
 
             // 获得io_service
             ios_type& get_io_service() {
-                return get_socket().get_io_service();
+                return m_io_service;
             }
 
             // 是否已开启
             bool is_open() const {
-                return  m_started_flag.load() && m_socket.is_open();
+                return  m_atomic_switch.has_started() && m_socket.is_open();
             }
 
             // 获取连接ID
@@ -121,12 +121,9 @@ namespace BTool
             }
 
             // 客户端开启连接,同时开启读取
-            void connect(const char* ip, unsigned short port, char const* addr = "/")
-            {
-                bool expected = false;
-                if (!m_started_flag.compare_exchange_strong(expected, true)) {
+            void connect(const char* ip, unsigned short port, char const* addr = "/") {
+                if (!m_atomic_switch.init())
                     return;
-                }
 
                 m_connect_ip = ip;
                 m_connect_port = port;
@@ -141,53 +138,66 @@ namespace BTool
             }
 
             // 客户端重连
-            void reconnect()
-            {
+            void reconnect() {
                 connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
             }
+
             // 服务端开启连接,同时开启读取
-            void start()
-            {
-                bool expected = false;
-                if (!m_started_flag.compare_exchange_strong(expected, true)) {
+            void start() {
+                if (!m_atomic_switch.init())
                     return;
-                }
 
                 m_socket.async_accept(std::bind(&WebsocketSession::handle_start
                     , shared_from_this()
                     , std::placeholders::_1));
             }
 
-            // 同步关闭当前连接
-            void shutdown()
-            {
-                bool expected = false;
-                if (!m_stop_flag.compare_exchange_strong(expected, true)) {
+            // 同步关闭
+            void shutdown() {
+                if (!m_atomic_switch.stop())
                     return;
-                }
+
                 close();
             }
 
-            // 写入
-            bool write(const char* send_msg, size_t size)
-            {
-                if (m_stop_flag.load() || !m_started_flag.load()) {
+            // 按顺序写入
+            bool write(const char* send_msg, size_t size) {
+                if (!m_atomic_switch.has_started()) {
                     return false;
                 }
 
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
-
                 if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
                     return false;
                 }
-
                 if (!m_write_buf.append(send_msg, size)) {
                     return false;
                 }
-
-                bool expected = false;
                 // 是否处于发送状态中
-                if (!m_sending_flag.compare_exchange_strong(expected, true)) {
+                if (m_current_send_msg) {
+                    return true;
+                }
+
+                write();
+                return true;
+            }
+
+            // 在当前消息尾追加
+            // max_package_size: 单个消息最大包长
+            bool write_tail(const char* send_msg, size_t size, size_t max_package_size = 65535) {
+                if (!m_atomic_switch.has_started()) {
+                    return false;
+                }
+
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+                if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
+                    return false;
+                }
+                if (!m_write_buf.append_tail(send_msg, size, max_package_size)) {
+                    return false;
+                }
+                // 是否处于发送状态中
+                if (m_current_send_msg) {
                     return true;
                 }
 
@@ -196,9 +206,8 @@ namespace BTool
             }
 
             // 消费掉指定长度的读缓存
-            void consume_read_buf(size_t bytes_transferred)
-            {
-                if (m_stop_flag.load() || !m_started_flag.load()) {
+            void consume_read_buf(size_t bytes_transferred) {
+                if (m_atomic_switch.has_stoped()) {
                     return;
                 }
 
@@ -206,17 +215,14 @@ namespace BTool
             }
 
         protected:
-            static SessionID GetNextSessionID()
-            {
+            static SessionID GetNextSessionID() {
                 static std::atomic<SessionID> next_session_id(NetCallBack::InvalidSessionID);
-                ++next_session_id;
-                return next_session_id;
+                return ++next_session_id;
             }
 
         private:
             // 异步读
-            bool read()
-            {
+            bool read() {
                 try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
                         std::bind(&WebsocketSession::handle_read, shared_from_this(),
@@ -230,25 +236,15 @@ namespace BTool
             }
 
             // 异步写
-            void write()
-            {
+            void write() {
                 m_current_send_msg = m_write_buf.pop_front();
-                if (!m_current_send_msg) {
-                    m_sending_flag.exchange(false);
-                    return;
-                }
-
                 m_socket.async_write(boost::asio::buffer(m_current_send_msg->data(), m_current_send_msg->size())
                     , std::bind(&WebsocketSession::handle_write, shared_from_this()
                         , std::placeholders::_1
                         , std::placeholders::_2));
-
             }
 
-            void handle_resolve(
-                boost::system::error_code ec,
-                boost::asio::ip::tcp::resolver::iterator result)
-            {
+            void handle_resolve(boost::system::error_code ec, boost::asio::ip::tcp::resolver::iterator result) {
                 if (ec) {
                     close();
                     return;
@@ -290,22 +286,18 @@ namespace BTool
             }
 
             // 处理开始
-            void handle_start(const boost::system::error_code& error)
-            {
+            void handle_start(const boost::system::error_code& error) {
                 boost::system::error_code ec;
                 m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
                 m_connect_port = get_socket().remote_endpoint(ec).port();
 
-                m_stop_flag.exchange(false);
-
-                if (read() && m_handler) {
+                if (m_atomic_switch.start() && read() && m_handler) {
                     m_handler->on_open_cbk(m_session_id);
                 }
             }
 
             // 处理读回调
-            void handle_read(const boost::system::error_code& error, size_t bytes_transferred)
-            {
+            void handle_read(const boost::system::error_code& error, size_t bytes_transferred) {
                 if (error) {
                     shutdown();
                     return;
@@ -320,7 +312,7 @@ namespace BTool
                     consume_read_buf(bytes_transferred);
                 }
 
-                if (m_stop_flag.load() || !m_started_flag.load()) {
+                if (m_atomic_switch.has_stoped()) {
                     return;
                 }
 
@@ -334,33 +326,26 @@ namespace BTool
                     shutdown();
                     return;
                 }
-
-                if (m_stop_flag.load() || !m_started_flag.load()) {
+                if (m_atomic_switch.has_stoped()) {
                     return;
                 }
 
                 if (m_handler && m_current_send_msg) {
                     m_handler->on_write_cbk(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
                 }
-                m_current_send_msg.reset();
 
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
-                if (m_write_buf.size() == 0) {
-                    m_sending_flag.exchange(false);
+                m_current_send_msg.reset();
+                if (m_write_buf.empty()) {
                     return;
                 }
                 write();
             }
 
-            // 关闭
-            void close()
-            {
+            void close() {
                 boost::system::error_code ignored_ec;
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
-
-                m_sending_flag.exchange(false);
-                m_started_flag.exchange(false);
 
                 m_read_buf.consume(m_read_buf.size());
                 {
@@ -368,7 +353,7 @@ namespace BTool
                     m_write_buf.clear();
                 }
 
-                m_stop_flag.exchange(true);
+                m_atomic_switch.reset();
 
                 if (m_handler) {
                     m_handler->on_close_cbk(m_session_id);
@@ -376,25 +361,17 @@ namespace BTool
             }
 
         private:
-            // 连接者IP
-            std::string             m_connect_ip;
-            // 连接者Port
-            unsigned short          m_connect_port;
-            // 地址
-            std::string             m_hand_addr;
-
             // TCP解析器
             boost::asio::ip::tcp::resolver m_resolver;
             // asio的socket封装
             websocket_stream_type   m_socket;
-            // 连接ID
+            ios_type&               m_io_service;
             SessionID               m_session_id;
 
             // 读缓冲
             ReadBufferType          m_read_buf;
             // 最大读缓冲区大小
             size_t                  m_max_rbuffer_size;
-
 
             // 写缓存数据保护锁
             std::recursive_mutex    m_write_mtx;
@@ -408,13 +385,15 @@ namespace BTool
             // 回调操作
             NetCallBack*            m_handler;
 
-            // 是否已启动
-            std::atomic<bool>	    m_started_flag;
-            // 是否终止状态
-            std::atomic<bool>	    m_stop_flag;
+            // 原子启停标志
+            AtomicSwitch            m_atomic_switch;
 
-            // 是否正在发送中
-            std::atomic<bool>	    m_sending_flag;
+            // 连接者IP
+            std::string             m_connect_ip;
+            // 连接者Port
+            unsigned short          m_connect_port;
+			// 地址
+            std::string             m_hand_addr;
         };
     }
 }

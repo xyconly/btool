@@ -7,7 +7,7 @@ Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
 示例代码:
         class TestHttpService : public BTool::BoostNet::HttpServiceNetCallBack
         {
-            BTool::BoostNet::HttpService            service_type;
+            typedef BTool::BoostNet::HttpService   service_type;
             typedef std::shared_ptr<service_type>   service_ptr_type;
         public:
             TestHttpService()
@@ -99,7 +99,7 @@ namespace BTool
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
-            bool start(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = false)
+            bool start(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = true)
             {
                 if (!start_listen(ip, port, reuse_address)) {
                     return false;
