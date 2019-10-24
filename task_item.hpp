@@ -34,6 +34,7 @@ namespace BTool
         const TPropType& get_prop_type() const {
             return m_prop;
         }
+
     private:
         TPropType m_prop;
     };
@@ -255,7 +256,30 @@ namespace BTool
         unsigned int            m_interval;      // 循环间隔时间,单位毫秒
         system_time_point       m_time_point;    // 定时器终止时间
     };
-    typedef std::shared_ptr<TimerTaskVirtual> TimerTaskPtr;
+
+    //////////////////////////////////////////////////////////////////////////
+    // 函数式定时器任务类
+    class TimerTask : public TimerTaskVirtual
+    {
+        typedef std::function<void(TimerId id, const system_time_point& time_point)> Function;
+    public:
+        TimerTask(unsigned int interval_ms, int loop_count, TimerId id
+            , const system_time_point& time_point, Function&& func)
+            : TimerTaskVirtual(interval_ms, loop_count, id, time_point)
+            , m_fun_cbk(std::forward<Function>(func))
+        {}
+
+        ~TimerTask() {}
+
+        // 执行调用函数
+        void invoke(const system_time_point& time_point) {
+            m_fun_cbk(get_id(), time_point);
+        }
+
+    private:
+        Function                       m_fun_cbk;
+    };
+
 
     //////////////////////////////////////////////////////////////////////////
     // 元祖定时器任务类

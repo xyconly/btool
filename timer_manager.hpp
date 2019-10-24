@@ -34,6 +34,10 @@ namespace BTool {
         typedef TimerTaskVirtual::TimerId               TimerId;
         typedef TimerTaskVirtual::system_time_point     system_time_point;
 
+    protected:
+        typedef std::shared_ptr<TimerTask>      TimerTaskPtr;
+//         typedef std::shared_ptr<TimerTaskVirtual>      TimerTaskPtr;
+
 #pragma region 定时器队列
         /*************************************************
         Description:定时器队列,用于存储当前定时器排序,内部无锁,非线程安全!!!
@@ -55,34 +59,51 @@ namespace BTool {
                 m_task_pool.stop();
             }
 
-            template<typename TFunction, typename... Args>
+            template<typename TFunction>
             TimerTaskPtr insert(unsigned int interval_ms, int loop_count, TimerId id
-                , const system_time_point& time_point, TFunction&& func, Args&&... args) {
+                , const system_time_point& time_point, TFunction&& func) {
                 if (id == TimerTaskVirtual::INVALID_TID)
                     return nullptr;
 
                 if (m_all_timer_map.find(id) != m_all_timer_map.end())
                     return nullptr;
 
-//                 auto pItem = std::make_shared<PackagedTimerTask>(interval_ms, loop_count, id, time_point
-//                     , std::forward<TFunction>(func)
-//                     , std::forward<Args>(args)...);
-
-                // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
-                // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
-                // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
-                typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
-                auto pItem = std::make_shared<TupleTimerTask<TFunction, TTuple>>(interval_ms, loop_count, id, time_point
-                    , std::forward<TFunction>(func)
-                    , std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...)));
-
+                auto pItem = std::make_shared<TimerTask>(interval_ms, loop_count, id, time_point, std::forward<TFunction>(func));
                 if (!pItem || pItem->get_id() == TimerTaskVirtual::INVALID_TID)
                     return nullptr;
 
-                m_all_timer_map[pItem->get_id()] = pItem;
-                m_timer_part_queue[pItem->get_time_point()][pItem->get_id()] = pItem;
+                m_all_timer_map[id] = pItem;
+                m_timer_part_queue[pItem->get_time_point()][id] = pItem;
                 return pItem;
             }
+//             template<typename TFunction, typename... Args>
+//             TimerTaskPtr insert(unsigned int interval_ms, int loop_count, TimerId id
+//                 , const system_time_point& time_point, TFunction&& func, Args&&... args) {
+//                 if (id == TimerTaskVirtual::INVALID_TID)
+//                     return nullptr;
+// 
+//                 if (m_all_timer_map.find(id) != m_all_timer_map.end())
+//                     return nullptr;
+// 
+// //                 auto pItem = std::make_shared<PackagedTimerTask>(interval_ms, loop_count, id, time_point
+// //                     , std::forward<TFunction>(func)
+// //                     , std::forward<Args>(args)...);
+// 
+//                 // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
+//                 // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
+//                 // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
+//                 typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
+//                 auto pItem = std::make_shared<TupleTimerTask<TFunction, TTuple>>(interval_ms, loop_count, id, time_point
+//                     , std::forward<TFunction>(func)
+//                     , std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...)));
+// 
+//                 if (!pItem || pItem->get_id() == TimerTaskVirtual::INVALID_TID)
+//                     return nullptr;
+// 
+//                 m_all_timer_map[pItem->get_id()] = pItem;
+//                 m_timer_part_queue[pItem->get_time_point()][pItem->get_id()] = pItem;
+//                 return pItem;
+//             }
 
             // 获取总定时器个数
             size_t size() const {
@@ -150,9 +171,9 @@ namespace BTool {
                 for (auto& point_item_pair : point_timer_queue) {
                     // 加入并发执行队列,并累计一次循环计数
                     auto& item = point_item_pair.second;
-                    m_task_pool.add_task([item](const system_time_point& time_point) {
+                    m_task_pool.add_task([item, time_point = item->get_time_point()] {
                         item->invoke(time_point);
-                    }, item->get_time_point());
+                    });
 
                     item->loop_once_count();
 
@@ -197,9 +218,9 @@ namespace BTool {
             }
 
         private:
-            TimerMap                                                    m_all_timer_map;    // 存储所有定时器任务,牺牲新增时的些许性能,提高查询速度
+            TimerMap                                  m_all_timer_map;    // 存储所有定时器任务,牺牲新增时的些许性能,提高查询速度
             std::map<system_time_point, TimerMap>     m_timer_part_queue; // 对所有定时器的定时时间做切分,所有同一时刻定时任务置于同一timer_map中
-            ParallelTaskPool                                            m_task_pool;        // 定时器回调执行线程池
+            ParallelTaskPool                          m_task_pool;        // 定时器回调执行线程池
         };
 #pragma endregion
 
@@ -240,41 +261,71 @@ namespace BTool {
 
         // 无循环定时器
         // dt: 触发时间点
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        TimerId insert_once(const system_time_point& time_point, TFunction&& func, Args&&... args) {
-            return insert(0, 1, time_point, std::forward<TFunction>(func), std::forward<Args>(args)...);
+        // add_task([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // add_task(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert_once(const system_time_point& time_point, TFunction&& func) {
+            return insert(0, 1, time_point, std::forward<TFunction>(func));
         }
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+//         template<typename TFunction, typename... Args>
+//         TimerId insert_once(const system_time_point& time_point, TFunction&& func, Args&&... args) {
+//             return insert(0, 1, time_point, std::forward<TFunction>(func), std::forward<Args>(args)...);
+//         }
         
         // interval_ms: 循环间隔时间,单位毫秒
         // loop_count: 循环次数,0 表示无限循环
         // dt: 首次触发时间点
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename TFunction, typename... Args>
-        TimerId insert(unsigned int interval_ms, int loop_count, const system_time_point& time_point, TFunction&& func, Args&&... args)
+        // add_task([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // add_task(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert(unsigned int interval_ms, int loop_count, const system_time_point& time_point, TFunction&& func)
         {
             if (!m_atomic_switch.has_started())
                 return INVALID_TID;
 
             std::lock_guard<std::mutex> locker(m_queue_mtx);
-            auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), time_point
-                , std::forward<TFunction>(func) , std::forward<Args>(args)...);
+            auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), time_point, std::forward<TFunction>(func));
 
             if (!pItem)
                 return INVALID_TID;
 
-            if (!m_cur_task)
-            {
+            if (!m_cur_task) {
                 m_cur_task = pItem;
                 start(pItem);
             }
-            else if (m_cur_task != m_timer_queue.front())
-            {
+            else if (m_cur_task != m_timer_queue.front()) {
                 m_timer->cancel();
             }
 
             return pItem->get_id();
         }
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+//         template<typename TFunction, typename... Args>
+//         TimerId insert(unsigned int interval_ms, int loop_count, const system_time_point& time_point, TFunction&& func, Args&&... args)
+//         {
+//             if (!m_atomic_switch.has_started())
+//                 return INVALID_TID;
+// 
+//             std::lock_guard<std::mutex> locker(m_queue_mtx);
+//             auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), time_point
+//                 , std::forward<TFunction>(func) , std::forward<Args>(args)...);
+// 
+//             if (!pItem)
+//                 return INVALID_TID;
+// 
+//             if (!m_cur_task)
+//             {
+//                 m_cur_task = pItem;
+//                 start(pItem);
+//             }
+//             else if (m_cur_task != m_timer_queue.front())
+//             {
+//                 m_timer->cancel();
+//             }
+// 
+//             return pItem->get_id();
+//         }
 
         // 获取总定时器个数
         size_t size() const {
