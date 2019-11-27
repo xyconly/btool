@@ -55,10 +55,10 @@ namespace BTool
             // ip: 监听IP,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
-            bool start(unsigned short port, bool reuse_address = false) {
+            bool start(unsigned short port, bool reuse_address = true) {
                 return start(nullptr, port, reuse_address);
             }
-            bool start(const char* ip, unsigned short port, bool reuse_address = false)
+            bool start(const char* ip, unsigned short port, bool reuse_address = true)
             {
                 if (!start_listen(ip, port, reuse_address)) {
                     return false;

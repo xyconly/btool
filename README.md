@@ -14,33 +14,45 @@ basic tool 基础工具
 
 -   最后，**使用时请标注来源。且拒绝任何996公司和员工,以及公司中任何岗位对学历有隐形或明文限制的公司和员工,对该工具进行任何形式的使用或参考**
 
-功能说明
+主要功能说明
 --------
 
--   FIFO并行执行线程池JobQueue，任务为对象
+-   并行执行同属性任务最新状态的线程池: LastTaskPool
 
--   FIFO并行执行线程池ParallelTaskPool，任务为绑定函数地址
+-   FIFO并行执行线程池: ParallelTaskPool
 
--   FIFO并行执行线程池，但同属性任务同一时间内仅能在一个线程中执行SerialTaskList，任务为绑定函数地址
+-   FIFO并行执行线程池，但同属性任务同一时间内仅能在一个线程中执行: SerialTaskList
 
--   字符串转换工具StringConvert
+-   字符串转换工具: StringConvert
 
--   时间转换工具DateTimeConvert
+-   时间转换工具: DateTimeConvert
 
--   定时器管理TimerManager
+-   可设定循环次数时间轮定时器管理: TimerManager
 
--   io_service对象池AsioServicePool
+-   Boost TCP服务: BoostNet::TcpServer
 
--   TCP服务BoostTcp::TcpServer
+-   Boost TCP连接: BoostNet::TcpSession
 
--   TCP连接BoostTcp::TcpSession
+-   Beast1.68 / beast1.71 版本Websocket服务: BoostNet1_68::WebsocketServer / BoostNet1_71::WebsocketServer
 
--   读写锁统一声明rwmutex.hpp
+-   Beast1.68 / beast1.71 版本Websocket/websocketssl连接: BoostNet1_68::WebsocketSession/BoostNet1_68::WebsocketSslSession  /  BoostNet1_71::WebsocketSession/BoostNet1_71::WebsocketSslSession
 
--   RAII资源管理scope_guard.hpp
+-   Beast1.68 / beast1.71 版本http/https服务: BoostNet1_68::HttpServer/BoostNet1_68::HttpsServer  /  BoostNet1_71::HttpServer/BoostNet1_71::HttpsServer
 
--   Windows下文件操作FileSystem及STLFileRW
+-   Beast1.68 / beast1.71 版本http/https连接: BoostNet1_68::HttpSession/BoostNet1_68::HttpsSession  /  BoostNet1_71::HttpSession/BoostNet1_71::HttpsSession
 
--   基于Beast实现网络协程库,包含TCP/WebSocket/Http
+-   读写锁统一声明: rwmutex.hpp
 
--   instance实现
+-   RAII资源管理: scope_guard.hpp
+
+-   安全线程: safe_thread.hpp
+
+-   文件读写: file_system.hpp
+
+-   实时可控instance懒惰实现: instance.hpp
+
+-   同步状态: sync.hpp
+
+-   加密解密序列化: aes.hpp / des.hpp / md5.hpp
+
+-   结合Protobuf实现的统一消息打包解包pb_message_package,结合协议代码自动生成工具可快速编写协议,使开发者仅关注一次协议制定之后,将精力集中于业务开发

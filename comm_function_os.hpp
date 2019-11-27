@@ -107,6 +107,7 @@ extern "C" {
 #endif
 
 #include <vector>
+#include <string>
 
 #ifdef __COMM_WINDOWS__
 #include <conio.h>

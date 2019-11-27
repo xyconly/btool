@@ -1,11 +1,12 @@
 /************************************************************************
 File name:  timer_manager.hpp
 Author:	    AChar
-Purpose:  定时器管理
+Purpose:  时间轮定时器管理
 Note:     插入时间复杂度: O(logN)
           删除时间复杂度: O(logN)
+          每个时间插入后存在时间间隔的问题,会自动对应至下一个时间间隔,而不是完全一致的时间
           由于windows的最小时钟间隔为 0.5ms - 15.6001ms,故外界判断时应允许判断15.6001ms的误差
-          实际测试中发现基本误差在1ms以内,向前漂移或者向后漂移,后期实现时间轮可修复向前漂移的问题,但时间轮可能存在时间切片延后的问题
+          实际测试中发现基本误差在1ms以内,向前漂移或者向后漂移
 /************************************************************************/
 #pragma once
 
@@ -227,8 +228,10 @@ namespace BTool {
     public:
         // 执行回调时的线程池数
         // workers: 回调执行工作线程数,为0时默认系统核数;注意此线程数并非定时器线程数,定时器线程始终只有一个
-        TimerManager(int workers = 0)
-            : m_ios_pool(1)
+        // space_millsecond: 时间轮切片时间, 单位毫秒, 为0时则不切分,但不建议
+        TimerManager(unsigned long long space_millsecond, int workers)
+            : m_space_millsecond(space_millsecond)
+            , m_ios_pool(1)
             , m_cur_task(nullptr)
             , m_next_id(INVALID_TID)
             , m_timer(nullptr)
@@ -261,8 +264,8 @@ namespace BTool {
 
         // 无循环定时器
         // dt: 触发时间点
-        // add_task([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
-        // add_task(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        // insert_once(time_point, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert_once(time_point, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
         TimerId insert_once(const system_time_point& time_point, TFunction&& func) {
             return insert(0, 1, time_point, std::forward<TFunction>(func));
@@ -273,19 +276,28 @@ namespace BTool {
 //             return insert(0, 1, time_point, std::forward<TFunction>(func), std::forward<Args>(args)...);
 //         }
         
-        // interval_ms: 循环间隔时间,单位毫秒
+        // interval_ms: 循环间隔时间,单位毫秒(注意该值会被时间轮间隔时间下取整,例如时间轮设定最小切片时间50ms,那么interval_ms设定为80时,实际interval_ms为100)
         // loop_count: 循环次数,0 表示无限循环
         // dt: 首次触发时间点
-        // add_task([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
-        // add_task(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        // insert(interval_ms, loop_count, time_point, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert(interval_ms, loop_count, time_point, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
         TimerId insert(unsigned int interval_ms, int loop_count, const system_time_point& time_point, TFunction&& func)
         {
             if (!m_atomic_switch.has_started())
                 return INVALID_TID;
 
+            system_time_point revise_time_point = time_point;
+            if (m_space_millsecond > 1) {
+                auto tmp_count = std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count();
+                auto tmp_time_point = (tmp_count + m_space_millsecond - 1) / m_space_millsecond * m_space_millsecond;
+                revise_time_point = system_time_point(std::chrono::milliseconds(tmp_time_point));
+
+                interval_ms = (interval_ms + m_space_millsecond - 1) / m_space_millsecond * m_space_millsecond;
+            }
+
             std::lock_guard<std::mutex> locker(m_queue_mtx);
-            auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), time_point, std::forward<TFunction>(func));
+            auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), revise_time_point, std::forward<TFunction>(func));
 
             if (!pItem)
                 return INVALID_TID;
@@ -397,6 +409,7 @@ namespace BTool {
         }
 
     private:
+        unsigned long long      m_space_millsecond;//切片时间,单位毫秒
         AsioServicePool         m_ios_pool;
         timer_ptr               m_timer;         // 定时器
 

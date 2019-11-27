@@ -7,6 +7,7 @@ Purpose:    Http回调接口,默认使用string形式,如需其他形式自行调整
 
 #include <functional>
 #include <boost/beast/http.hpp>
+#include <boost/beast/http/verb.hpp>
 
 namespace BTool
 {

@@ -267,8 +267,8 @@ namespace BTool
             , m_microsecond(0)
         {
 #ifdef __linux
-            std::tm* tp_p = localtime(&dt);
-			std::tm tp = *tp_p;
+            std::tm tp;
+            localtime_r(&dt, &tp);
 #else
 	        std::tm tp;
             localtime_s(&tp, &dt);
@@ -310,8 +310,8 @@ namespace BTool
         {
             std::time_t time = std::chrono::system_clock::to_time_t(dt);
 #ifdef __linux
-            std::tm* tp_p = localtime(&time);
-			std::tm tp = *tp_p;
+            std::tm tp;
+            localtime_r(&time, &tp);
 #else
 	        std::tm tp;
             localtime_s(&tp, &time);
@@ -696,8 +696,8 @@ namespace BTool
             ltime = ltime + secs;
 			
 #ifdef __linux
-            std::tm* tp_p = localtime(&ltime);
-			std::tm tmcur = *tp_p;
+            std::tm tmcur;
+           localtime_r(&ltime, &tmcur);
 #else
 	        std::tm tmcur;
             localtime_s(&tmcur, &ltime);
@@ -731,8 +731,8 @@ namespace BTool
             ltime = ltime + secs;
 
 #ifdef __linux
-            std::tm* tp_p = localtime(&ltime);
-            std::tm tmcur = *tp_p;
+            std::tm tmcur;
+            localtime_r(&ltime, &tmcur);
 #else
             std::tm tmcur;
             localtime_s(&tmcur, &ltime);

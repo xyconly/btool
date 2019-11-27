@@ -38,18 +38,18 @@ namespace BTool
     {
     public:
         // 函数队列执行情况
-        enum ExecutionType {
+        enum class ExecutionType {
             Always,         // 总是执行
             NoException,    // 无异常时才执行
             Exception       // 有异常时才执行
         };
 
-        explicit ScopeGuard(ExecutionType policy = Always)
+        explicit ScopeGuard(ExecutionType policy = ExecutionType::Always)
             : m_policy(policy)
         {}
 
         template<typename Function>
-        ScopeGuard(Function&& func, ExecutionType policy = Always)
+        ScopeGuard(Function&& func, ExecutionType policy = ExecutionType::Always)
             : m_policy(policy)
         {
             this->operator += <Function>(std::forward<Function>(func));
@@ -66,12 +66,13 @@ namespace BTool
             return *this;
         }
         catch (...) {
-            if (m_policy != NoException) func();
+            if (m_policy != ExecutionType::NoException) func();
             throw;
         }
 
         ~ScopeGuard() {
-            if (m_policy == Always || (std::uncaught_exception() == (m_policy == Exception)))
+            if (m_policy == ExecutionType::Always ||
+                (std::uncaught_exceptions() > 0 && (m_policy == ExecutionType::Exception)))
             {
                 // 不要做异常捕获,虽然该函数是期望异常发生时也能执行
                 // 但执行函数不应发生异常,如果发生也应该在外部通过其他机制捕获
