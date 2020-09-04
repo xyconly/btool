@@ -363,8 +363,8 @@ namespace BTool
                 return rslt;
             };
             char* ltmp = myToLow(lvalue);
-            char* rtmp = myToLow(lvalue);
-            int rslt = strcmp(lvalue, rvalue);
+            char* rtmp = myToLow(rvalue);
+            int rslt = strcmp(ltmp, rtmp);
             delete[] ltmp;
             delete[] rtmp;
             return rslt;
@@ -375,15 +375,23 @@ namespace BTool
 #pragma region 字符转换
     public:
         static std::string AnsiiToUtf8(const char* chr) {
+            if (!chr || strlen(chr) == 0)
+                return "";
             return std::string(AnsiiToUTF8(chr).utf8_rep());
         }
         static std::string WCharToUtf8(const wchar_t* wchr) {
+            if (!wchr || wcslen(wchr) == 0)
+                return "";
             return std::string(WideCharToUTF8(wchr).utf8_rep());
         }
         static std::string Utf8ToAnsii(const char* utf8) {
+            if (!utf8 || strlen(utf8) == 0)
+                return "";
             return std::string(UTF8ToAscii(utf8).ascii_rep());
         }
         static std::wstring Utf8ToWString(const char* utf8) {
+            if (!utf8 || strlen(utf8) == 0)
+                return L"";
             return std::wstring(UTF8ToWideChar(utf8).wchar_rep());
         }
 
@@ -404,10 +412,54 @@ namespace BTool
 //         }
 
         static std::string WCharToString(const wchar_t* wchr) {
+            if (!wchr || wcslen(wchr) == 0)
+                return "";
             return std::string(WideCharToAscii(wchr).ascii_rep());
         }
         static std::wstring CharToWChar(const char* chr) {
+            if (!chr || strlen(chr) == 0)
+                return L"";
             return std::wstring(AsciiToWideChar(chr).wchar_rep());
+        }
+#pragma endregion
+
+#pragma region 字符转换安全模式
+    public:
+        static std::string AnsiiToUtf8_Safe(const char* chr) try {
+            return AnsiiToUtf8(chr);
+        }
+        catch (...) {
+            return "";
+        }
+        static std::string WCharToUtf8_Safe(const wchar_t* wchr) try {
+            return WCharToUtf8(wchr);
+        }
+        catch (...) {
+            return "";
+        }
+        static std::string Utf8ToAnsii_Safe(const char* utf8) try {
+            return Utf8ToAnsii(utf8);
+        }
+        catch (...) {
+            return "";
+        }
+        static std::wstring Utf8ToWString_Safe(const char* utf8) try {
+            return Utf8ToWString(utf8);
+        }
+        catch (...) {
+            return L"";
+        }
+        static std::string WCharToString_Safe(const wchar_t* wchr) try {
+            return WCharToString(wchr);
+        }
+        catch (...) {
+            return "";
+        }
+        static std::wstring CharToWChar_Safe(const char* chr) try {
+            return CharToWChar(chr);
+        }
+        catch (...) {
+            return L"";
         }
 #pragma endregion
 

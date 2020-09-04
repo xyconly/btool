@@ -120,35 +120,35 @@ load_server_certificate(boost::asio::ssl::context& ctx)
         "CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=\n"
         "-----END CERTIFICATE-----\n";
 
-        std::string const key =
-            "-----BEGIN PRIVATE KEY-----\n"
-            "MIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQCuc1/uxT02F78H\n"
-            "nkg0VvAacn3hW3EG2Jix2K4csJq+EAbi3M5wPbY4IA6fBFM2PuDJAOs92XRqpJko\n"
-            "TMkq0ExotcBGi8nslN8q7JBF0T0/Yuv+49arsiWzbb7awTgBymWkNZUYuKDxxit4\n"
-            "O8r5dIAQYTLIjSJSV1weJITRKQ5Ixb6jyJm3GkmmHS5zUcLVNCy4V+zEM9LZNZxg\n"
-            "dtX09eK089h1qi6ZSXok3gtme4bkEtbyxJ1tPO/0dJSRpI7sscHvFatPXeuQ9ejk\n"
-            "Oltmo3C4FGgAGOYBfYTzpMmZ8qgeSyRRItHQTJSElDgGH7VyfFUrm35l955Ayjel\n"
-            "Rz+UgICtAgMBAAECggEBAI9r21r6XbCzJSKmRsaBEzUrG8LC4tG2ERNmCP8dUpsf\n"
-            "ogmxbydoFP9fm6WwcJkQaM3YK47V0Jg8ao5vUpQYXDlZ85IMKx6N5kvr4VEFDU2n\n"
-            "jk4oEr1l4Qj7GQXQBLO0KowuYT3JzMf5HJPk1KLx3LeasZ2gKq93kwxVCbzL/Cpm\n"
-            "zSuQAQuwtk3QRriZIksYLRY9XbJZ3CjEJwnE8L1nFIjBmIdPE4VNLhY1GVVIKSwq\n"
-            "EVBD6JJ1i2FK7xYvzL86JR0xTSyi6nkPPMFb/TYsdqyMwDMmNvX+oMw58r/7gfFY\n"
-            "/rQHOQ84x2gZ+43x6cwCrzo5HCwgt6gFwLheLUhEoSECgYEA1bdzvByFqJHCnJw6\n"
-            "SsDWryS+bwYHNyr8zON/+M87qNcFtx0m4HmYXtMH732ZzinQKk+M26kTsO2N3HSM\n"
-            "npIIAR4kHNCEhtGH3VPnzJhKT1eoRZjafRYMfs1CSkl0Mmu/xqq2H7WpeN7ia1/5\n"
-            "AnTpg3xTEDGuCKqMYlC/bmFkLWMCgYEA0Pcjz3JH/aROTw1B1j/Moc7Ym5UWTZhA\n"
-            "HANP6QiTBzMoi87+QV6Yf3YB0rp2xIc8L8Mo5A8z3IJxatVME0CX3iAWuDPka7kJ\n"
-            "NsdbpiwS5vMqDLzjhFfbzQt12XdF2mbjxxrl9nRBxRfovrzRQMd2o1OjZaCEjvg0\n"
-            "5bi7Li4yvq8CgYAdFb1bcWpDOasJkz1fpQTSiyabh29984y5+ZAV9WYCIVk2xXHg\n"
-            "BMxWw1OGJUrEQu6Ag5kA3+69Gmc/BGGKxwbt2ANEJKCUlHlwBpY6QtOCHsTYy+eY\n"
-            "NGL48sg9weddYUqVJ/BnOlrZB0Q7JrGFwxFwgn/vaUNtDIDUdHbI99ohTwKBgGLy\n"
-            "Iwq/WkdH3ayg4mPIoeScRQSme4ESbojVKKl3Xecy2igZQ1tAp4TzI7ncgRBd2Knl\n"
-            "Bx+18yCew4WKqhMTqtWK7DccmzRG0Y4Wp9bvV6Pz0B1n83NfBrz4iD0ItRLNVV2Z\n"
-            "5vnj4qCoyZRHY+4AhLShjeU5NIteC+4aoscjKPQRAn84hpYWm+2GeR49LnFczXcW\n"
-            "WJ1bhXDq9MtXg85wlzXMQLCk4C2kQyKxBkMj9TyMfIF7UUPKFippf7CG5A23KGn9\n"
-            "aufnINBjQS5vhck3Cd6Y1Y10cgqUQOvGmpiE2RYtEUQi9BgVtzpFU/nbc5RKsNK4\n"
-            "2Qible3+q7jruhPRuFvl\n"
-            "-----END PRIVATE KEY-----\n";
+    std::string const key =
+        "-----BEGIN PRIVATE KEY-----\n"
+        "MIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQCuc1/uxT02F78H\n"
+        "nkg0VvAacn3hW3EG2Jix2K4csJq+EAbi3M5wPbY4IA6fBFM2PuDJAOs92XRqpJko\n"
+        "TMkq0ExotcBGi8nslN8q7JBF0T0/Yuv+49arsiWzbb7awTgBymWkNZUYuKDxxit4\n"
+        "O8r5dIAQYTLIjSJSV1weJITRKQ5Ixb6jyJm3GkmmHS5zUcLVNCy4V+zEM9LZNZxg\n"
+        "dtX09eK089h1qi6ZSXok3gtme4bkEtbyxJ1tPO/0dJSRpI7sscHvFatPXeuQ9ejk\n"
+        "Oltmo3C4FGgAGOYBfYTzpMmZ8qgeSyRRItHQTJSElDgGH7VyfFUrm35l955Ayjel\n"
+        "Rz+UgICtAgMBAAECggEBAI9r21r6XbCzJSKmRsaBEzUrG8LC4tG2ERNmCP8dUpsf\n"
+        "ogmxbydoFP9fm6WwcJkQaM3YK47V0Jg8ao5vUpQYXDlZ85IMKx6N5kvr4VEFDU2n\n"
+        "jk4oEr1l4Qj7GQXQBLO0KowuYT3JzMf5HJPk1KLx3LeasZ2gKq93kwxVCbzL/Cpm\n"
+        "zSuQAQuwtk3QRriZIksYLRY9XbJZ3CjEJwnE8L1nFIjBmIdPE4VNLhY1GVVIKSwq\n"
+        "EVBD6JJ1i2FK7xYvzL86JR0xTSyi6nkPPMFb/TYsdqyMwDMmNvX+oMw58r/7gfFY\n"
+        "/rQHOQ84x2gZ+43x6cwCrzo5HCwgt6gFwLheLUhEoSECgYEA1bdzvByFqJHCnJw6\n"
+        "SsDWryS+bwYHNyr8zON/+M87qNcFtx0m4HmYXtMH732ZzinQKk+M26kTsO2N3HSM\n"
+        "npIIAR4kHNCEhtGH3VPnzJhKT1eoRZjafRYMfs1CSkl0Mmu/xqq2H7WpeN7ia1/5\n"
+        "AnTpg3xTEDGuCKqMYlC/bmFkLWMCgYEA0Pcjz3JH/aROTw1B1j/Moc7Ym5UWTZhA\n"
+        "HANP6QiTBzMoi87+QV6Yf3YB0rp2xIc8L8Mo5A8z3IJxatVME0CX3iAWuDPka7kJ\n"
+        "NsdbpiwS5vMqDLzjhFfbzQt12XdF2mbjxxrl9nRBxRfovrzRQMd2o1OjZaCEjvg0\n"
+        "5bi7Li4yvq8CgYAdFb1bcWpDOasJkz1fpQTSiyabh29984y5+ZAV9WYCIVk2xXHg\n"
+        "BMxWw1OGJUrEQu6Ag5kA3+69Gmc/BGGKxwbt2ANEJKCUlHlwBpY6QtOCHsTYy+eY\n"
+        "NGL48sg9weddYUqVJ/BnOlrZB0Q7JrGFwxFwgn/vaUNtDIDUdHbI99ohTwKBgGLy\n"
+        "Iwq/WkdH3ayg4mPIoeScRQSme4ESbojVKKl3Xecy2igZQ1tAp4TzI7ncgRBd2Knl\n"
+        "Bx+18yCew4WKqhMTqtWK7DccmzRG0Y4Wp9bvV6Pz0B1n83NfBrz4iD0ItRLNVV2Z\n"
+        "5vnj4qCoyZRHY+4AhLShjeU5NIteC+4aoscjKPQRAn84hpYWm+2GeR49LnFczXcW\n"
+        "WJ1bhXDq9MtXg85wlzXMQLCk4C2kQyKxBkMj9TyMfIF7UUPKFippf7CG5A23KGn9\n"
+        "aufnINBjQS5vhck3Cd6Y1Y10cgqUQOvGmpiE2RYtEUQi9BgVtzpFU/nbc5RKsNK4\n"
+        "2Qible3+q7jruhPRuFvl\n"
+        "-----END PRIVATE KEY-----\n";
 
     //std::string const dh =
     //    "-----BEGIN DH PARAMETERS-----\n"
@@ -159,7 +159,7 @@ load_server_certificate(boost::asio::ssl::context& ctx)
     //    "oEEZdnZWANkkpR/m/pfgdmGPU66S2sXMHgsliViQWpDCYeehrvFRHEdR9NV+XJfC\n"
     //    "QMUk26jPTIVTLfXmmwU0u8vUkpR7LQKkwwIBAg==\n"
     //    "-----END DH PARAMETERS-----\n";
-    
+
     ctx.set_password_callback(
         [](std::size_t,
             boost::asio::ssl::context_base::password_purpose)

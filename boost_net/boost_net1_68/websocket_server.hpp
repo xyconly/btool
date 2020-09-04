@@ -43,6 +43,8 @@ namespace BTool
             ~WebsocketServer() {
                 m_handler = nullptr;
                 stop();
+                boost::system::error_code ec;
+                m_acceptor.close(ec);
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -215,7 +217,9 @@ namespace BTool
 
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
-                    m_sessions.emplace(session_ptr->get_session_id(), session_ptr);
+                    bool rslt = m_sessions.emplace(session_ptr->get_session_id(), session_ptr).second;
+                    if (!rslt)
+                        return session_ptr->shutdown();
                 }
 
 //                 session_ptr->start();

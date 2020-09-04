@@ -89,7 +89,8 @@ namespace BTool
             ~HttpServer() {
                 m_handler = nullptr;
                 stop();
-                m_acceptor.close();
+                boost::system::error_code ec;
+                m_acceptor.close(ec);
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理

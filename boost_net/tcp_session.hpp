@@ -65,6 +65,7 @@ namespace BTool
             TcpSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_io_service(ios)
                 , m_socket(ios)
+                , m_overtime_timer(ios)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_handler(nullptr)
@@ -76,6 +77,7 @@ namespace BTool
 
             ~TcpSession() {
                 m_handler = nullptr;
+                m_overtime_timer.cancel();
                 close();
             }
 
@@ -122,8 +124,13 @@ namespace BTool
                 m_connect_ip = ip;
                 m_connect_port = port;
 
+                m_overtime_timer.cancel();
+                m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(2000));
+
                 m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port)
                                     ,std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
+
+                m_overtime_timer.async_wait(std::bind(&TcpSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
             }
 
             // 客户端开启连接,同时开启读取
@@ -233,6 +240,8 @@ namespace BTool
 
             // 处理连接回调
             void handle_connect(const boost::system::error_code& error) {
+                m_overtime_timer.cancel();
+
                 if (error) {
                     close();
                     return;
@@ -244,8 +253,10 @@ namespace BTool
             // 处理开始
             void handle_start() {
                 boost::system::error_code ec;
-                m_connect_ip = m_socket.remote_endpoint(ec).address().to_v4().to_string();
-                m_connect_port = m_socket.remote_endpoint(ec).port();
+                if (m_connect_ip.empty())
+					m_connect_ip = m_socket.remote_endpoint(ec).address().to_string(ec);
+                if(m_connect_port == 0)
+                    m_connect_port = m_socket.remote_endpoint(ec).port();
 
                 if (m_atomic_switch.start() && read() && m_handler) {
                     m_handler->on_open_cbk(m_session_id);
@@ -298,6 +309,13 @@ namespace BTool
                 write();
             }
 
+            void handle_overtimer(boost::system::error_code ec) {
+                if (!ec) {
+                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                    m_socket.close(ec);
+                }
+            }
+
             void close() {
                 boost::system::error_code ignored_ec;
                 m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -321,6 +339,8 @@ namespace BTool
             socket_type             m_socket;
             ios_type&               m_io_service;
             SessionID               m_session_id;
+
+            boost::asio::deadline_timer m_overtime_timer;
 
             // 读缓冲
             ReadBufferType          m_read_buf;

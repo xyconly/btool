@@ -10,14 +10,15 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
                 class WebsocketClient{
                     ...
                 private:
-                    ios_type            m_ios;
-                    WebsocketSslSession    m_session;
+                    ioc_type                m_ioc;
+                    ssl_context_type        m_ctx;
+                    WebsocketSslSession     m_session;
                 };
             当然如果外部主动控制其先后顺序会更好,例如:
                 class WebsocketClient {
                 public:
-                    WebsocketClient(ios_type& ios) {
-                        m_session = std::make_shared<WebsocketSslSession>(ios);
+                    WebsocketClient() {
+                        m_session = std::make_shared<WebsocketSslSession>(m_ioc, m_ctx);
                     }
                     ~WebsocketClient() {
                         m_session.reset();
@@ -31,32 +32,34 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 
 #include <mutex>
 #include <string>
+#include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/cast.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
-#include "net_callback.hpp"
-#include "net_buffer.hpp"
-#include "../atomic_switch.hpp"
+#include "../net_callback.hpp"
+#include "../net_buffer.hpp"
+#include "../../atomic_switch.hpp"
+
+// 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
+#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 namespace BTool
 {
-    namespace BoostNet
+    namespace BoostNet1_71
     {
         // WebsocketSsl连接对象
         class WebsocketSslSession : public std::enable_shared_from_this<WebsocketSslSession>
         {
         public:
-            typedef boost::beast::websocket::stream<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>   websocket_ssl_stream_type;
-            typedef websocket_ssl_stream_type::lowest_layer_type                    socket_type;
+            typedef boost::beast::websocket::stream<boost::asio::ssl::stream<boost::beast::tcp_stream>>     websocket_ssl_stream_type;
+            typedef websocket_ssl_stream_type::next_layer_type::next_layer_type::socket_type                ssl_socket_type;
             typedef boost::asio::ssl::context                                       ssl_context_type;
-            typedef boost::asio::io_service                                         ios_type;
-            typedef boost::asio::ssl::stream_base::handshake_type                   ssl_handshake_type;
-            typedef ReadBuffer                                                      ReadBufferType;
-            typedef WriteBuffer                                                     WriteBufferType;
-            typedef WriteBuffer::WriteMemoryStreamPtr                               WriteMemoryStreamPtr;
-            typedef NetCallBack::SessionID                                          SessionID;
+            typedef BoostNet::ReadBuffer                                            ReadBufferType;
+            typedef BoostNet::WriteBuffer                                           WriteBufferType;
+            typedef WriteBufferType::WriteMemoryStreamPtr                           WriteMemoryStreamPtr;
+            typedef BoostNet::NetCallBack::SessionID                                SessionID;
 
             enum {
                 NOLIMIT_WRITE_BUFFER_SIZE = 0, // 无限制
@@ -69,19 +72,32 @@ namespace BTool
             // ios: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ios对象
             // max_wbuffer_size: 最大写缓冲区大小
             // max_rbuffer_size: 单次读取最大缓冲区大小
-            WebsocketSslSession(ios_type& ios, ssl_context_type& ctx, ssl_handshake_type hand_shake_type = ssl_handshake_type::client, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_io_service(ios)
-                , m_socket(ios, ctx)
-				, m_resolver(ios)
+            WebsocketSslSession(boost::asio::ip::tcp::socket&& socket, ssl_context_type& ctx, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
+                : m_resolver(socket.get_executor())
+                , m_socket(std::move(socket), ctx)
+				, m_max_wbuffer_size(max_wbuffer_size)
+                , m_max_rbuffer_size(max_rbuffer_size)
+                , m_handler(nullptr)
+                , m_connect_port(0)
+                , m_session_id(GetNextSessionID())
+                , m_current_send_msg(nullptr)
+            {
+                m_socket.binary(true);
+                m_socket.read_message_max(max_rbuffer_size);
+            }
+
+            WebsocketSslSession(boost::asio::io_context& ioc, ssl_context_type& ctx, size_t max_wbuffer_size = MAX_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
+                : m_resolver(boost::asio::make_strand(ioc))
+                , m_socket(boost::asio::make_strand(ioc), ctx)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_handler(nullptr)
                 , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
                 , m_current_send_msg(nullptr)
-                ,m_hand_shake_type(hand_shake_type)
             {
                 m_socket.binary(true);
+                m_socket.read_message_max(max_rbuffer_size);
             }
 
             ~WebsocketSslSession() {
@@ -89,19 +105,32 @@ namespace BTool
                 shutdown();
             }
 
+            static boost::asio::ip::tcp::endpoint GetEndpointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
+                ec = boost::asio::error::host_not_found;
+                boost::asio::io_context ioc;
+                boost::asio::ip::tcp::resolver rslv(ioc);
+                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
+                try {
+                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
+                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
+                        ec.clear();
+                        return iter->endpoint();
+                    }
+                }
+                catch (...) {
+                    ec = boost::asio::error::fault;
+                }
+                return boost::asio::ip::tcp::endpoint();
+            }
+
             // 设置回调,采用该形式可回调至不同类中分开处理
-            void register_cbk(NetCallBack* handler) {
+            void register_cbk(BoostNet::NetCallBack* handler) {
                 m_handler = handler;
             }
 
             // 获得socket
-            socket_type& get_socket() {
-                return m_socket.lowest_layer();
-            }
-
-            // 获得io_service
-            ios_type& get_io_service() {
-                return m_io_service;
+            ssl_socket_type& get_socket() {
+                return boost::beast::get_lowest_layer(m_socket).socket();
             }
 
             // 是否已开启
@@ -125,35 +154,73 @@ namespace BTool
             }
 
             // 客户端开启连接,同时开启读取
-            void connect(const char* ip, unsigned short port, char const* addr = "/") {
-                if (!m_atomic_switch.init())
-                    return;
-
-                m_connect_ip = ip;
+            // 支持域名及IP
+            void connect(const char* host, unsigned short port, char const* addr = "/") {
+                m_connect_ip = host;
                 m_connect_port = port;
                 m_hand_addr = addr;
 
-                m_resolver.async_resolve({ boost::asio::ip::address::from_string(ip), port },
-                    std::bind(
-                        &WebsocketSslSession::handle_resolve,
-                        shared_from_this(),
-                        std::placeholders::_1,
-                        std::placeholders::_2));
+                m_resolver.async_resolve(host, std::to_string(port).c_str(),
+                    boost::beast::bind_front_handler(&WebsocketSslSession::handle_resolve, shared_from_this()));
             }
 
             // 客户端重连
-            void reconnect() {
-                connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
-            }
+            //void reconnect() {
+            //    connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
+            //}
 
             // 服务端开启连接,同时开启读取
             void start() {
                 if (!m_atomic_switch.init())
                     return;
 
-                m_socket.async_accept(m_accept_request,
-                    std::bind(&WebsocketSslSession::handle_start, shared_from_this(), std::placeholders::_1));
-            }
+                // 设置超时
+                boost::beast::get_lowest_layer(m_socket).expires_after(std::chrono::seconds(30));
+
+                m_socket.next_layer().async_handshake( boost::asio::ssl::stream_base::server,
+                    [&](const boost::beast::error_code& ec) {
+                        boost::beast::get_lowest_layer(m_socket).expires_never();
+
+                        if (ec) {
+                            std::string eee = ec.message();
+                            close();
+                            return;
+                        }
+
+                        m_socket.set_option(
+                            boost::beast::websocket::stream_base::timeout::suggested(
+                                boost::beast::role_type::server));
+                        m_socket.set_option(boost::beast::websocket::stream_base::decorator(
+                            [](boost::beast::websocket::response_type& res) {
+                                res.set(boost::beast::http::field::server,
+                                    std::string(BOOST_BEAST_VERSION_STRING) + " websocket-server-async-ssl");
+                            }));
+
+#ifdef USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
+                        m_socket.async_accept_ex(
+                            [this](boost::beast::http::response<boost::beast::http::string_body>& res, const boost::beast::http::request<boost::beast::http::empty_body>& req) {
+                                // 阿里云slb增加ssl后转发修改ip地址,原地址在head中X-Forwarded-For字符表示
+                                auto real_ip_iter = req.find("X-Forwarded-For");
+                                if (real_ip_iter != req.end()) {
+                                    m_connect_ip = real_ip_iter->value().to_string();
+                                }
+                                else {
+                                    real_ip_iter = req.find("X-Real-IP");
+                                    if (real_ip_iter != req.end()) {
+                                        m_connect_ip = real_ip_iter->value().to_string();
+                                    }
+                                }
+
+                            },
+                            boost::beast::bind_front_handler(&WebsocketSslSession::handle_start, shared_from_this()));
+#else
+                        m_socket.async_accept(
+                            boost::beast::bind_front_handler(
+                                &WebsocketSslSession::handle_start,
+                                shared_from_this()));
+#endif
+                    });
+                }
 
             // 同步关闭
             void shutdown() {
@@ -219,7 +286,7 @@ namespace BTool
 
         protected:
             static SessionID GetNextSessionID() {
-                static std::atomic<SessionID> next_session_id(NetCallBack::InvalidSessionID);
+                static std::atomic<SessionID> next_session_id(BoostNet::NetCallBack::InvalidSessionID);
                 return ++next_session_id;
             }
 
@@ -247,85 +314,82 @@ namespace BTool
                         , std::placeholders::_2));
             }
 
-            void handle_resolve(boost::system::error_code ec, boost::asio::ip::tcp::resolver::iterator result) {
+            void handle_resolve(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results) {
                 if (ec) {
                     close();
                     return;
                 }
 
-                boost::asio::async_connect(
-                    get_socket(),
-                    result,
-                    std::bind(&WebsocketSslSession::handle_connect
-                        , shared_from_this()
-                        , std::placeholders::_1));
+                boost::beast::get_lowest_layer(m_socket).expires_after(std::chrono::seconds(30));
+                boost::beast::get_lowest_layer(m_socket).async_connect(results, 
+                    boost::beast::bind_front_handler(&WebsocketSslSession::handle_connect, shared_from_this()));
             }
 
             // 处理连接回调
-            void handle_connect(const boost::system::error_code& error)
+            void handle_connect(const boost::beast::error_code& ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type)
             {
-                if (error) {
+                boost::beast::get_lowest_layer(m_socket).expires_never();
+                
+                if (ec) {
                     close();
                     return;
                 }
+
+                if (!m_atomic_switch.init())
+                    return;
+
+                m_socket.set_option(
+                    boost::beast::websocket::stream_base::timeout::suggested(
+                        boost::beast::role_type::client));
 
                 m_socket.next_layer().async_handshake(
                     boost::asio::ssl::stream_base::client,
-                    std::bind(&WebsocketSslSession::handle_ssl_handshake
-                        , shared_from_this()
-                        , std::placeholders::_1));
-//                 m_socket.async_handshake(m_connect_ip, m_hand_addr,
-//                     std::bind(&WebsocketSslSession::handle_handshake
-//                         , shared_from_this()
-//                         , std::placeholders::_1));
-            }
-
-            void handle_ssl_handshake(const boost::system::error_code& ec)
-            {
-                if (ec) {
-                    close();
-                    return;
-                }
-                
-                if (m_hand_addr.empty())
-                    m_hand_addr = "/";
-
-                m_socket.async_handshake(/*m_handshake_res, */m_connect_ip, m_hand_addr,
-                    std::bind(
+                    boost::beast::bind_front_handler(
                         &WebsocketSslSession::handle_handshake,
-                        shared_from_this(),
-                        std::placeholders::_1));
+                        shared_from_this()));
             }
-            void handle_handshake(const boost::system::error_code& ec)
+
+            void handle_handshake(const boost::beast::error_code& ec)
             {
+                boost::beast::get_lowest_layer(m_socket).expires_never();
+                
                 if (ec) {
+                    auto str = ec.message();
                     close();
                     return;
                 }
 
-                handle_start(ec);
+                m_socket.set_option(boost::beast::websocket::stream_base::timeout::suggested(
+                    boost::beast::role_type::client));
+                m_socket.set_option(boost::beast::websocket::stream_base::decorator(
+                    [](boost::beast::websocket::request_type& req) {
+                        req.set(boost::beast::http::field::user_agent,
+                            std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async-ssl");
+                    }));
+
+                m_socket.async_handshake(m_connect_ip, m_hand_addr,
+                    [&](const boost::beast::error_code& ec) {
+                        if (ec) {
+                            close();
+                            return;
+                        }
+                        handle_start(ec);
+                    });
             }
 
             // 处理开始
             void handle_start(boost::beast::error_code ec) {
-                if (ec) {
+                if (ec || !m_atomic_switch.start()) {
                     close();
                     return;
                 }
 
-                if (m_connect_ip.empty()) {
-                    // 阿里云slb增加ssl后转发修改ip地址,原地址在head中X-Forwarded-For字符表示
-                    auto real_ip_iter = m_accept_request.find("X-Forwarded-For");
-                    if (real_ip_iter != m_accept_request.end()) {
-                        m_connect_ip = real_ip_iter->value().to_string();
-                    }
-                    else {
-                        m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
-                    }
+                if (m_connect_ip.empty())
+					m_connect_ip = get_socket().remote_endpoint(ec).address().to_string(ec);
+                if (m_connect_port == 0)
                     m_connect_port = get_socket().remote_endpoint(ec).port();
-                }
 
-                if (m_atomic_switch.start() && read() && m_handler) {
+                if (read() && m_handler) {
                     m_handler->on_open_cbk(m_session_id);
                 }
             }
@@ -333,7 +397,6 @@ namespace BTool
             // 处理读回调
             void handle_read(const boost::system::error_code& error, size_t bytes_transferred) {
                 if (error) {
-                    auto tmp = error.message();
                     shutdown();
                     return;
                 }
@@ -378,9 +441,11 @@ namespace BTool
             }
 
             void close() {
-                boost::system::error_code ignored_ec;
+                boost::beast::error_code ignored_ec;
+
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-                m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
+                if(m_atomic_switch.has_init())
+                    m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
 
                 m_read_buf.consume(m_read_buf.size());
                 {
@@ -396,17 +461,11 @@ namespace BTool
             }
 
         private:
-            ssl_handshake_type              m_hand_shake_type;
-
             // TCP解析器
             boost::asio::ip::tcp::resolver  m_resolver;
             // asio的socket封装
             websocket_ssl_stream_type       m_socket;
-            ios_type&               m_io_service;
             SessionID               m_session_id;
-
-            boost::beast::http::request<boost::beast::http::string_body> m_accept_request;
-//             boost::beast::websocket::response_type m_handshake_res;
 
             // 读缓冲
             ReadBufferType          m_read_buf;
@@ -423,7 +482,7 @@ namespace BTool
             size_t                  m_max_wbuffer_size;
 
             // 回调操作
-            NetCallBack*            m_handler;
+            BoostNet::NetCallBack*            m_handler;
 
             // 原子启停标志
             AtomicSwitch            m_atomic_switch;

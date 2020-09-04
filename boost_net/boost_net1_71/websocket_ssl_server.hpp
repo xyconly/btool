@@ -1,5 +1,5 @@
 /*************************************************
-File name:      websocket_server.hpp
+File name:      websocket_ssl_server.hpp
 Author:			AChar
 Version:
 Date:
@@ -11,36 +11,36 @@ Note:    server本身存储session对象,外部仅提供ID进行操作
 
 #include <mutex>
 #include <map>
-#include <boost/lexical_cast.hpp>
 #include "../../io_context_pool.hpp"
 #include "../net_callback.hpp"
-#include "websocket_session.hpp"
+#include "websocket_ssl_session.hpp"
 
 namespace BTool
 {
     namespace BoostNet1_71
     {
         // Websocket服务
-        class WebsocketServer : public BoostNet::NetCallBack, public std::enable_shared_from_this<WebsocketServer>
+        class WebsocketSslServer : public BoostNet::NetCallBack, public std::enable_shared_from_this<WebsocketSslServer>
         {
             typedef AsioContextPool::ioc_type                   ioc_type;
             typedef boost::asio::ip::tcp::acceptor              accept_type;
-            typedef std::shared_ptr<WebsocketSession>           WebsocketSessionPtr;
-            typedef std::map<SessionID, WebsocketSessionPtr>    WebsocketSessionMap;
+            typedef std::shared_ptr<WebsocketSslSession>        WebsocketSslSessionPtr;
+            typedef std::map<SessionID, WebsocketSslSessionPtr> WebsocketSslSessionMap;
         
         public:
             // Websocket服务
             // handler: session返回回调
-            WebsocketServer(AsioContextPool& ioc, size_t max_wbuffer_size = WebsocketSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = WebsocketSession::MAX_READSINGLE_BUFFER_SIZE)
+            WebsocketSslServer(AsioContextPool& ioc, boost::asio::ssl::context& ctx, size_t max_wbuffer_size = WebsocketSslSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = WebsocketSslSession::MAX_READSINGLE_BUFFER_SIZE)
                 : m_ioc_pool(ioc)
                 , m_acceptor(ioc.get_io_context())
                 , m_handler(nullptr)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
+                , m_ctx(ctx)
             {
             }
 
-            ~WebsocketServer() {
+            ~WebsocketSslServer() {
                 m_handler = nullptr;
                 stop();
                 boost::system::error_code ec;
@@ -53,14 +53,13 @@ namespace BTool
             }
 
             // 非阻塞式启动服务
-            // ip: 监听IP,默认本地IPV4地址
+            // ip: 监听IP,支持域名,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
             bool start(unsigned short port, bool reuse_address = true) {
                 return start(nullptr, port, reuse_address);
             }
-            bool start(const char* ip, unsigned short port, bool reuse_address = true)
-            {
+            bool start(const char* ip, unsigned short port, bool reuse_address = true) {
                 if (!start_listen(ip, port, reuse_address)) {
                     return false;
                 }
@@ -69,14 +68,13 @@ namespace BTool
             }
 
             // 阻塞式启动服务,使用join_all等待
-            // ip: 监听IP,默认本地IPV4地址
+            // ip: 监听IP,支持域名,默认本地IPV4地址
             // port: 监听端口
             // reuse_address: 是否启用端口复用
             void run(unsigned short port, bool reuse_address = true) {
                 run(nullptr, port, reuse_address);
             }
-            void run(const char* ip, unsigned short port, bool reuse_address = true)
-            {
+            void run(const char* ip, unsigned short port, bool reuse_address = true) {
                 if (!start_listen(ip, port, reuse_address)) {
                     return;
                 }
@@ -166,7 +164,7 @@ namespace BTool
                     endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
                 }
                 else {
-                    endpoint = WebsocketSession::GetEndpointByHost(ip, port, ec);
+                    endpoint = WebsocketSslSession::GetEndpointByHost(ip, port, ec);
                     if (ec)
                         return false;
                 }
@@ -197,7 +195,7 @@ namespace BTool
                 try {
                     m_acceptor.async_accept(
                         boost::asio::make_strand(m_ioc_pool.get_io_context()),
-                        boost::beast::bind_front_handler(&WebsocketServer::handle_accept, shared_from_this()));
+                        boost::beast::bind_front_handler(&WebsocketSslServer::handle_accept, shared_from_this()));
                 }
                 catch (std::exception&) {
                     stop();
@@ -213,7 +211,7 @@ namespace BTool
                     return;
                 }
 
-                auto session_ptr = std::make_shared<WebsocketSession>(std::move(socket), m_max_wbuffer_size, m_max_rbuffer_size);
+                auto session_ptr = std::make_shared<WebsocketSslSession>(std::move(socket), m_ctx, m_max_wbuffer_size, m_max_rbuffer_size);
                 session_ptr->register_cbk(this);
 
                 {
@@ -227,12 +225,12 @@ namespace BTool
             }
 
             // 查找连接对象
-            WebsocketSessionPtr find_session(SessionID session_id) const
+            WebsocketSslSessionPtr find_session(SessionID session_id) const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
                 if (iter == m_sessions.end()) {
-                    return WebsocketSessionPtr();
+                    return WebsocketSslSessionPtr();
                 }
                 return iter->second;
             }
@@ -278,9 +276,11 @@ namespace BTool
             size_t                  m_max_wbuffer_size;
             size_t                  m_max_rbuffer_size;
 
+            boost::asio::ssl::context& m_ctx;
+
             mutable std::mutex      m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间
-            WebsocketSessionMap     m_sessions;
+            WebsocketSslSessionMap     m_sessions;
         };
     }
 }

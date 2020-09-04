@@ -122,7 +122,7 @@ public:
         return _getch();
     }
 
-    static std::vector<std::string> get_mac(const char* ifr_name = "eth0")
+    static std::vector<std::string> get_mac()
     {
         std::vector<std::string> rslt;
         DWORD MACaddress = 0;
@@ -193,6 +193,7 @@ public:
 
 #else
 
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -202,6 +203,7 @@ public:
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
+#include <string.h>
 
 class CommonOS
 {
@@ -219,31 +221,82 @@ public:
         return ch;
     }
 
-    static std::vector<std::string> get_mac(const char* ifr_name_str = "eth0")
+    static std::vector<std::string> get_mac()
     {
-
         std::vector<std::string> rslt;
 
-        struct ifreq ifreq;
-        int sock;
+        int fdSock = 0;
+        struct ifconf ifMyConf;
+        struct ifreq ifMyReq;
+        char szBuf[20480] = { 0 };
+        char* ip;
 
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        {
-            perror("socket");
+        ifMyConf.ifc_len = 2048;
+        ifMyConf.ifc_buf = szBuf;
+
+        if ((fdSock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+            return rslt;
+
+        if (ioctl(fdSock, SIOCGIFCONF, &ifMyConf)) {
+            close(fdSock);
             return rslt;
         }
-        strcpy(ifreq.ifr_name, ifr_name_str);
 
-        if (ioctl(sock, SIOCGIFHWADDR, &ifreq) < 0)
-        {
-            perror("ioctl");
-            return rslt;
+        ifreq* it = ifMyConf.ifc_req;
+        const struct ifreq* const end = it + (ifMyConf.ifc_len / sizeof(struct ifreq));
+
+        for (; it != end; ++it) {
+            strcpy(ifMyReq.ifr_name, it->ifr_name);
+            if (strcmp(ifMyReq.ifr_name, "lo") != 0 && ioctl(fdSock, SIOCGIFADDR, &ifMyReq) == 0) {
+                char mac[20] = { 0 };
+                snprintf(mac, 20, "%X:%X:%X:%X:%X:%X", (unsigned char)ifMyReq.ifr_hwaddr.sa_data[0],
+                    (unsigned char)ifMyReq.ifr_hwaddr.sa_data[1], (unsigned char)ifMyReq.ifr_hwaddr.sa_data[2],
+                    (unsigned char)ifMyReq.ifr_hwaddr.sa_data[3], (unsigned char)ifMyReq.ifr_hwaddr.sa_data[4],
+                    (unsigned char)ifMyReq.ifr_hwaddr.sa_data[5]);
+                rslt.push_back(mac);
+            }
         }
-        char mac[20] = { 0 };
-        snprintf(mac, 20, "%X:%X:%X:%X:%X:%X", (unsigned char)ifreq.ifr_hwaddr.sa_data[0], (unsigned char)ifreq.ifr_hwaddr.sa_data[1], (unsigned char)ifreq.ifr_hwaddr.sa_data[2], (unsigned char)ifreq.ifr_hwaddr.sa_data[3], (unsigned char)ifreq.ifr_hwaddr.sa_data[4], (unsigned char)ifreq.ifr_hwaddr.sa_data[5]);
-        rslt.push_back(mac);
+
+        close(fdSock);
         return rslt;
     }
+
+    static std::vector<std::string> get_ips() {
+        std::vector<std::string> rslt;
+
+        int fdSock = 0;
+        struct ifconf ifMyConf;
+        struct ifreq ifMyReq;
+        char szBuf[20480] = { 0 };
+        char* ip;
+
+        ifMyConf.ifc_len = 2048;
+        ifMyConf.ifc_buf = szBuf;
+
+        if ((fdSock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+            return rslt;
+
+        if (ioctl(fdSock, SIOCGIFCONF, &ifMyConf)) {
+            close(fdSock);
+            return rslt;
+        }
+
+        ifreq* it = ifMyConf.ifc_req;
+        const struct ifreq* const end = it + (ifMyConf.ifc_len / sizeof(struct ifreq));
+
+        for (; it != end; ++it) {
+            strcpy(ifMyReq.ifr_name, it->ifr_name);
+            if (strcmp(ifMyReq.ifr_name, "lo") != 0 && ioctl(fdSock, SIOCGIFADDR, &ifMyReq) == 0) {
+                struct sockaddr_in* sin;
+                sin = (struct sockaddr_in*) & ifMyReq.ifr_addr;
+                rslt.push_back((const char*)inet_ntoa(sin->sin_addr));
+            }
+        }
+
+        close(fdSock);
+        return  rslt;
+    }
+
 }; 
 #endif
 

@@ -226,7 +226,6 @@ namespace BTool
 
                 try
                 {
-                    read_msg.body() = "set tlsext host name error";
                     // 证书
                     if (!SSL_set_tlsext_host_name(stream.native_handle(), host))
                     {
@@ -235,29 +234,27 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(read_msg));
                     }
 
-                    read_msg.body() = "connect error";
                     // 连接
-                    auto const results = resolver.resolve(host, std::to_string(port));
+                    boost::asio::ip::tcp::resolver::query query(host, std::to_string(port));
+                    auto const results = resolver.resolve(query);
                     boost::beast::get_lowest_layer(stream).connect(results);
 
                     // 握手
-                    read_msg.body() = "handshake error";
                     stream.handshake(boost::asio::ssl::stream_base::client);
 
-                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(stream, std::forward<send_msg_type>(send_msg));
 
-                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
                     boost::beast::error_code ec;
                     stream.shutdown(ec);
                 }
-                catch (std::exception const&)
+                catch (std::exception const& ec)
                 {
+                    read_msg.body() = ec.what();
                     return std::forward_as_tuple(false, std::move(read_msg));
                 }
 
@@ -285,7 +282,8 @@ namespace BTool
                     }
 
                     // 连接
-                    auto const results = resolver.resolve(host, std::to_string(port));
+                    boost::asio::ip::tcp::resolver::query query(host, std::to_string(port));
+                    auto const results = resolver.resolve(query);
                     boost::beast::get_lowest_layer(stream).connect(results);
 
                     // 握手
@@ -329,7 +327,6 @@ namespace BTool
 
                 try
                 {
-                    read_msg.body() = "set tlsext host name error";
                     // 设置server_name扩展
                     if (!::SSL_set_tlsext_host_name(stream.native_handle(), host))
                     {
@@ -338,22 +335,18 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(read_msg));
                     }
 
-                    read_msg.body() = "connect error";
                     // 连接
                     boost::asio::ip::tcp::resolver::query query(host, "https");
                     auto const results = resolver.resolve(query);
                     boost::beast::get_lowest_layer(stream).connect(results);
 
                     // 握手
-                    read_msg.body() = "handshake error";
                     stream.handshake(boost::asio::ssl::stream_base::client);
 
-                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(stream, std::forward<send_msg_type>(send_msg));
 
-                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
@@ -361,8 +354,9 @@ namespace BTool
                     boost::beast::error_code ec;
                     stream.shutdown(ec);
                 }
-                catch (std::exception const&)
+                catch (std::exception const& ec)
                 {
+                    read_msg.body() = ec.what();
                     return std::forward_as_tuple(false, std::move(read_msg));
                 }
 
@@ -495,9 +489,8 @@ namespace BTool
                 if (ec || !m_atomic_switch.start())
                     return close();
 
-                if (m_connect_ip.empty()) {
-                    m_connect_ip = m_stream.lowest_layer().remote_endpoint(ec).address().to_v4().to_string();
-                }
+                if (m_connect_ip.empty())
+					m_connect_ip = m_stream.lowest_layer().remote_endpoint(ec).address().to_string(ec);
                 if (m_connect_port == 0)
                     m_connect_port = m_stream.lowest_layer().remote_endpoint(ec).port();
 

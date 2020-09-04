@@ -22,12 +22,14 @@ namespace BTool
             : m_func(nullptr)
             , m_thread(nullptr)
         {
+            m_atomic_switch.init();
         }
 
         thread_core(Function&& func)
             : m_func(func)
             , m_thread(nullptr)
         {
+            m_atomic_switch.init();
         }
 
         ~thread_core() {
@@ -43,24 +45,24 @@ namespace BTool
         }
 
         // 启动
-        bool start() {
+        void start() {
             if (!m_atomic_switch.start())
-                return true;
+                return;
 
             m_thread = new SafeThread(&thread_core::thread_fun, this);
-            return true;
+            return;
         }
 
         // 终止, 不可在回调的线程动力中终止线程操作
-        bool stop() {
+        void stop() {
             if (!m_atomic_switch.stop())
-                return true;
+                return;
 
             if (m_thread && m_thread->joinable())
                 m_thread->join();
 
-            m_atomic_switch.store_start_flag(false);
-            return true;
+            m_atomic_switch.reset();
+            return;
         }
 
         // 是否已启动

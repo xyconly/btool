@@ -152,11 +152,12 @@ namespace BTool
                     return;
                 }
 
-                if (m_connect_ip.empty()) {
-                    boost::beast::error_code ec;
-                    m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
+                boost::beast::error_code ec;
+                if (m_connect_ip.empty())
+					m_connect_ip = get_socket().remote_endpoint(ec).address().to_string(ec);
+                if (m_connect_port == 0)
                     m_connect_port = get_socket().remote_endpoint(ec).port();
-                }
+
 
                 // 服务端解析请求信息,当服务端开启时先开启读端口
                 m_stop_flag.exchange(false);
@@ -221,17 +222,15 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
-                    read_msg.body() = "connect error";
                     // 连接
-                    auto const results = resolver.resolve(host, std::to_string(port));
+                    boost::asio::ip::tcp::resolver::query query(host, std::to_string(port));
+                    auto const results = resolver.resolve(query);
                     stream.connect(results);
 
-                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(stream, std::forward<send_msg_type>(send_msg));
 
-                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
@@ -240,8 +239,9 @@ namespace BTool
                     stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
                     stream.socket().close(ec);
                 }
-                catch (std::exception const&)
+                catch (std::exception const& ec)
                 {
+                    read_msg.body() = ec.what();
                     return std::forward_as_tuple(false, std::move(read_msg));
                 }
 
@@ -261,7 +261,8 @@ namespace BTool
                 try
                 {
                     // 连接
-                    auto const results = resolver.resolve(host, std::to_string(port));
+                    boost::asio::ip::tcp::resolver::query query(host, std::to_string(port));
+                    auto const results = resolver.resolve(query);
                     stream.connect(results);
 
                     // 发送消息
@@ -303,17 +304,14 @@ namespace BTool
                 read_msg_type read_msg = {};
                 try
                 {
-                    read_msg.body() = "connect error";
                     // 连接
                     boost::asio::ip::tcp::resolver::query query(host, "http");
                     stream.connect(resolver.resolve(query));
 
-                    read_msg.body() = "write error";
                     // 发送消息
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(stream, std::forward<send_msg_type>(send_msg));
 
-                    read_msg.body() = "";
                     // 读取应答
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
@@ -322,8 +320,9 @@ namespace BTool
                     stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
                     stream.socket().close(ec);
                 }
-                catch (std::exception const&)
+                catch (std::exception const& ec)
                 {
+                    read_msg.body() = ec.what();
                     return std::forward_as_tuple(false, std::move(read_msg));
                 }
 

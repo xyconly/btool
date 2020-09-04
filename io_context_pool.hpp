@@ -93,13 +93,16 @@ namespace BTool
         void stop_sync() {
             if (m_io_context) {
                 m_io_context->stop();
-                delete m_io_context;
-                m_io_context = nullptr;
-
-                delete m_io_work;
-                m_io_work = nullptr;
             }
             m_threads.join_all();
+
+            if (m_io_context) {
+                delete m_io_work;
+                m_io_work = nullptr;
+
+                delete m_io_context;
+                m_io_context = nullptr;
+            }
         }
 
     private:

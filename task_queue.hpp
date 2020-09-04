@@ -24,12 +24,33 @@ Note:  condition_variable使用注意:在进行wait时会首先
 
 namespace BTool
 {
-    template<typename TTaskType>
-    class TaskQueueBase {
-        // 禁止拷贝
-        TaskQueueBase(const TaskQueueBase&) = delete;
-        TaskQueueBase& operator=(const TaskQueueBase&) = delete;
+    /*************************************************
+               任务线程队列基类
+    *************************************************/
 
+    class TaskQueueBaseVirtual {
+        // 禁止拷贝
+        TaskQueueBaseVirtual(const TaskQueueBaseVirtual&) = delete;
+        TaskQueueBaseVirtual& operator=(const TaskQueueBaseVirtual&) = delete;
+
+    protected:
+        TaskQueueBaseVirtual() {}
+
+    public:
+        // 当前队列是否为空
+        virtual bool empty() const = 0;
+        // 清空当前队列
+        virtual void clear() = 0;
+        // 重新开启当前当前
+        virtual void start() = 0;
+        // 终止当前
+        virtual void stop() = 0;
+        // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
+        virtual void pop_task() = 0;
+    };
+
+    template<typename TTaskType>
+    class TaskQueueBase : public TaskQueueBaseVirtual {
     public:
         TaskQueueBase(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
@@ -41,8 +62,44 @@ namespace BTool
             stop();
         }
 
-        // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
-        void pop_task() {
+        bool empty() const override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            return !not_empty();
+        }
+
+        void clear() override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            std::queue<TTaskType> empty;
+            m_queue.swap(empty);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void start() override {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+
+            std::unique_lock<std::mutex> locker(this->m_mtx);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void stop() override {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+
+            std::unique_lock<std::mutex> locker(this->m_mtx);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void pop_task() override {
             TTaskType pop_task(nullptr);
             {
                 std::unique_lock<std::mutex> locker(this->m_mtx);
@@ -59,30 +116,6 @@ namespace BTool
             if (pop_task) {
                 invoke(pop_task);
             }
-        }
-
-        void stop() {
-            // 是否已终止判断
-            bool target(false);
-            if (!m_bstop.compare_exchange_strong(target, true)) {
-                return;
-            }
-
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
-        }
-
-        void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            std::queue<TTaskType> empty;
-            m_queue.swap(empty);
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
-        }
-
-        bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            return !not_empty();
         }
 
         bool full() const {
@@ -210,12 +243,8 @@ namespace BTool
 
 
     template<typename TPropType, typename TTaskType>
-    class LastTaskQueueBase
+    class LastTaskQueueBase : public TaskQueueBaseVirtual
     {
-        // 禁止拷贝
-        LastTaskQueueBase(const LastTaskQueueBase&) = delete;
-        LastTaskQueueBase& operator=(const LastTaskQueueBase&) = delete;
-
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         LastTaskQueueBase(size_t max_task_count = 0)
@@ -227,9 +256,44 @@ namespace BTool
             stop();
         }
 
-        // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
-        void pop_task() {
+        bool empty() const override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            return !not_empty();
+        }
+
+        void clear() override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_wait_tasks.clear();
+            m_wait_props.clear();
+            m_cv_not_full.notify_all();
+        }
+
+        void start() override {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void stop() override {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void pop_task() override {
             TTaskType pop_task(nullptr);
+            TPropType pop_type;
 
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
@@ -242,17 +306,26 @@ namespace BTool
                 if (m_wait_props.empty())
                     return;
 
-                auto& pop_type = m_wait_props.front();
-                // 获取任务指针
-                pop_task = std::move(m_wait_tasks[pop_type]);
-                m_wait_tasks.erase(pop_type);
-                m_wait_props.pop_front();
+                for (auto pop_type_iter = m_wait_props.begin(); pop_type_iter != m_wait_props.end(); pop_type_iter++) {
+                    if (m_cur_pop_props.find(*pop_type_iter) != m_cur_pop_props.end())
+                        continue;
 
-                m_cv_not_full.notify_one();
+                    pop_type = *pop_type_iter;
+                    // 获取任务指针
+                    pop_task = std::move(m_wait_tasks[pop_type]);
+                    m_wait_tasks.erase(pop_type);
+                    m_wait_props.erase(pop_type_iter);
+                    m_cur_pop_props.emplace(pop_type);
+                    break;
+                }
             }
 
             if (pop_task) {
                 invoke(pop_task);
+
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cur_pop_props.erase(pop_type);
+                m_cv_not_full.notify_one();
             }
         }
 
@@ -263,29 +336,6 @@ namespace BTool
             m_wait_props.remove_if([prop](const TPropType& value)->bool {return (value == prop); });
             m_wait_tasks.erase(std::forward<AsTPropType>(prop));
             m_cv_not_full.notify_one();
-        }
-
-        void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_wait_tasks.clear();
-            m_wait_props.clear();
-            m_cv_not_full.notify_all();
-        }
-
-        void stop() {
-            // 是否已终止判断
-            bool target(false);
-            if (!m_bstop.compare_exchange_strong(target, true)) {
-                return;
-            }
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
-        }
-
-        bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            return !not_empty();
         }
 
         bool full() const {
@@ -322,6 +372,8 @@ namespace BTool
         std::list<TPropType>             m_wait_props;
         // 总待执行任务队列属性及其对应任务,其个数必须始终与m_wait_tasks个数同步
         std::map<TPropType, TTaskType>   m_wait_tasks;
+        // 当前正在pop任务属性
+        std::set<TPropType>              m_cur_pop_props;
         // 最大任务个数,当为0时表示无限制
         size_t                           m_max_task_count;
 
@@ -426,14 +478,9 @@ namespace BTool
     };
 
 
-
     template<typename TPropType, typename TTaskType>
-    class SerialTaskQueueBase
+    class SerialTaskQueueBase : public TaskQueueBaseVirtual
     {
-        // 禁止拷贝
-        SerialTaskQueueBase(const SerialTaskQueueBase&) = delete;
-        SerialTaskQueueBase& operator=(const SerialTaskQueueBase&) = delete;
-
     protected:
         // 连续属性双向链表,用于存储同一属性上下位置,及FIFO顺序
         // 非线程安全
@@ -649,8 +696,42 @@ namespace BTool
             stop();
         }
 
-        // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
-        void pop_task() {
+        bool empty() const override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            return m_wait_tasks.empty();
+        }
+
+        void clear() override {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_wait_props.clear();
+            m_wait_tasks.clear();
+            m_cur_props.clear();
+            m_cv_not_full.notify_all();
+        }
+
+        void start() override {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void stop() override {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_empty.notify_all();
+            m_cv_not_full.notify_all();
+        }
+
+        void pop_task() override {
             TTaskType next_task(nullptr);
             TPropType prop_type;
 
@@ -698,22 +779,6 @@ namespace BTool
             m_cv_not_full.notify_one();
         }
 
-        void stop() {
-            // 是否已终止判断
-            bool target(false);
-            if (!m_bstop.compare_exchange_strong(target, true)) {
-                return;
-            }
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_empty.notify_all();
-            m_cv_not_full.notify_all();
-        }
-
-        bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            return m_wait_tasks.empty();
-        }
-
         bool full() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return !not_full();
@@ -722,14 +787,6 @@ namespace BTool
         size_t size() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return m_wait_tasks.size();
-        }
-
-        void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_wait_props.clear();
-            m_wait_tasks.clear();
-            m_cur_props.clear();
-            m_cv_not_full.notify_all();
         }
 
     protected:

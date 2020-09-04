@@ -10,14 +10,14 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
                 class WebsocketClient{
                     ...
                 private:
-                    ios_type            m_ios;
+                    ioc_type                m_ioc;
                     WebsocketSession    m_session;
                 };
             当然如果外部主动控制其先后顺序会更好,例如:
                 class WebsocketClient {
                 public:
-                    WebsocketClient(ios_type& ios) {
-                        m_session = std::make_shared<WebsocketSession>(ios);
+                    WebsocketClient(ioc_type& ioc) {
+                        m_session = std::make_shared<WebsocketSession>(ioc);
                     }
                     ~WebsocketClient() {
                         m_session.reset();
@@ -29,8 +29,6 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 
 #pragma once
 
-// 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
-#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 #include <mutex>
 #include <string>
@@ -41,6 +39,9 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 #include "../net_callback.hpp"
 #include "../net_buffer.hpp"
 #include "../../atomic_switch.hpp"
+
+// 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
+#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 namespace BTool
 {
@@ -64,6 +65,10 @@ namespace BTool
             };
 
         public:
+            // Websocket连接对象
+            // ioc: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ioc对象
+            // max_wbuffer_size: 最大写缓冲区大小
+            // max_rbuffer_size: 单次读取最大缓冲区大小
             WebsocketSession(boost::asio::ip::tcp::socket&& socket, size_t max_wbuffer_size, size_t max_rbuffer_size)
                 : m_resolver(socket.get_executor())
                 , m_socket(std::move(socket))
@@ -95,6 +100,24 @@ namespace BTool
             ~WebsocketSession() {
                 m_handler = nullptr;
                 shutdown();
+            }
+
+            static boost::asio::ip::tcp::endpoint GetEndpointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
+                ec = boost::asio::error::host_not_found;
+                boost::asio::io_context ioc;
+                boost::asio::ip::tcp::resolver rslv(ioc);
+                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
+                try {
+                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
+                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
+                        ec.clear();
+                        return iter->endpoint();
+                    }
+                }
+                catch (...) {
+                    ec = boost::asio::error::fault;
+                }
+                return boost::asio::ip::tcp::endpoint();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -163,18 +186,21 @@ namespace BTool
                         if (real_ip_iter != req.end()) {
                             m_connect_ip = real_ip_iter->value().to_string();
                         }
+                        else {
+                            real_ip_iter = req.find("X-Real-IP");
+                            if (real_ip_iter != req.end()) {
+                                m_connect_ip = real_ip_iter->value().to_string();
+                            }
+                        }
                      },
-                    boost::beast::bind_front_handler(
-                        &WebsocketSession::handle_start,
-                        shared_from_this()));
-            }
+                    boost::beast::bind_front_handler(&WebsocketSession::handle_start, shared_from_this()));
 #else
                 m_socket.async_accept(
                     boost::beast::bind_front_handler(
                         &WebsocketSession::handle_start,
                         shared_from_this()));
-            }
 #endif
+            }
 
             // 同步关闭
             void shutdown() {
@@ -288,9 +314,6 @@ namespace BTool
                     return;
                 }
 
-                m_connect_ip = end_point.address().to_v4().to_string();
-                m_connect_port = end_point.port();
-
                 boost::beast::get_lowest_layer(m_socket).expires_never();
 
                 if (m_hand_addr.empty())
@@ -306,7 +329,7 @@ namespace BTool
                             std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async");
                     }));
 
-                m_socket.async_handshake(/*m_handshake_res, */m_connect_ip, m_hand_addr,
+                m_socket.async_handshake(m_connect_ip, m_hand_addr,
                     boost::beast::bind_front_handler(&WebsocketSession::handle_handshake, shared_from_this()));
             }
 
@@ -327,9 +350,8 @@ namespace BTool
                     return;
                 }
 
-                if (m_connect_ip.empty()) {
-                    m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
-                }
+                if (m_connect_ip.empty())
+					m_connect_ip = get_socket().remote_endpoint(ec).address().to_string(ec);
                 if(m_connect_port == 0)
                     m_connect_port = get_socket().remote_endpoint(ec).port();
 

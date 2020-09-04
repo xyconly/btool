@@ -237,7 +237,6 @@ namespace BTool {
             , m_timer(nullptr)
             , m_timer_queue(workers)
         {
-            m_atomic_switch.init();
         }
 
         ~TimerManager() {
@@ -246,7 +245,7 @@ namespace BTool {
         }
 
         void start() {
-            if (!m_atomic_switch.start())
+            if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
 
             m_ios_pool.start();
@@ -259,7 +258,7 @@ namespace BTool {
 
             m_ios_pool.stop();
 
-            m_atomic_switch.store_start_flag(false);
+            m_atomic_switch.reset();
         }
 
         // 无循环定时器

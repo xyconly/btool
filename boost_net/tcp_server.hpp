@@ -10,11 +10,12 @@ Note:    server本身存储session对象,外部仅提供ID进行操作
 #pragma once
 
 #include <mutex>
+#include <set>
 #include <map>
+#include <boost/lexical_cast.hpp>
 #include "../io_service_pool.hpp"
 #include "tcp_session.hpp"
 #include "net_callback.hpp"
-
 namespace BTool
 {
     namespace BoostNet
@@ -42,7 +43,8 @@ namespace BTool
             ~TcpServer() {
                 m_handler = nullptr;
                 stop();
-                m_acceptor.close();
+                boost::system::error_code ec;
+                m_acceptor.close(ec);
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -104,6 +106,18 @@ namespace BTool
                 }
                 return sess_ptr->write(send_msg, size);
             }
+            // 异步发送所有消息
+            // set中返回失败的session id
+            std::set<SessionID> writeAll(const char* send_msg, size_t size)
+            {
+                std::set<SessionID> err_session;
+                std::lock_guard<std::mutex> lock(m_mutex);
+                for (auto& sess_ptr : m_sessions) {
+                    if (!sess_ptr.second->write(send_msg, size))
+                        err_session.emplace(sess_ptr.first);
+                }
+                return err_session;
+            }
 
             // 在当前消息尾追加
             // max_package_size: 单个消息最大包长
@@ -126,8 +140,7 @@ namespace BTool
             }
 
             // 同步关闭连接,注意此时的close_cbk依旧在当前线程下
-            void close(SessionID session_id)
-            {
+            void close(SessionID session_id) {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
                     sess_ptr->shutdown();
@@ -155,6 +168,23 @@ namespace BTool
             }
 
         private:
+            static boost::asio::ip::tcp::endpoint GetPointByName(const char* host, unsigned short port, boost::system::error_code& ec) {
+                ec = boost::asio::error::host_not_found;
+                boost::asio::io_context ioc;
+                boost::asio::ip::tcp::resolver rslv(ioc);
+                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
+                try {
+                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
+                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
+                        ec.clear();
+                        return iter->endpoint();
+                    }
+                }
+                catch (...) {
+                    ec = boost::asio::error::fault;
+                }
+                return boost::asio::ip::tcp::endpoint();
+            }
             // 启动监听端口
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
@@ -164,7 +194,7 @@ namespace BTool
                     endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
                 }
                 else {
-                    endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip, ec), port);
+                    endpoint = GetPointByName(ip, port, ec);
                     if (ec)
                         return false;
                 }
@@ -190,8 +220,7 @@ namespace BTool
             }
 
             // 开始监听
-            void start_accept()
-            {
+            void start_accept() {
                 try {
                     TcpSessionPtr session = std::make_shared<TcpSession>(m_ios_pool.get_io_service(), m_max_wbuffer_size, m_max_rbuffer_size);
                     m_acceptor.async_accept(session->get_socket(), boost::bind(&TcpServer::handle_accept, this, boost::placeholders::_1, session));
@@ -202,8 +231,7 @@ namespace BTool
             }
 
             // 处理接听回调
-            void handle_accept(const boost::system::error_code& ec, const TcpSessionPtr& session_ptr)
-            {
+            void handle_accept(const boost::system::error_code& ec, const TcpSessionPtr& session_ptr) {
                 start_accept();
                 if (ec) {
                     session_ptr->shutdown();
@@ -214,7 +242,9 @@ namespace BTool
 
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
-                    m_sessions.emplace(session_ptr->get_session_id(), session_ptr);
+                    bool rslt = m_sessions.emplace(session_ptr->get_session_id(), session_ptr).second;
+                    if (!rslt)
+                        return session_ptr->shutdown();
                 }
 
 //                 session_ptr->start();
@@ -224,8 +254,7 @@ namespace BTool
             }
 
             // 查找连接对象
-            TcpSessionPtr find_session(SessionID session_id) const
-            {
+            TcpSessionPtr find_session(SessionID session_id) const {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
                 if (iter == m_sessions.end()) {
@@ -235,16 +264,14 @@ namespace BTool
             }
 
             // 删除连接对象
-            void remove_session(SessionID session_id) 
-            {
+            void remove_session(SessionID session_id) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_sessions.erase(session_id);
             }
 
         private:
             // 开启连接回调
-            virtual void on_open_cbk(SessionID session_id) override
-            {
+            virtual void on_open_cbk(SessionID session_id) override {
                 if(m_handler)
                     m_handler->on_open_cbk(session_id);
             }

@@ -645,9 +645,15 @@ namespace BTool
 
     public:
         // 获取包含时间字段
-        DateTimeStyle get_style() const
-        {
+        DateTimeStyle get_style() const {
             return m_style;
+        }
+
+        // 设置时分秒
+        void set_time(int hour, int minute, int second) {
+            m_hour = hour;
+            m_minute = minute;
+            m_second = second;
         }
 
         // 增加天数
