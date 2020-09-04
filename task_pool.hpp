@@ -56,7 +56,6 @@ namespace BTool
 
             if (!bwait) {
                 m_task_queue->clear();
-                m_task_queue->stop();
             }
 
             std::vector<SafeThread*> tmp_threads;
@@ -106,8 +105,10 @@ namespace BTool
         // 线程池线程
         void thread_fun(size_t thread_ver) {
             while (true) {
-                if (m_atomic_switch.has_stoped() && m_task_queue->empty())
+                if (m_atomic_switch.has_stoped() && m_task_queue->empty()) {
+                    m_task_queue->stop();
                     break;
+                }
 
                 if (thread_ver < m_cur_thread_ver.load())
                     break;
