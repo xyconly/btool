@@ -5,18 +5,18 @@ Purpose:    tcp连接类
 Note:       为了外部尽可能的无缓存,外部操作读取数据后需要主动调用consume_read_buf,
             以此来删除读缓存
 
-Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放ios对象
+Special Note: 构造函数中ioc_type& ios为外部引用,需要优先释放该对象之后才能释放ios对象
             这就导致外部单独使用使用需要先声明ios对象,然后声明该对象,例如:
                 class TcpClient{
                     ...
                 private:
-                    ios_type    m_ios;
-                    TcpSession  m_session;
+                    ioc_type                    m_ios;
+                    std::shared_ptr<TcpSession> m_session;
                 };
             当然如果外部主动控制其先后顺序会更好,例如:
                 class TcpClient {
                 public:
-                    TcpClient(ios_type& ios) {
+                    TcpClient(ioc_type& ios) {
                         m_session = std::make_shared<TcpSession>(ios);
                     }
                     ~TcpClient() {
@@ -45,7 +45,7 @@ namespace BTool
         {
         public:
             typedef boost::asio::ip::tcp::socket        socket_type;
-            typedef boost::asio::io_service             ios_type;
+            typedef boost::asio::io_context             ioc_type;
             typedef ReadBuffer                          ReadBufferType;
             typedef WriteBuffer                         WriteBufferType;
             typedef WriteBuffer::WriteMemoryStreamPtr   WriteMemoryStreamPtr;
@@ -62,8 +62,8 @@ namespace BTool
             // ios: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ios对象
             // max_buffer_size: 最大写缓冲区大小
             // max_rbuffer_size: 单次读取最大缓冲区大小
-            TcpSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_io_service(ios)
+            TcpSession(ioc_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
+                : m_io_context(ios)
                 , m_socket(ios)
                 , m_overtime_timer(ios)
                 , m_max_wbuffer_size(max_wbuffer_size)
@@ -91,9 +91,9 @@ namespace BTool
                 return m_socket;
             }
 
-            // 获得io_service
-            ios_type& get_io_service() {
-                return m_io_service;
+            // 获得io_context
+            ioc_type& get_io_context() {
+                return m_io_context;
             }
 
             // 是否已开启
@@ -337,7 +337,7 @@ namespace BTool
         private:
             // asio的socket封装
             socket_type             m_socket;
-            ios_type&               m_io_service;
+            ioc_type&               m_io_context;
             SessionID               m_session_id;
 
             boost::asio::deadline_timer m_overtime_timer;

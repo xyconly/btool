@@ -13,7 +13,7 @@ Note:    server本身存储session对象,外部仅提供ID进行操作
 #include <set>
 #include <map>
 #include <boost/lexical_cast.hpp>
-#include "../io_service_pool.hpp"
+#include "../io_context_pool.hpp"
 #include "tcp_session.hpp"
 #include "net_callback.hpp"
 namespace BTool
@@ -23,7 +23,7 @@ namespace BTool
         // TCP服务
         class TcpServer : public NetCallBack
         {
-            typedef AsioServicePool::ios_type               ios_type;
+            typedef AsioContextPool::ioc_type               ioc_type;
             typedef boost::asio::ip::tcp::acceptor          accept_type;
             typedef std::shared_ptr<TcpSession>             TcpSessionPtr;
             typedef std::map<SessionID, TcpSessionPtr>      TcpSessionMap;
@@ -31,9 +31,9 @@ namespace BTool
         public:
             // TCP服务
             // handler: session返回回调
-            TcpServer(AsioServicePool& ios, size_t max_wbuffer_size = TcpSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = TcpSession::MAX_READSINGLE_BUFFER_SIZE)
-                : m_ios_pool(ios)
-                , m_acceptor(ios.get_io_service())
+            TcpServer(AsioContextPool& ioc, size_t max_wbuffer_size = TcpSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = TcpSession::MAX_READSINGLE_BUFFER_SIZE)
+                : m_ioc_pool(ioc)
+                , m_acceptor(ioc.get_io_context())
                 , m_handler(nullptr)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
@@ -65,7 +65,7 @@ namespace BTool
                 if (!start_listen(ip, port, reuse_address)) {
                     return false;
                 }
-                m_ios_pool.start();
+                m_ioc_pool.start();
                 return true;
             }
 
@@ -81,13 +81,13 @@ namespace BTool
                 if (!start_listen(ip, port, reuse_address)) {
                     return;
                 }
-                m_ios_pool.run();
+                m_ioc_pool.run();
             }
 
             // 终止当前服务
             void stop() {
                 clear();
-                m_ios_pool.stop();
+                m_ioc_pool.stop();
             }
 
             // 清空当前所有连接
@@ -222,7 +222,7 @@ namespace BTool
             // 开始监听
             void start_accept() {
                 try {
-                    TcpSessionPtr session = std::make_shared<TcpSession>(m_ios_pool.get_io_service(), m_max_wbuffer_size, m_max_rbuffer_size);
+                    TcpSessionPtr session = std::make_shared<TcpSession>(m_ioc_pool.get_io_context(), m_max_wbuffer_size, m_max_rbuffer_size);
                     m_acceptor.async_accept(session->get_socket(), boost::bind(&TcpServer::handle_accept, this, boost::placeholders::_1, session));
                 }
                 catch (std::exception&) {
@@ -249,8 +249,8 @@ namespace BTool
 
 //                 session_ptr->start();
 
-                // 把tcp_session的start的调用交给io_service,由io_service来决定何时执行,可以增加并发度
-                session_ptr->get_io_service().dispatch(boost::bind(&TcpSession::start, session_ptr));
+                // 把tcp_session的start的调用交给io_context,由io_context来决定何时执行,可以增加并发度
+                session_ptr->get_io_context().dispatch(boost::bind(&TcpSession::start, session_ptr));
             }
 
             // 查找连接对象
@@ -296,7 +296,7 @@ namespace BTool
             }
 
         private:
-            AsioServicePool&    m_ios_pool;
+            AsioContextPool&    m_ioc_pool;
             accept_type         m_acceptor;
             NetCallBack*        m_handler;
             size_t              m_max_wbuffer_size;

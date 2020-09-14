@@ -12,7 +12,7 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
         public:
             TestHttpClient()
             {
-                m_session = std::make_shared<session_type>(get_io_service());
+                m_session = std::make_shared<session_type>(get_io_context());
                 m_session->register_cbk(this);
                 m_session->connect(ip, port);
             }
@@ -103,8 +103,8 @@ namespace BTool
             }
 
             // 获得io_service
-            ios_type& get_io_service() {
-                return m_socket.get_io_service();
+            ios_type& get_io_context() {
+                return m_socket.get_io_context();
             }
 
             // 是否已开启

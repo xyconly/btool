@@ -17,7 +17,7 @@ Note:     插入时间复杂度: O(logN)
 #include <memory>
 #include <boost/asio.hpp>
 #include "task_pool.hpp"
-#include "io_service_pool.hpp"  // 便于启停,可直接使用boost::asio::io_service
+#include "io_context_pool.hpp"  // 便于启停,可直接使用boost::asio::io_context
 #include "atomic_switch.hpp"
 
 namespace BTool {
@@ -231,7 +231,7 @@ namespace BTool {
         // space_millsecond: 时间轮切片时间, 单位毫秒, 为0时则不切分,但不建议
         TimerManager(unsigned long long space_millsecond, int workers)
             : m_space_millsecond(space_millsecond)
-            , m_ios_pool(1)
+            , m_ioc_pool(1)
             , m_cur_task(nullptr)
             , m_next_id(INVALID_TID)
             , m_timer(nullptr)
@@ -248,15 +248,15 @@ namespace BTool {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
 
-            m_ios_pool.start();
-            m_timer = std::make_shared<my_system_timer>(m_ios_pool.get_io_service());
+            m_ioc_pool.start();
+            m_timer = std::make_shared<my_system_timer>(m_ioc_pool.get_io_context());
         }
 
         void stop() {
             if (!m_atomic_switch.stop())
                 return;
 
-            m_ios_pool.stop();
+            m_ioc_pool.stop();
 
             m_atomic_switch.reset();
         }
@@ -409,7 +409,7 @@ namespace BTool {
 
     private:
         unsigned long long      m_space_millsecond;//切片时间,单位毫秒
-        AsioServicePool         m_ios_pool;
+        AsioContextPool         m_ioc_pool;
         timer_ptr               m_timer;         // 定时器
 
         mutable std::mutex      m_queue_mtx;

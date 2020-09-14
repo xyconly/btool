@@ -100,7 +100,7 @@ namespace BTool {
             }
 
             b64 = BIO_new(BIO_f_base64());
-            bmem = BIO_new_mem_buf(str.c_str(), (int)str.length());
+            bmem = BIO_new_mem_buf((void*)str.c_str(), (int)str.length());
             bmem = BIO_push(b64, bmem);
             buffer_len = BIO_read(bmem, decode, (int)str.length());
             decode[buffer_len] = 0;

@@ -44,7 +44,8 @@ namespace BTool
         // 重新开启当前当前
         virtual void start() = 0;
         // 终止当前
-        virtual void stop() = 0;
+        // bwait: 是否强制等待当前所有队列执行完毕后才结束
+        virtual void stop(bool bwait = false) = 0;
         // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
         virtual void pop_task() = 0;
     };
@@ -58,7 +59,7 @@ namespace BTool
         {}
 
         virtual ~TaskQueueBase() {
-            clear();
+            //clear();
             stop();
         }
 
@@ -87,16 +88,20 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void stop() override {
+        void stop(bool bwait = false) override {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
             }
 
-            std::unique_lock<std::mutex> locker(this->m_mtx);
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            if (bwait) {
+                std::unique_lock<std::mutex> locker(this->m_mtx);
+                m_cv_not_full.notify_all();
+                m_cv_not_empty.notify_all();
+                return;
+            }
+            clear();
         }
 
         void pop_task() override {
@@ -105,7 +110,7 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(this->m_mtx);
                 this->m_cv_not_empty.wait(locker, [this] { return this->m_bstop.load() || this->not_empty(); });
 
-                if (this->m_bstop.load())
+                if (this->m_bstop.load() && !not_empty())
                     return;
 
                 pop_task = std::move(this->m_queue.front());
@@ -252,7 +257,7 @@ namespace BTool
             , m_bstop(false)
         {}
         virtual ~LastTaskQueueBase() {
-            clear();
+            //clear();
             stop();
         }
 
@@ -266,6 +271,7 @@ namespace BTool
             m_wait_tasks.clear();
             m_wait_props.clear();
             m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
         }
 
         void start() override {
@@ -280,15 +286,19 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void stop() override {
+        void stop(bool bwait = false) override {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
             }
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            if (bwait) {
+                std::unique_lock<std::mutex> locker(this->m_mtx);
+                m_cv_not_full.notify_all();
+                m_cv_not_empty.notify_all();
+                return;
+            }
+            clear();
         }
 
         void pop_task() override {
@@ -299,7 +309,7 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (m_bstop.load())
+                if (m_bstop.load() && !not_empty())
                     return;
 
                 // 是否已无可pop队列
@@ -692,7 +702,7 @@ namespace BTool
         {}
 
         virtual ~SerialTaskQueueBase() {
-            clear();
+            //clear();
             stop();
         }
 
@@ -707,6 +717,7 @@ namespace BTool
             m_wait_tasks.clear();
             m_cur_props.clear();
             m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
         }
 
         void start() override {
@@ -720,15 +731,19 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void stop() override {
+        void stop(bool bwait = false) override {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
             }
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_empty.notify_all();
-            m_cv_not_full.notify_all();
+            if (bwait) {
+                std::unique_lock<std::mutex> locker(this->m_mtx);
+                m_cv_not_full.notify_all();
+                m_cv_not_empty.notify_all();
+                return;
+            }
+            clear();
         }
 
         void pop_task() override {
@@ -739,7 +754,7 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (m_bstop.load())
+                if (m_bstop.load() && !not_empty())
                     return;
 
                 prop_type = m_wait_props.pop_front();
@@ -849,8 +864,7 @@ namespace BTool
             : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
 
-        ~SerialTaskQueue() {
-        }
+        ~SerialTaskQueue() {}
 
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename AsTFunction>
@@ -890,8 +904,7 @@ namespace BTool
             : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
 
-        ~SerialTupleTaskQueue() {
-        }
+        ~SerialTupleTaskQueue() {}
 
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename TFunction, typename... Args>

@@ -15,7 +15,7 @@ Note:       客户端可直接使用HttpsClientSession,调用HttpClientNetCallBack回调
             {
                 boost::beast::error_code ignore_ec;
                 load_root_certificates(m_context, ignore_ec);
-                m_session = std::make_shared<session_type>(get_io_service(), m_context);
+                m_session = std::make_shared<session_type>(get_io_context(), m_context);
                 m_session->register_cbk(this);
                 m_session->connect(ip, port);
             }
