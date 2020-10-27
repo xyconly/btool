@@ -56,3 +56,5 @@ basic tool 基础工具
 -   加密解密序列化: aes.hpp / des.hpp / md5.hpp
 
 -   结合Protobuf实现的统一消息打包解包pb_message_package,结合协议代码自动生成工具可快速编写协议,使开发者仅关注一次协议制定之后,将精力集中于业务开发
+
+-   基于Boost TCP服务的简单RPC通讯: BTool::BoostRpc::RpcServer / BTool::BoostRpc::RpcClient
