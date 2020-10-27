@@ -227,8 +227,8 @@ namespace BTool {
 
     public:
         // 执行回调时的线程池数
-        // workers: 回调执行工作线程数,为0时默认系统核数;注意此线程数并非定时器线程数,定时器线程始终只有一个
         // space_millsecond: 时间轮切片时间, 单位毫秒, 为0时则不切分,但不建议
+        // workers: 回调执行工作线程数,为0时默认系统核数;注意此线程数并非定时器线程数,定时器线程始终只有一个
         TimerManager(unsigned long long space_millsecond, int workers)
             : m_space_millsecond(space_millsecond)
             , m_ioc_pool(1)
@@ -259,6 +259,36 @@ namespace BTool {
             m_ioc_pool.stop();
 
             m_atomic_switch.reset();
+        }
+
+        // 循环立即触发定时器
+        // insert_now(interval_ms, loop_count, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert_now(interval_ms, loop_count, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert_now(unsigned int interval_ms, int loop_count, TFunction&& func) {
+            return insert(interval_ms, loop_count, std::chrono::system_clock::now(), std::forward<TFunction>(func));
+        }
+        // 无循环立即触发定时器
+        // insert_now_once([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert_now_once(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert_now_once(TFunction&& func) {
+            return insert(0, 1, std::chrono::system_clock::now(), std::forward<TFunction>(func));
+        }
+
+        // 循环指定漂移时间触发定时器
+        // insert_duration(interval_ms, loop_count, duration_ms, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert_duration(interval_ms, loop_count, duration_ms, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert_duration(unsigned int interval_ms, int loop_count, unsigned int duration_ms, TFunction&& func) {
+            return insert(interval_ms, loop_count, std::chrono::system_clock::now() + std::chrono::milliseconds(duration_ms), std::forward<TFunction>(func));
+        }
+        // 无循环指定漂移时间触发定时器
+        // insert_duration_once(duration_ms, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
+        // insert_duration_once(duration_ms, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
+        template<typename TFunction>
+        TimerId insert_duration_once(unsigned int duration_ms, TFunction&& func) {
+            return insert(0, 1, std::chrono::system_clock::now() + std::chrono::milliseconds(duration_ms), std::forward<TFunction>(func));
         }
 
         // 无循环定时器

@@ -133,7 +133,7 @@ public:
         DWORD dwStatus = GetAdaptersInfo(      // Call GetAdapterInfo
             AdapterInfo,                 // [out] buffer to receive data
             &dwBufLen);                  // [in] size of receive data buffer
-        assert(dwStatus == ERROR_SUCCESS);  // Verify return value is
+        //assert(dwStatus == ERROR_SUCCESS);  // Verify return value is
                                             // valid, no buffer overflow
 
         PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo; // Contains pointer to

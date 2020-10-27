@@ -9,6 +9,7 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #ifdef _MSC_VER
 # include <stdint.h>
@@ -19,8 +20,15 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 namespace BTool {
     class MemoryStream
     {
+        template <typename> struct is_tuple : std::false_type {};
+        template <typename ...T> struct is_tuple<std::tuple<T...>> : std::true_type {};
+        template <typename ...T> struct is_tuple<std::tuple<T...>&> : std::true_type {};
+        template <typename ...T> struct is_tuple<const std::tuple<T...>&> : std::true_type {};
+        template <typename ...T> struct is_tuple<std::tuple<T...>&&> : std::true_type {};
+
         MemoryStream(MemoryStream&& rhs) = delete;
         MemoryStream(const MemoryStream& rhs) = delete;
+        MemoryStream& operator=(const MemoryStream& rhs) = delete;
 
     public:
         // 内存管理流,此后将自动管理内存释放
@@ -31,6 +39,15 @@ namespace BTool {
             , m_buffer(nullptr)
             , m_auto_delete(true)
         {
+        }
+
+        MemoryStream(size_t capacity)
+            : m_buffer_size(0)
+            , m_offset(0)
+            , m_capacity(capacity)
+            , m_auto_delete(true)
+        {
+            m_buffer = (char*)malloc(capacity);
         }
 
         // 内存管理流,此时将不再自动管理内存释放
@@ -45,12 +62,29 @@ namespace BTool {
         {
         }
 
+        MemoryStream(std::string_view data)
+            : m_buffer_size(data.size())
+            , m_offset(0)
+            , m_capacity(data.size())
+            , m_buffer((char*)data.data())
+            , m_auto_delete(false)
+        {
+        }
+
         virtual ~MemoryStream() {
-            reset();
+            clear();
         }
 
     public:
         // 获取缓存内容
+        std::string_view string_view() const {
+            return { m_buffer, m_buffer_size };
+        }
+
+        std::string_view res_string_view() const {
+            return { m_buffer + m_offset, m_buffer_size - m_offset };
+        }
+
         const char* const data() const {
             return m_buffer;
         }
@@ -84,6 +118,10 @@ namespace BTool {
         void reset_offset() {
             m_offset = m_buffer_size;
         }
+        // 当前漂移位往后漂移
+        void add_offset(int offset) {
+            m_offset += offset;
+        }
         // 重置内存指向,此时将不再自动管理内存释放
         void attach(char* src, size_t len) {
             if (m_buffer && m_auto_delete)
@@ -95,7 +133,7 @@ namespace BTool {
             m_offset = 0;
             m_auto_delete = false;
         }
-        // 释放当前内存区域生命周期的管理,此后将自动管理内存释放
+        // 解除当前内存区域生命周期的管理,此后将自动管理内存释放
         char* detach() {
             char* buffer = m_buffer;
             m_buffer_size = 0;
@@ -106,8 +144,8 @@ namespace BTool {
             return buffer;
         }
 
-        // 重置
-        void reset() {
+        // 清空数据
+        void clear() {
             m_buffer_size = 0;
             m_offset = 0;
             m_capacity = 0;
@@ -115,6 +153,12 @@ namespace BTool {
                 free(m_buffer);
             m_buffer = nullptr;
             m_auto_delete = true;
+        }
+
+        // 重置,不释放冗余缓存,仅重置offset及size,data及capacity不变
+        void reset() {
+            m_buffer_size = 0;
+            m_offset = 0;
         }
 
         // 追加数据至指定位置的内存处
@@ -150,10 +194,22 @@ namespace BTool {
         }
         // 追加数据至最新位置的内存处
         template<typename Type>
-        void append(Type src) {
-            return append(&src, sizeof(Type));
+        void append(Type&& src) {
+            append(&src, sizeof(Type));
         }
-
+        // 追加数据至最新位置的内存处
+        void append_args() {}
+        template <typename Type, typename...Args>
+        typename std::enable_if<!is_tuple<Type>::value, void >::type
+         append_args(Type&& src, Args&&...srcs) {
+            append(std::forward<Type>(src));
+            append_args(std::forward<Args>(srcs)...);
+        }
+        template <typename Type, typename...Args>
+        typename std::enable_if<is_tuple<Type>::value, void >::type
+            append_args(Type&& tp, Args&&...srcs) {
+            append_args_tp(std::forward<Type>(tp), std::forward<Args>(srcs)...);
+        }
         // 读取数据当前漂移位下参数数值
         // offset_flag : 是否需要漂移当前漂移位
         void read(void* buffer, size_t len, bool offset_flag = true) {
@@ -171,8 +227,140 @@ namespace BTool {
         void read(Type* pDst, bool offset_flag = true) {
             read(pDst, sizeof(Type), offset_flag);
         }
+        // 读取数据当前漂移位下参数数值
+        // offset_flag : 是否需要漂移当前漂移位
+        template <typename Type>
+        typename std::enable_if<is_tuple<Type>::value, Type >::type
+            read_args(bool offset_flag = true) {
+            size_t cur_offset(m_offset);
+            Type rslt = tuple_map_r<Type>();
+            if (!offset_flag)
+                m_offset = cur_offset;
+            return rslt;
+        }
+        template <typename Type>
+        typename std::enable_if<!is_tuple<Type>::value, Type >::type
+            read_args(bool offset_flag = true) {
+            size_t cur_offset(m_offset);
+            Type rslt;
+            read(&rslt);
+            if (!offset_flag)
+                m_offset = cur_offset;
+            return rslt;
+        }
+
+        template <typename Type, typename...Args>
+        typename std::enable_if<sizeof...(Args) == 1, std::tuple<Type, typename std::decay<Args>::type...> >::type
+             read_args(bool offset_flag = true) {
+            size_t cur_offset(m_offset);
+            auto param1 = read_args<Type>();
+            auto rslt = std::forward_as_tuple(std::move(param1), read_args<typename std::decay<Args>::type...>());
+            if (!offset_flag)
+                m_offset = cur_offset;
+            return rslt;
+        }
+        template <typename Type, typename...Args>
+        typename std::enable_if<sizeof...(Args) >= 2, std::tuple<Type, typename std::decay<Args>::type...> >::type
+            read_args(bool offset_flag = true) {
+            size_t cur_offset(m_offset);
+            auto param1 = read_args<Type>();
+            auto rslt = tuple_merge(std::move(param1), read_args<typename std::decay<Args>::type...>());
+            if (!offset_flag)
+                m_offset = cur_offset;
+            return rslt;
+        }
+
+        // tuple -> args...
+        template<typename Type, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<Type, typename std::decay<Args>::type...> tuple_merge(Type&& type, std::tuple<Args...>&& tp) {
+            return tuple_merge_impl(std::forward<Type>(type), typename std::make_index_sequence<sizeof...(Args)>{}, std::move(tp));
+        }
+        template<typename Type, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<Type, typename std::decay<Args>::type...> tuple_merge(Type&& type, const std::tuple<Args...>& tp) {
+            return tuple_merge_impl(std::forward<Type>(type), typename std::make_index_sequence<sizeof...(Args)>{}, tp);
+        }
+        template<typename Type, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<typename std::decay<Args>::type..., Type> tuple_merge(std::tuple<Args...>&& tp, Type&& type) {
+            return tuple_merge_impl(typename std::make_index_sequence<sizeof...(Args)>{}, std::move(tp), std::forward<Type>(type));
+        }
+        template<typename Type, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<typename std::decay<Args>::type..., Type> tuple_merge(const std::tuple<Args...>& tp, Type&& type) {
+            return tuple_merge_impl(typename std::make_index_sequence<sizeof...(Args)>{}, tp, std::forward<Type>(type));
+        }
+        template<typename Type1, typename Type2
+            , typename t1_is_tuple = typename std::enable_if<is_tuple<Type1>::value, void >::type
+            , typename t2_is_tuple = typename std::enable_if<is_tuple<Type2>::value, void >::type
+            >
+        static decltype(auto) tuple_merge(Type1&& tp1, Type2&& tp2){
+            return std::tuple_cat(std::forward<Type1>(tp1), std::forward<Type2>(tp2));
+        }
+        template<typename Type1, typename Type2
+            , typename t1_is_tuple = typename std::enable_if<!is_tuple<Type1>::value, void >::type
+            , typename t2_is_tuple = typename std::enable_if<!is_tuple<Type2>::value, void >::type
+            >
+        static std::tuple<Type1, Type2> tuple_merge(Type1&& tp1, Type2&& tp2){
+            return std::forward_as_tuple(std::forward<Type1>(tp1), std::forward<Type2>(tp2));
+        }
+
+        template<typename Type>
+        static typename std::enable_if<is_tuple<Type>::value, Type>::type
+            tuple_merge(Type&& tp1) {
+            return tp1;
+        }
+        template<typename Type>
+        static typename std::enable_if<!is_tuple<Type>::value, std::tuple<Type>>::type
+            tuple_merge(Type&& tp1) {
+            return std::forward_as_tuple(std::forward<Type>(tp1));
+        }
 
     protected:
+        // tuple -> args...
+        template<typename Type, size_t... Indexes, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<Type, typename std::decay<Args>::type...> tuple_merge_impl(Type&& type, std::index_sequence<Indexes...>, std::tuple<Args...>&& tp) {
+            return std::forward_as_tuple(std::forward<Type>(type), std::move(std::get<Indexes>(tp))...);
+        }
+        template<typename Type, size_t... Indexes, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<Type, typename std::decay<Args>::type...> tuple_merge_impl(Type&& type, std::index_sequence<Indexes...>, const std::tuple<Args...>& tp) {
+            return std::forward_as_tuple(std::forward<Type>(type), std::forward<Args>(std::get<Indexes>(tp))...);
+        }
+        template<typename Type, size_t... Indexes, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<typename std::decay<Args>::type..., Type> tuple_merge_impl(std::index_sequence<Indexes...>, std::tuple<Args...>&& tp, Type&& type) {
+            return std::forward_as_tuple(std::move(std::get<Indexes>(tp))..., std::forward<Type>(type));
+        }
+        template<typename Type, size_t... Indexes, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
+        static std::tuple<typename std::decay<Args>::type..., Type> tuple_merge_impl(std::index_sequence<Indexes...>, const std::tuple<Args...>& tp, Type&& type) {
+            return std::forward_as_tuple(std::forward<Args>(std::get<Indexes>(tp))..., std::forward<Type>(type));
+        }
+
+        // read tuple        
+        template<class Tuple, std::size_t... Indexes>
+        Tuple tuple_map_r(std::index_sequence<Indexes...>) {
+            return read_args<typename std::tuple_element<Indexes, Tuple>::type...>();
+        }
+        template<class Tuple>
+        Tuple tuple_map_r() {
+            //return tuple_map_r<Tuple>(std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{}); // gcc 不支持
+            return tuple_map_r<Tuple>(std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
+        }
+
+        // append tuple
+        template <typename... Args, typename...Types>
+        void append_args_tp(std::tuple<Args...>&& tp, Types&&...srcs) {
+            append_args_tp_impl(typename std::make_index_sequence<sizeof...(Args)>{}, std::move(tp), std::forward<Types>(srcs)...);
+        }
+        template <size_t... Indexes, typename... Args, typename...Types>
+        void append_args_tp_impl(std::index_sequence<Indexes...>, std::tuple<Args...>&& tp, Types&&...srcs) {
+            append_args((std::get<Indexes>(std::move(tp)))..., std::forward<Types>(srcs)...);
+        }
+        template <typename... Args, typename...Types>
+        void append_args_tp(const std::tuple<Args...>& tp, Types&&...srcs) {
+            append_args_tp_impl(typename std::make_index_sequence<sizeof...(Args)>{}, tp, std::forward<Types>(srcs)...);
+        }
+        template <size_t... Indexes, typename... Args, typename...Types>
+        void append_args_tp_impl(std::index_sequence<Indexes...>, const std::tuple<Args...>& tp, Types&&...srcs) {
+            append_args(std::get<Indexes>(std::forward<const std::tuple<Args...>&>(tp))..., std::forward<Types>(srcs)...);
+        }
+
         // 扩容至len的长度
         void reset_capacity(size_t len) {
             if (!m_auto_delete)
