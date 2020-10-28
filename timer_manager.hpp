@@ -411,7 +411,7 @@ namespace BTool {
             m_timer->expires_at(timer_task->get_time_point());
             // expires_from_now同样存在一定误差
 //             m_timer->expires_from_now(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(timer_task->get_time_point() - std::chrono::system_clock::now()).count()));
-            m_timer->async_wait(boost::bind(&TimerManager::handler, this, boost::placeholders::_1, timer_task, timer_task->get_time_point()));
+            m_timer->async_wait(std::bind(&TimerManager::handler, this, std::placeholders::_1, timer_task, timer_task->get_time_point()));
         }
 
         void handler(const boost::system::error_code& error, const TimerTaskPtr& timer_task, const system_time_point& time_point) {

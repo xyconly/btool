@@ -144,7 +144,7 @@ namespace BTool {
             return buffer;
         }
 
-        // 清空数据
+        // 清空数据,此后将自动管理内存释放
         void clear() {
             m_buffer_size = 0;
             m_offset = 0;
@@ -155,12 +155,30 @@ namespace BTool {
             m_auto_delete = true;
         }
 
-        // 重置,不释放冗余缓存,仅重置offset及size,data及capacity不变
-        void reset() {
-            m_buffer_size = 0;
+        // 加载数据,此后将自动管理内存释放
+        // 加载时会清空原有数据,且加载后不会对漂移位置进行置位
+        void load(const char* buffer, size_t len) {
+            m_buffer_size = len;
             m_offset = 0;
-        }
+            m_capacity = len;
+            if (m_buffer && m_auto_delete)
+                free(m_buffer);
 
+            m_buffer = (char*)malloc(len);
+            memcpy(m_buffer, buffer, len);
+            m_auto_delete = true;
+        }
+        void load(std::string_view data) {
+            m_buffer_size = data.size();
+            m_offset = 0;
+            m_capacity = data.size();
+            if (m_buffer && m_auto_delete)
+                free(m_buffer);
+
+            m_buffer = (char*)malloc(m_buffer_size);
+            memcpy(m_buffer, data.data(), m_buffer_size);
+            m_auto_delete = true;
+        }
         // 追加数据至指定位置的内存处
         void append(const void* buffer, size_t len, size_t offset) {
             if (!buffer || len == 0)
@@ -191,6 +209,10 @@ namespace BTool {
             memcpy(m_buffer + m_offset, buffer, len);
             m_offset += len;
             m_buffer_size += len;
+        }
+        // 追加数据至最新位置的内存处
+        void append(std::string_view data) {
+            append(data.data(), data.size());
         }
         // 追加数据至最新位置的内存处
         template<typename Type>

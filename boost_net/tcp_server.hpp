@@ -223,7 +223,7 @@ namespace BTool
             void start_accept() {
                 try {
                     TcpSessionPtr session = std::make_shared<TcpSession>(m_ioc_pool.get_io_context(), m_max_wbuffer_size, m_max_rbuffer_size);
-                    m_acceptor.async_accept(session->get_socket(), boost::bind(&TcpServer::handle_accept, this, boost::placeholders::_1, session));
+                    m_acceptor.async_accept(session->get_socket(), std::bind(&TcpServer::handle_accept, this, std::placeholders::_1, session));
                 }
                 catch (std::exception&) {
                     stop();
@@ -250,7 +250,7 @@ namespace BTool
 //                 session_ptr->start();
 
                 // 把tcp_session的start的调用交给io_context,由io_context来决定何时执行,可以增加并发度
-                session_ptr->get_io_context().dispatch(boost::bind(&TcpSession::start, session_ptr));
+                session_ptr->get_io_context().dispatch(std::bind(&TcpSession::start, session_ptr));
             }
 
             // 查找连接对象

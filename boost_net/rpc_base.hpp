@@ -133,7 +133,6 @@
 #include <future>
 #include <string>
 
-#include "utility/io_context_pool.hpp"
 #include "utility/timer_manager.hpp"
 #include "utility/boost_net/tcp_server.hpp"
 
@@ -142,7 +141,7 @@ namespace BTool::BoostRpc {
 #pragma region 打包发送及解析工具
     class pkg_helper_base {
     public:
-        enum msg_status : uint8_t {
+        enum class msg_status : uint8_t {
             ok,             // 服务端执行正确
             fail,           // 服务端执行失败
             timeout,        // 等待应答超时
@@ -168,7 +167,9 @@ namespace BTool::BoostRpc {
     template<>
     class pkg_helper<pkg_helper_base::PkgModel::Msg> : public pkg_helper_base {
     public:
-        pkg_helper(std::string_view data) : data_(data) {}
+        pkg_helper(std::string_view data) { 
+            data_.load(data); 
+        }
         // 获取请求
         template<typename Type = void>
         typename std::enable_if<std::is_void<Type>::value, Type>::type
@@ -183,22 +184,19 @@ namespace BTool::BoostRpc {
                 return Type();
             }
             status = msg_status::ok;
-            BTool::MemoryStream req((char*)data_.data(), data_.size());
-            return req.read_args<Type>();
+            return data_.read_args<Type>();
         }
         template<typename Type1, typename Type2, typename... TParams>
         decltype(auto) get_req_params(msg_status& status) {
             status = msg_status::ok;
-            BTool::MemoryStream req((char*)data_.data(), data_.size());
-            return req.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
+            return data_.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
         }
 
         // 获取应答
         template<typename Type>
         typename std::enable_if<std::is_void<Type>::value, Type>::type
             get_rsp_params(msg_status& status) {
-            BTool::MemoryStream req((char*)data_.data(), data_.size());
-            req.read(&status);
+            data_.read(&status);
         }
         template<typename Type>
         typename std::enable_if<!std::is_void<Type>::value, Type>::type
@@ -207,8 +205,7 @@ namespace BTool::BoostRpc {
                 status = msg_status::unpack_error;
                 return Type();
             }
-            BTool::MemoryStream req((char*)data_.data(), data_.size());
-            req.read(&status);
+            data_.read(&status);
 
             if (status > msg_status::send_error) {
                 status = msg_status::unpack_error;
@@ -219,10 +216,10 @@ namespace BTool::BoostRpc {
                 return Type();
             }
 
-            return req.read_args<Type>();
+            return data_.read_args<Type>();
         }
     private:
-        std::string_view data_;
+        BTool::MemoryStream data_;
     };
 #pragma endregion
 
@@ -268,7 +265,7 @@ namespace BTool::BoostRpc {
         typedef typename pkg_helper<pkg_model>      pkg_helper_handler;
         typedef std::shared_ptr<pkg_helper_handler> pkg_helper_ptr;
 
-        RpcBase(size_t async_thread_num) : m_async_timer(200, async_thread_num){}
+        RpcBase(int async_thread_num) : m_async_timer(200, async_thread_num){}
         virtual ~RpcBase() {
             m_async_timer.stop();
             m_future_map.clear();
@@ -295,8 +292,8 @@ namespace BTool::BoostRpc {
             PkgModel        pkg_model_;
             RpcModel        rpc_model_;
             uint32_t        req_id_;
-            uint8_t         title_size_;
-            uint32_t        content_size_;
+            uint8_t         title_size_;   // 最多255
+            uint32_t        content_size_; // 最多4,294,967,295
         };
 #pragma pack ()
 
@@ -498,7 +495,7 @@ namespace BTool::BoostRpc {
         // 异步发送,返回future用于等待
         // 会新增同步请求至队列
         template<size_t TIMEOUT, RpcModel model, typename... Args>
-        std::tuple<msg_status, uint64_t, pkg_helper_ptr> sync_msg_req(SessionID session_id, const std::string& rpc_name, Args&&... args) {
+        std::tuple<msg_status, uint32_t, pkg_helper_ptr> sync_msg_req(SessionID session_id, const std::string& rpc_name, Args&&... args) {
             auto p = std::make_shared<std::promise<pkg_helper_ptr>>();
             auto id = insert_future(p);
             bool write_rslt = write_msg(session_id, CommModel::Request, model, id, rpc_name, std::forward<Args>(args)...);
@@ -520,13 +517,13 @@ namespace BTool::BoostRpc {
             return std::forward_as_tuple(status, id, future.get());
         }
         // 新增同步调用请求
-        inline uint64_t insert_future(const std::shared_ptr<std::promise<pkg_helper_ptr>>& p) {
+        inline uint32_t insert_future(const std::shared_ptr<std::promise<pkg_helper_ptr>>& p) {
             std::unique_lock<std::mutex> lock(m_func_map_mtx);
             m_future_map.emplace(++m_req_id, p);
             return m_req_id;
         }
         // 删除同步调用请求
-        inline void remove_future(uint64_t id) {
+        inline void remove_future(uint32_t id) {
             std::unique_lock<std::mutex> lock(m_func_map_mtx);
             m_future_map.erase(id);
         }
@@ -681,8 +678,8 @@ namespace BTool::BoostRpc {
             BTool::MemoryStream content_buffer;
             content_buffer.append_args(std::forward<Args>(args)...);
 
-            uint8_t title_size = rpc_name.length();
-            message_head head{ comm_model, PkgModel::Msg, rpc_model, id, title_size, (uint32_t)content_buffer.size() };
+            uint8_t title_size = (uint8_t)rpc_name.length();
+            message_head head{ comm_model, pkg_model, rpc_model, id, title_size, (uint32_t)content_buffer.size() };
 
             BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_buffer.size());
 
@@ -830,7 +827,7 @@ namespace BTool::BoostRpc {
         typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::msg_status        msg_status;
 
         // async_thread_num: 异步回调处理线程数, 包括callback回调以及bind回调
-        RpcServer(size_t async_thread_num = std::thread::hardware_concurrency()) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
+        RpcServer(int async_thread_num = std::thread::hardware_concurrency()) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
         ~RpcServer() {
             m_ioc_pool.stop();
             m_server_ptr.reset();
@@ -961,7 +958,7 @@ namespace BTool::BoostRpc {
 
     public:
         // async_thread_num: 异步回调处理线程数, 包括callback回调以及bind回调
-        RpcClient(size_t async_thread_num = 2) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
+        RpcClient(int async_thread_num = 2) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
         ~RpcClient() {
             m_ioc_pool.stop();
             m_session_ptr.reset();
@@ -1015,12 +1012,15 @@ namespace BTool::BoostRpc {
         // 异步回调
         // decltype(auto) 可推导出引用等原类型
         // 返回参数类型: call_back_req_op<...> , 通过其发送异步调用
-        // 使用方法
+        // 函数必须参数(SessionID, msg_status, ...)
         template<size_t TIMEOUT, typename ...Args>
         decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
             return RpcBase<DEFAULT_TIMEOUT, pkg_model>::call_back_req_op<TIMEOUT, std::tuple<typename std::decay<Args>::type...>>(this, get_session_id(), rpc_name, std::forward_as_tuple(std::forward<Args>(args)...));
         }
-
+        // 异步回调
+        // decltype(auto) 可推导出引用等原类型
+        // 返回参数类型: call_back_req_op<...> , 通过其发送异步调用
+        // 函数必须参数(SessionID, msg_status, ...)
         template<typename ...Args>
         decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
             return call_back<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
@@ -1050,6 +1050,7 @@ namespace BTool::BoostRpc {
                 read_buffer.add_offset(cur_head.title_size_);
 
                 std::string_view content(msg + read_buffer.get_offset(), cur_head.content_size_);
+
                 read_buffer.add_offset(cur_head.content_size_);
 
                 // 异常
