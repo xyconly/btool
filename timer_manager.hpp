@@ -1,12 +1,12 @@
 /************************************************************************
 File name:  timer_manager.hpp
 Author:	    AChar
-Purpose:  æ—¶é—´è½®å®šæ—¶å™¨ç®¡ç†
-Note:     æ’å…¥æ—¶é—´å¤æ‚åº¦: O(logN)
-          åˆ é™¤æ—¶é—´å¤æ‚åº¦: O(logN)
-          æ¯ä¸ªæ—¶é—´æ’å…¥åå­˜åœ¨æ—¶é—´é—´éš”çš„é—®é¢˜,ä¼šè‡ªåŠ¨å¯¹åº”è‡³ä¸‹ä¸€ä¸ªæ—¶é—´é—´éš”,è€Œä¸æ˜¯å®Œå…¨ä¸€è‡´çš„æ—¶é—´
-          ç”±äºwindowsçš„æœ€å°æ—¶é’Ÿé—´éš”ä¸º 0.5ms - 15.6001ms,æ•…å¤–ç•Œåˆ¤æ–­æ—¶åº”å…è®¸åˆ¤æ–­15.6001msçš„è¯¯å·®
-          å®é™…æµ‹è¯•ä¸­å‘ç°åŸºæœ¬è¯¯å·®åœ¨1msä»¥å†…,å‘å‰æ¼‚ç§»æˆ–è€…å‘åæ¼‚ç§»
+Purpose:  Ê±¼äÂÖ¶¨Ê±Æ÷¹ÜÀí
+Note:     ²åÈëÊ±¼ä¸´ÔÓ¶È: O(logN)
+          É¾³ıÊ±¼ä¸´ÔÓ¶È: O(logN)
+          Ã¿¸öÊ±¼ä²åÈëºó´æÔÚÊ±¼ä¼ä¸ôµÄÎÊÌâ,»á×Ô¶¯¶ÔÓ¦ÖÁÏÂÒ»¸öÊ±¼ä¼ä¸ô,¶ø²»ÊÇÍêÈ«Ò»ÖÂµÄÊ±¼ä
+          ÓÉÓÚwindowsµÄ×îĞ¡Ê±ÖÓ¼ä¸ôÎª 0.5ms - 15.6001ms,¹ÊÍâ½çÅĞ¶ÏÊ±Ó¦ÔÊĞíÅĞ¶Ï15.6001msµÄÎó²î
+          Êµ¼Ê²âÊÔÖĞ·¢ÏÖ»ù±¾Îó²îÔÚ1msÒÔÄÚ,ÏòÇ°Æ¯ÒÆ»òÕßÏòºóÆ¯ÒÆ
 /************************************************************************/
 #pragma once
 
@@ -17,11 +17,11 @@ Note:     æ’å…¥æ—¶é—´å¤æ‚åº¦: O(logN)
 #include <memory>
 #include <boost/asio.hpp>
 #include "task_pool.hpp"
-#include "io_context_pool.hpp"  // ä¾¿äºå¯åœ,å¯ç›´æ¥ä½¿ç”¨boost::asio::io_context
+#include "io_context_pool.hpp"  // ±ãÓÚÆôÍ£,¿ÉÖ±½ÓÊ¹ÓÃboost::asio::io_context
 #include "atomic_switch.hpp"
 
 namespace BTool {
-    // å®šæ—¶å™¨ç®¡ç†å™¨
+    // ¶¨Ê±Æ÷¹ÜÀíÆ÷
     class TimerManager : private boost::noncopyable
     {
         typedef boost::asio::basic_waitable_timer<std::chrono::system_clock> my_system_timer;
@@ -30,7 +30,7 @@ namespace BTool {
 
     public:
         enum {
-            INVALID_TID = TimerTaskVirtual::INVALID_TID, // æ— æ•ˆå®šæ—¶å™¨ID
+            INVALID_TID = TimerTaskVirtual::INVALID_TID, // ÎŞĞ§¶¨Ê±Æ÷ID
         };
         typedef TimerTaskVirtual::TimerId               TimerId;
         typedef TimerTaskVirtual::system_time_point     system_time_point;
@@ -39,17 +39,17 @@ namespace BTool {
         typedef std::shared_ptr<TimerTask>      TimerTaskPtr;
 //         typedef std::shared_ptr<TimerTaskVirtual>      TimerTaskPtr;
 
-#pragma region å®šæ—¶å™¨é˜Ÿåˆ—
+#pragma region ¶¨Ê±Æ÷¶ÓÁĞ
         /*************************************************
-        Description:å®šæ—¶å™¨é˜Ÿåˆ—,ç”¨äºå­˜å‚¨å½“å‰å®šæ—¶å™¨æ’åº,å†…éƒ¨æ— é”,éçº¿ç¨‹å®‰å…¨!!!
+        Description:¶¨Ê±Æ÷¶ÓÁĞ,ÓÃÓÚ´æ´¢µ±Ç°¶¨Ê±Æ÷ÅÅĞò,ÄÚ²¿ÎŞËø,·ÇÏß³Ì°²È«!!!
         *************************************************/
         class TimerQueue : private boost::noncopyable
         {
             typedef std::map<TimerId, TimerTaskPtr> TimerMap;
         public:
-            // æ ¹æ®æ–°å¢ä»»åŠ¡é¡ºåºå¹¶è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
-            // workers: å·¥ä½œçº¿ç¨‹æ•°,ä¸º0æ—¶é»˜è®¤ç³»ç»Ÿæ ¸æ•°
-            // max_task_count: æœ€å¤§ä»»åŠ¡ç¼“å­˜ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
+            // ¸ù¾İĞÂÔöÈÎÎñË³Ğò²¢ĞĞÓĞĞòÖ´ĞĞµÄÏß³Ì³Ø
+            // workers: ¹¤×÷Ïß³ÌÊı,Îª0Ê±Ä¬ÈÏÏµÍ³ºËÊı
+            // max_task_count: ×î´óÈÎÎñ»º´æ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
             TimerQueue(size_t workers = 0, size_t max_task_count = 0)
                 : m_task_pool(max_task_count) {
                 m_task_pool.start(workers);
@@ -90,9 +90,9 @@ namespace BTool {
 // //                     , std::forward<TFunction>(func)
 // //                     , std::forward<Args>(args)...);
 // 
-//                 // æ­¤å¤„TTupleä¸å¯é‡‡ç”¨std::forward_as_tuple(std::forward<Args>(args)...)
-//                 // å‡ä½¿agrsä¸­å«æœ‰const & æ—¶,ä¼šå¯¼è‡´tupleä¸­å­˜å‚¨çš„äº¦ä¸ºconst &å¯¹è±¡,ä»è€Œå¤–éƒ¨é‡Šæ”¾å¯¹è±¡åå¯¼è‡´å†…éƒ¨å¯¹è±¡æ— æ•ˆ
-//                 // é‡‡ç”¨std::make_shared<TTuple>åˆ™ä¼šå¯¼è‡´å­˜åœ¨ä¸€æ¬¡æ‹·è´,ç”±std::make_tupleå¼•èµ·(const&/&&)
+//                 // ´Ë´¦TTuple²»¿É²ÉÓÃstd::forward_as_tuple(std::forward<Args>(args)...)
+//                 // ¼ÙÊ¹agrsÖĞº¬ÓĞconst & Ê±,»áµ¼ÖÂtupleÖĞ´æ´¢µÄÒàÎªconst &¶ÔÏó,´Ó¶øÍâ²¿ÊÍ·Å¶ÔÏóºóµ¼ÖÂÄÚ²¿¶ÔÏóÎŞĞ§
+//                 // ²ÉÓÃstd::make_shared<TTuple>Ôò»áµ¼ÖÂ´æÔÚÒ»´Î¿½±´,ÓÉstd::make_tupleÒıÆğ(const&/&&)
 //                 typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
 //                 auto pItem = std::make_shared<TupleTimerTask<TFunction, TTuple>>(interval_ms, loop_count, id, time_point
 //                     , std::forward<TFunction>(func)
@@ -106,12 +106,12 @@ namespace BTool {
 //                 return pItem;
 //             }
 
-            // è·å–æ€»å®šæ—¶å™¨ä¸ªæ•°
+            // »ñÈ¡×Ü¶¨Ê±Æ÷¸öÊı
             size_t size() const {
                 return m_all_timer_map.size();
             }
 
-            // è·å–å®šæ—¶å™¨åˆ‡åˆ†æ—¶é—´ç‰‡ä¸ªæ•°
+            // »ñÈ¡¶¨Ê±Æ÷ÇĞ·ÖÊ±¼äÆ¬¸öÊı
             size_t time_point_size() const {
                 return m_timer_part_queue.size();
             }
@@ -143,7 +143,7 @@ namespace BTool {
                 return bg_iter->second.begin()->second;
             }
 
-            // æ¸…ç©ºæŒ‡å®šæ—¶é—´çš„ç›¸å…³ä»»åŠ¡,è¿”å›è¢«æ¸…ç©ºçš„ä»»åŠ¡
+            // Çå¿ÕÖ¸¶¨Ê±¼äµÄÏà¹ØÈÎÎñ,·µ»Ø±»Çå¿ÕµÄÈÎÎñ
             std::set<TimerTaskPtr> clear_point_timer(const system_time_point& time_point) {
                 std::set<TimerTaskPtr> rslt;
 
@@ -162,7 +162,7 @@ namespace BTool {
                 return rslt;
             }
 
-            // æ‰§è¡ŒæŒ‡å®šæ—¶é—´çš„ç›¸å…³ä»»åŠ¡,è‹¥ä»»åŠ¡æ— éœ€ä¸‹æ¬¡å¾ªç¯åˆ™ä¼šè¢«åˆ é™¤
+            // Ö´ĞĞÖ¸¶¨Ê±¼äµÄÏà¹ØÈÎÎñ,ÈôÈÎÎñÎŞĞèÏÂ´ÎÑ­»·Ôò»á±»É¾³ı
             void loop_point_timer(const system_time_point& time_point) {
                 auto timer_iter = m_timer_part_queue.find(time_point);
                 if (timer_iter == m_timer_part_queue.end())
@@ -170,7 +170,7 @@ namespace BTool {
 
                 auto point_timer_queue = timer_iter->second;
                 for (auto& point_item_pair : point_timer_queue) {
-                    // åŠ å…¥å¹¶å‘æ‰§è¡Œé˜Ÿåˆ—,å¹¶ç´¯è®¡ä¸€æ¬¡å¾ªç¯è®¡æ•°
+                    // ¼ÓÈë²¢·¢Ö´ĞĞ¶ÓÁĞ,²¢ÀÛ¼ÆÒ»´ÎÑ­»·¼ÆÊı
                     auto& item = point_item_pair.second;
                     m_task_pool.add_task([item, time_point = item->get_time_point()] {
                         item->invoke(time_point);
@@ -178,12 +178,12 @@ namespace BTool {
 
                     item->loop_once_count();
 
-                    // è‹¥å¾ªç¯è®¡æ•°è¶…è¿‡æŒ‡å®šè®¡æ•°æ¬¡æ•°åˆ™åˆ é™¤è¯¥å®šæ—¶å™¨å¯¹è±¡
+                    // ÈôÑ­»·¼ÆÊı³¬¹ıÖ¸¶¨¼ÆÊı´ÎÊıÔòÉ¾³ı¸Ã¶¨Ê±Æ÷¶ÔÏó
                     if (!item->need_next()) {
                         remove_from_all_map(item->get_id());
                         remove_from_part_queue(item->get_id(), item->get_time_point());
                     }
-                    // å¦åˆ™å…ˆåˆ é™¤åˆ†ç‰‡å®šæ—¶å™¨é˜Ÿåˆ—ä¸­åŸæœ‰å¯¹è±¡,åŸæœ‰å¯¹è±¡ç´¯è®¡é—´éš”æ—¶é—´,å°†ç´¯è®¡åçš„æ—¶é—´åŠ å…¥ä¸‹æ¬¡åˆ†ç‰‡é˜Ÿåˆ—ä¸­
+                    // ·ñÔòÏÈÉ¾³ı·ÖÆ¬¶¨Ê±Æ÷¶ÓÁĞÖĞÔ­ÓĞ¶ÔÏó,Ô­ÓĞ¶ÔÏóÀÛ¼Æ¼ä¸ôÊ±¼ä,½«ÀÛ¼ÆºóµÄÊ±¼ä¼ÓÈëÏÂ´Î·ÖÆ¬¶ÓÁĞÖĞ
                     else {
                         remove_from_part_queue(item->get_id(), item->get_time_point());
                         item->loop_once_time();
@@ -193,12 +193,12 @@ namespace BTool {
             }
 
         private:
-            // ä»æ‰€æœ‰å®šæ—¶å™¨ä»»åŠ¡é˜Ÿåˆ—ä¸­åˆ é™¤
+            // ´ÓËùÓĞ¶¨Ê±Æ÷ÈÎÎñ¶ÓÁĞÖĞÉ¾³ı
             void remove_from_all_map(TimerId timer_id) {
                 m_all_timer_map.erase(timer_id);
             }
 
-            // ä»æ‰€æœ‰å®šæ—¶å™¨åˆ‡åˆ†ä»»åŠ¡ä¸­åˆ é™¤
+            // ´ÓËùÓĞ¶¨Ê±Æ÷ÇĞ·ÖÈÎÎñÖĞÉ¾³ı
             void remove_from_part_queue(TimerId timer_id, const system_time_point& time_point) {
                 auto timer_iter = m_timer_part_queue.find(time_point);
                 if (timer_iter == m_timer_part_queue.end())
@@ -219,16 +219,16 @@ namespace BTool {
             }
 
         private:
-            TimerMap                                  m_all_timer_map;    // å­˜å‚¨æ‰€æœ‰å®šæ—¶å™¨ä»»åŠ¡,ç‰ºç‰²æ–°å¢æ—¶çš„äº›è®¸æ€§èƒ½,æé«˜æŸ¥è¯¢é€Ÿåº¦
-            std::map<system_time_point, TimerMap>     m_timer_part_queue; // å¯¹æ‰€æœ‰å®šæ—¶å™¨çš„å®šæ—¶æ—¶é—´åšåˆ‡åˆ†,æ‰€æœ‰åŒä¸€æ—¶åˆ»å®šæ—¶ä»»åŠ¡ç½®äºåŒä¸€timer_mapä¸­
-            ParallelTaskPool                          m_task_pool;        // å®šæ—¶å™¨å›è°ƒæ‰§è¡Œçº¿ç¨‹æ± 
+            TimerMap                                  m_all_timer_map;    // ´æ´¢ËùÓĞ¶¨Ê±Æ÷ÈÎÎñ,ÎşÉüĞÂÔöÊ±µÄĞ©ĞíĞÔÄÜ,Ìá¸ß²éÑ¯ËÙ¶È
+            std::map<system_time_point, TimerMap>     m_timer_part_queue; // ¶ÔËùÓĞ¶¨Ê±Æ÷µÄ¶¨Ê±Ê±¼ä×öÇĞ·Ö,ËùÓĞÍ¬Ò»Ê±¿Ì¶¨Ê±ÈÎÎñÖÃÓÚÍ¬Ò»timer_mapÖĞ
+            ParallelTaskPool                          m_task_pool;        // ¶¨Ê±Æ÷»Øµ÷Ö´ĞĞÏß³Ì³Ø
         };
 #pragma endregion
 
     public:
-        // æ‰§è¡Œå›è°ƒæ—¶çš„çº¿ç¨‹æ± æ•°
-        // space_millsecond: æ—¶é—´è½®åˆ‡ç‰‡æ—¶é—´, å•ä½æ¯«ç§’, ä¸º0æ—¶åˆ™ä¸åˆ‡åˆ†,ä½†ä¸å»ºè®®
-        // workers: å›è°ƒæ‰§è¡Œå·¥ä½œçº¿ç¨‹æ•°,ä¸º0æ—¶é»˜è®¤ç³»ç»Ÿæ ¸æ•°;æ³¨æ„æ­¤çº¿ç¨‹æ•°å¹¶éå®šæ—¶å™¨çº¿ç¨‹æ•°,å®šæ—¶å™¨çº¿ç¨‹å§‹ç»ˆåªæœ‰ä¸€ä¸ª
+        // Ö´ĞĞ»Øµ÷Ê±µÄÏß³Ì³ØÊı
+        // space_millsecond: Ê±¼äÂÖÇĞÆ¬Ê±¼ä, µ¥Î»ºÁÃë, Îª0Ê±Ôò²»ÇĞ·Ö,µ«²»½¨Òé
+        // workers: »Øµ÷Ö´ĞĞ¹¤×÷Ïß³ÌÊı,Îª0Ê±Ä¬ÈÏÏµÍ³ºËÊı;×¢Òâ´ËÏß³ÌÊı²¢·Ç¶¨Ê±Æ÷Ïß³ÌÊı,¶¨Ê±Æ÷Ïß³ÌÊ¼ÖÕÖ»ÓĞÒ»¸ö
         TimerManager(unsigned long long space_millsecond, int workers)
             : m_space_millsecond(space_millsecond)
             , m_ioc_pool(1)
@@ -261,16 +261,16 @@ namespace BTool {
             m_atomic_switch.reset();
         }
 
-        // å¾ªç¯ç«‹å³è§¦å‘å®šæ—¶å™¨
-        // interval_ms: å¾ªç¯é—´éš”æ—¶é—´,å•ä½æ¯«ç§’(æ³¨æ„è¯¥å€¼ä¼šè¢«æ—¶é—´è½®é—´éš”æ—¶é—´ä¸‹å–æ•´,ä¾‹å¦‚æ—¶é—´è½®è®¾å®šæœ€å°åˆ‡ç‰‡æ—¶é—´50ms,é‚£ä¹ˆinterval_msè®¾å®šä¸º80æ—¶,å®é™…interval_msä¸º100)
-        // loop_count: å¾ªç¯æ¬¡æ•°,0 è¡¨ç¤ºæ— é™å¾ªç¯
+        // Ñ­»·Á¢¼´´¥·¢¶¨Ê±Æ÷
+        // interval_ms: Ñ­»·¼ä¸ôÊ±¼ä,µ¥Î»ºÁÃë(×¢Òâ¸ÃÖµ»á±»Ê±¼äÂÖ¼ä¸ôÊ±¼äÏÂÈ¡Õû,ÀıÈçÊ±¼äÂÖÉè¶¨×îĞ¡ÇĞÆ¬Ê±¼ä50ms,ÄÇÃ´interval_msÉè¶¨Îª80Ê±,Êµ¼Êinterval_msÎª100)
+        // loop_count: Ñ­»·´ÎÊı,0 ±íÊ¾ÎŞÏŞÑ­»·
         // insert_now(interval_ms, loop_count, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert_now(interval_ms, loop_count, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
         TimerId insert_now(unsigned int interval_ms, int loop_count, TFunction&& func) {
             return insert(interval_ms, loop_count, std::chrono::system_clock::now(), std::forward<TFunction>(func));
         }
-        // æ— å¾ªç¯ç«‹å³è§¦å‘å®šæ—¶å™¨
+        // ÎŞÑ­»·Á¢¼´´¥·¢¶¨Ê±Æ÷
         // insert_now_once([param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert_now_once(std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
@@ -278,18 +278,18 @@ namespace BTool {
             return insert(0, 1, std::chrono::system_clock::now(), std::forward<TFunction>(func));
         }
 
-        // å¾ªç¯æŒ‡å®šæ¼‚ç§»æ—¶é—´è§¦å‘å®šæ—¶å™¨
-        // interval_ms: å¾ªç¯é—´éš”æ—¶é—´,å•ä½æ¯«ç§’(æ³¨æ„è¯¥å€¼ä¼šè¢«æ—¶é—´è½®é—´éš”æ—¶é—´ä¸‹å–æ•´,ä¾‹å¦‚æ—¶é—´è½®è®¾å®šæœ€å°åˆ‡ç‰‡æ—¶é—´50ms,é‚£ä¹ˆinterval_msè®¾å®šä¸º80æ—¶,å®é™…interval_msä¸º100)
-        // loop_count: å¾ªç¯æ¬¡æ•°,0 è¡¨ç¤ºæ— é™å¾ªç¯
-        // duration_ms: é¦–æ¬¡è§¦å‘æ—¶é—´ç‚¹è·ç¦»å½“å‰æ—¶é—´çš„æ¼‚ç§»æ—¶é—´,å•ä½æ¯«ç§’
+        // Ñ­»·Ö¸¶¨Æ¯ÒÆÊ±¼ä´¥·¢¶¨Ê±Æ÷
+        // interval_ms: Ñ­»·¼ä¸ôÊ±¼ä,µ¥Î»ºÁÃë(×¢Òâ¸ÃÖµ»á±»Ê±¼äÂÖ¼ä¸ôÊ±¼äÏÂÈ¡Õû,ÀıÈçÊ±¼äÂÖÉè¶¨×îĞ¡ÇĞÆ¬Ê±¼ä50ms,ÄÇÃ´interval_msÉè¶¨Îª80Ê±,Êµ¼Êinterval_msÎª100)
+        // loop_count: Ñ­»·´ÎÊı,0 ±íÊ¾ÎŞÏŞÑ­»·
+        // duration_ms: Ê×´Î´¥·¢Ê±¼äµã¾àÀëµ±Ç°Ê±¼äµÄÆ¯ÒÆÊ±¼ä,µ¥Î»ºÁÃë
         // insert_duration(interval_ms, loop_count, duration_ms, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert_duration(interval_ms, loop_count, duration_ms, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
         TimerId insert_duration(unsigned int interval_ms, int loop_count, unsigned int duration_ms, TFunction&& func) {
             return insert(interval_ms, loop_count, std::chrono::system_clock::now() + std::chrono::milliseconds(duration_ms), std::forward<TFunction>(func));
         }
-        // æ— å¾ªç¯æŒ‡å®šæ¼‚ç§»æ—¶é—´è§¦å‘å®šæ—¶å™¨
-        // duration_ms: è§¦å‘æ—¶é—´ç‚¹è·ç¦»å½“å‰æ—¶é—´çš„æ¼‚ç§»æ—¶é—´,å•ä½æ¯«ç§’
+        // ÎŞÑ­»·Ö¸¶¨Æ¯ÒÆÊ±¼ä´¥·¢¶¨Ê±Æ÷
+        // duration_ms: ´¥·¢Ê±¼äµã¾àÀëµ±Ç°Ê±¼äµÄÆ¯ÒÆÊ±¼ä,µ¥Î»ºÁÃë
         // insert_duration_once(duration_ms, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert_duration_once(duration_ms, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
@@ -297,23 +297,23 @@ namespace BTool {
             return insert(0, 1, std::chrono::system_clock::now() + std::chrono::milliseconds(duration_ms), std::forward<TFunction>(func));
         }
 
-        // æ— å¾ªç¯å®šæ—¶å™¨
-        // time_point: è§¦å‘æ—¶é—´ç‚¹
+        // ÎŞÑ­»·¶¨Ê±Æ÷
+        // time_point: ´¥·¢Ê±¼äµã
         // insert_once(time_point, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert_once(time_point, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
         TimerId insert_once(const system_time_point& time_point, TFunction&& func) {
             return insert(0, 1, time_point, std::forward<TFunction>(func));
         }
-        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®ä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œææ„å,å°†æŒ‡å‘é‡æŒ‡é’ˆ!!!!
+        // ÌØ±ğ×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëĞÔÖÊµÄÁÙÊ±Ö¸Õë,±ØĞë×ª»»ÎªstringµÈÊµÀı¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
 //         template<typename TFunction, typename... Args>
 //         TimerId insert_once(const system_time_point& time_point, TFunction&& func, Args&&... args) {
 //             return insert(0, 1, time_point, std::forward<TFunction>(func), std::forward<Args>(args)...);
 //         }
         
-        // interval_ms: å¾ªç¯é—´éš”æ—¶é—´,å•ä½æ¯«ç§’(æ³¨æ„è¯¥å€¼ä¼šè¢«æ—¶é—´è½®é—´éš”æ—¶é—´ä¸‹å–æ•´,ä¾‹å¦‚æ—¶é—´è½®è®¾å®šæœ€å°åˆ‡ç‰‡æ—¶é—´50ms,é‚£ä¹ˆinterval_msè®¾å®šä¸º80æ—¶,å®é™…interval_msä¸º100)
-        // loop_count: å¾ªç¯æ¬¡æ•°,0 è¡¨ç¤ºæ— é™å¾ªç¯
-        // time_point: é¦–æ¬¡è§¦å‘æ—¶é—´ç‚¹
+        // interval_ms: Ñ­»·¼ä¸ôÊ±¼ä,µ¥Î»ºÁÃë(×¢Òâ¸ÃÖµ»á±»Ê±¼äÂÖ¼ä¸ôÊ±¼äÏÂÈ¡Õû,ÀıÈçÊ±¼äÂÖÉè¶¨×îĞ¡ÇĞÆ¬Ê±¼ä50ms,ÄÇÃ´interval_msÉè¶¨Îª80Ê±,Êµ¼Êinterval_msÎª100)
+        // loop_count: Ñ­»·´ÎÊı,0 ±íÊ¾ÎŞÏŞÑ­»·
+        // time_point: Ê×´Î´¥·¢Ê±¼äµã
         // insert(interval_ms, loop_count, time_point, [param1, param2=...](BTool::TimerManager::TimerId id, const BTool::TimerManager::system_time_point& time_point){...})
         // insert(interval_ms, loop_count, time_point, std::bind(&func, std::placeholders::_1, std::placeholders::_2, param1, param2))
         template<typename TFunction>
@@ -347,7 +347,7 @@ namespace BTool {
 
             return pItem->get_id();
         }
-        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®ä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œææ„å,å°†æŒ‡å‘é‡æŒ‡é’ˆ!!!!
+        // ÌØ±ğ×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëĞÔÖÊµÄÁÙÊ±Ö¸Õë,±ØĞë×ª»»ÎªstringµÈÊµÀı¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
 //         template<typename TFunction, typename... Args>
 //         TimerId insert(unsigned int interval_ms, int loop_count, const system_time_point& time_point, TFunction&& func, Args&&... args)
 //         {
@@ -374,13 +374,13 @@ namespace BTool {
 //             return pItem->get_id();
 //         }
 
-        // è·å–æ€»å®šæ—¶å™¨ä¸ªæ•°
+        // »ñÈ¡×Ü¶¨Ê±Æ÷¸öÊı
         size_t size() const {
             std::lock_guard<std::mutex> locker(m_queue_mtx);
             return m_timer_queue.size();
         }
 
-        // è·å–å®šæ—¶å™¨åˆ‡åˆ†æ—¶é—´ç‰‡ä¸ªæ•°
+        // »ñÈ¡¶¨Ê±Æ÷ÇĞ·ÖÊ±¼äÆ¬¸öÊı
         size_t time_point_size() const {
             std::lock_guard<std::mutex> locker(m_queue_mtx);
             return m_timer_queue.time_point_size();
@@ -400,7 +400,7 @@ namespace BTool {
                 m_timer->cancel();
         }
 
-        // æ¸…ç©ºæŒ‡å®šæ—¶é—´ä¸‹æ‰€æœ‰å®šæ—¶å™¨
+        // Çå¿ÕÖ¸¶¨Ê±¼äÏÂËùÓĞ¶¨Ê±Æ÷
         void clear_point_timer(const system_time_point& time_point) {
             std::lock_guard<std::mutex> locker(m_queue_mtx);
             std::set<TimerTaskPtr> erase_set = m_timer_queue.clear_point_timer(time_point);
@@ -413,9 +413,9 @@ namespace BTool {
             if (!m_atomic_switch.has_started())
                 return;
 
-            // å­˜åœ¨æå‰è§¦å‘çš„æƒ…å†µ,æ”¹ä¸ºexpires_from_now
+            // ´æÔÚÌáÇ°´¥·¢µÄÇé¿ö,¸ÄÎªexpires_from_now
             m_timer->expires_at(timer_task->get_time_point());
-            // expires_from_nowåŒæ ·å­˜åœ¨ä¸€å®šè¯¯å·®
+            // expires_from_nowÍ¬Ñù´æÔÚÒ»¶¨Îó²î
 //             m_timer->expires_from_now(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(timer_task->get_time_point() - std::chrono::system_clock::now()).count()));
             m_timer->async_wait(std::bind(&TimerManager::handler, this, std::placeholders::_1, timer_task, timer_task->get_time_point()));
         }
@@ -427,7 +427,7 @@ namespace BTool {
             if (!error) {
                 m_timer_queue.loop_point_timer(time_point);
             }
-            else { // æœ‰é”™:1.è¢«"cancel"äº†; 2.å…¶ä»–
+            else { // ÓĞ´í:1.±»"cancel"ÁË; 2.ÆäËû
                 if (error != boost::asio::error::operation_aborted) {
                     m_timer_queue.erase(timer_task->get_id());
                 }
@@ -444,16 +444,16 @@ namespace BTool {
         }
 
     private:
-        unsigned long long      m_space_millsecond;//åˆ‡ç‰‡æ—¶é—´,å•ä½æ¯«ç§’
+        unsigned long long      m_space_millsecond;//ÇĞÆ¬Ê±¼ä,µ¥Î»ºÁÃë
         AsioContextPool         m_ioc_pool;
-        timer_ptr               m_timer;         // å®šæ—¶å™¨
+        timer_ptr               m_timer;         // ¶¨Ê±Æ÷
 
         mutable std::mutex      m_queue_mtx;
-        TimerTaskPtr            m_cur_task;     // å½“å‰å®šæ—¶ä»»åŠ¡
+        TimerTaskPtr            m_cur_task;     // µ±Ç°¶¨Ê±ÈÎÎñ
 
-        AtomicSwitch            m_atomic_switch;// åŸå­å¯åœæ ‡å¿—
+        AtomicSwitch            m_atomic_switch;// Ô­×ÓÆôÍ£±êÖ¾
 
-        std::atomic<TimerId>	m_next_id;      // ä¸‹ä¸€ä¸ªå®šæ—¶å™¨ID
-        TimerQueue              m_timer_queue;  // å®šæ—¶å™¨ä»»åŠ¡é˜Ÿåˆ—
+        std::atomic<TimerId>	m_next_id;      // ÏÂÒ»¸ö¶¨Ê±Æ÷ID
+        TimerQueue              m_timer_queue;  // ¶¨Ê±Æ÷ÈÎÎñ¶ÓÁĞ
     };
 }

@@ -1,8 +1,8 @@
 #pragma once
 
 //////////////////////////////////////////////////////////////////////////
-// é¢„å®šä¹‰ HP_SOCKET_STATIC_LIB   åˆ™HPSOCKETä¸ºé™æ€åº“è¿æ¥ï¼Œå³åªéœ€è¦ä¸€ä¸ªHpWebsocketClient.dll
-// å¦‚æœæ²¡æœ‰å®šä¹‰ HP_SOCKET_STATIC_LIB åˆ™éœ€è¦ä¸¤ä¸ªåŠ¨æ€åº“(HpWebsocketClient.dllå’ŒHPSocket4C.dll)
+// Ô¤¶¨Òå HP_SOCKET_STATIC_LIB   ÔòHPSOCKETÎª¾²Ì¬¿âÁ¬½Ó£¬¼´Ö»ĞèÒªÒ»¸öHpWebsocketClient.dll
+// Èç¹ûÃ»ÓĞ¶¨Òå HP_SOCKET_STATIC_LIB ÔòĞèÒªÁ½¸ö¶¯Ì¬¿â(HpWebsocketClient.dllºÍHPSocket4C.dll)
 #ifdef HP_SOCKET_STATIC_LIB
 
 # if defined( _DEBUG ) || defined (__DEBUG__)

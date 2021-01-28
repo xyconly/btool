@@ -557,7 +557,7 @@ typedef C_HP_ObjectT<CUdpClient, IUdpClientListener>							C_HP_UdpClient;
 typedef C_HP_ObjectT<CUdpCast, IUdpCastListener>								C_HP_UdpCast;
 
 /****************************************************/
-/**************** TCP/UDP ÂØπË±°ÂàõÂª∫ÂáΩÊï∞ ***************/
+/**************** TCP/UDP ∂‘œÛ¥¥Ω®∫Ø ˝ ***************/
 
 HPSOCKET_API HP_TcpServer __HP_CALL Create_HP_TcpServer(HP_TcpServerListener pListener)
 {
@@ -800,7 +800,7 @@ HPSOCKET_API void __HP_CALL Destroy_HP_UdpCastListener(HP_UdpCastListener pListe
 }
 
 /**********************************************************************************/
-/***************************** Server ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï *****************************/
+/***************************** Server ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_Server_OnPrepareListen(HP_ServerListener pListener, HP_FN_Server_OnPrepareListen fn)
 {
@@ -843,7 +843,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_Server_OnShutdown(HP_ServerListener pListe
 }
 
 /**********************************************************************************/
-/***************************** Agent ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï *****************************/
+/***************************** Agent ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_Agent_OnPrepareConnect(HP_AgentListener pListener, HP_FN_Agent_OnPrepareConnect fn)
 {
@@ -886,7 +886,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_Agent_OnShutdown(HP_AgentListener pListene
 }
 
 /**********************************************************************************/
-/***************************** Client ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï *****************************/
+/***************************** Client ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_Client_OnPrepareConnect(HP_ClientListener pListener, HP_FN_Client_OnPrepareConnect fn)
 {
@@ -924,7 +924,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_Client_OnClose(HP_ClientListener pListener
 }
 
 /**************************************************************************/
-/***************************** Server Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** Server ≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_Server_Start(HP_Server pServer, LPCTSTR lpszBindAddress, USHORT usPort)
 {
@@ -972,7 +972,7 @@ HPSOCKET_API BOOL __HP_CALL HP_Server_DisconnectSilenceConnections(HP_Server pSe
 }
 
 /******************************************************************************/
-/***************************** Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** Server  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_Server_SetConnectionExtra(HP_Server pServer, HP_CONNID dwConnID, PVOID pExtra)
 {
@@ -1145,7 +1145,7 @@ HPSOCKET_API BOOL __HP_CALL HP_Server_IsMarkSilence(HP_Server pServer)
 }
 
 /**********************************************************************************/
-/******************************* TCP Server Êìç‰ΩúÊñπÊ≥ï *******************************/
+/******************************* TCP Server ≤Ÿ◊˜∑Ω∑® *******************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_TcpServer_SendSmallFile(HP_Server pServer, HP_CONNID dwConnID, LPCTSTR lpszFileName, const LPWSABUF pHead, const LPWSABUF pTail)
 {
@@ -1153,7 +1153,7 @@ HPSOCKET_API BOOL __HP_CALL HP_TcpServer_SendSmallFile(HP_Server pServer, HP_CON
 }
 
 /**********************************************************************************/
-/***************************** TCP Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Server  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpServer_SetAcceptSocketCount(HP_TcpServer pServer, DWORD dwAcceptSocketCount)
 {
@@ -1206,7 +1206,7 @@ HPSOCKET_API DWORD __HP_CALL HP_TcpServer_GetKeepAliveInterval(HP_TcpServer pSer
 }
 
 /**********************************************************************************/
-/***************************** UDP Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** UDP Server  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_UdpServer_SetMaxDatagramSize(HP_UdpServer pServer, DWORD dwMaxDatagramSize)
 {
@@ -1249,7 +1249,7 @@ HPSOCKET_API DWORD __HP_CALL HP_UdpServer_GetDetectInterval(HP_UdpServer pServer
 }
 
 /**************************************************************************/
-/***************************** Agent Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** Agent ≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_Agent_Start(HP_Agent pAgent, LPCTSTR lpszBindAddress, BOOL bAsyncConnect)
 {
@@ -1307,7 +1307,7 @@ HPSOCKET_API BOOL __HP_CALL HP_Agent_DisconnectSilenceConnections(HP_Agent pAgen
 }
 
 /******************************************************************************/
-/***************************** Agent Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** Agent  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_Agent_SetConnectionExtra(HP_Agent pAgent, HP_CONNID dwConnID, PVOID pExtra)
 {
@@ -1480,7 +1480,7 @@ HPSOCKET_API BOOL __HP_CALL HP_Agent_IsMarkSilence(HP_Agent pAgent)
 }
 
 /**********************************************************************************/
-/******************************* TCP Agent Êìç‰ΩúÊñπÊ≥ï *******************************/
+/******************************* TCP Agent ≤Ÿ◊˜∑Ω∑® *******************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_TcpAgent_SendSmallFile(HP_Agent pAgent, HP_CONNID dwConnID, LPCTSTR lpszFileName, const LPWSABUF pHead, const LPWSABUF pTail)
 {
@@ -1488,7 +1488,7 @@ HPSOCKET_API BOOL __HP_CALL HP_TcpAgent_SendSmallFile(HP_Agent pAgent, HP_CONNID
 }
 
 /**********************************************************************************/
-/***************************** TCP Agent Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Agent  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpAgent_SetReuseAddress(HP_TcpAgent pAgent, BOOL bReuseAddress)
 {
@@ -1531,7 +1531,7 @@ HPSOCKET_API DWORD __HP_CALL HP_TcpAgent_GetKeepAliveInterval(HP_TcpAgent pAgent
 }
 
 /******************************************************************************/
-/***************************** Client ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** Client ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_Client_Start(HP_Client pClient, LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnect)
 {
@@ -1569,7 +1569,7 @@ HPSOCKET_API BOOL __HP_CALL HP_Client_PauseReceive(HP_Client pClient, BOOL bPaus
 }
 
 /******************************************************************************/
-/***************************** Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** Client  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_Client_SetExtra(HP_Client pClient, PVOID pExtra)
 {
@@ -1652,7 +1652,7 @@ HPSOCKET_API DWORD __HP_CALL HP_Client_GetFreeBufferPoolHold(HP_Client pClient)
 }
 
 /**********************************************************************************/
-/******************************* TCP Client Êìç‰ΩúÊñπÊ≥ï *******************************/
+/******************************* TCP Client ≤Ÿ◊˜∑Ω∑® *******************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_TcpClient_SendSmallFile(HP_Client pClient, LPCTSTR lpszFileName, const LPWSABUF pHead, const LPWSABUF pTail)
 {
@@ -1660,7 +1660,7 @@ HPSOCKET_API BOOL __HP_CALL HP_TcpClient_SendSmallFile(HP_Client pClient, LPCTST
 }
 
 /**********************************************************************************/
-/***************************** TCP Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Client  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpClient_SetSocketBufferSize(HP_TcpClient pClient, DWORD dwSocketBufferSize)
 {
@@ -1693,7 +1693,7 @@ HPSOCKET_API DWORD __HP_CALL HP_TcpClient_GetKeepAliveInterval(HP_TcpClient pCli
 }
 
 /**********************************************************************************/
-/***************************** UDP Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** UDP Client  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_UdpClient_SetMaxDatagramSize(HP_UdpClient pClient, DWORD dwMaxDatagramSize)
 {
@@ -1726,7 +1726,7 @@ HPSOCKET_API DWORD __HP_CALL HP_UdpClient_GetDetectInterval(HP_UdpClient pClient
 }
 
 /**********************************************************************************/
-/****************************** UDP Cast Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï ******************************/
+/****************************** UDP Cast  Ù–‘∑√Œ ∑Ω∑® ******************************/
 
 HPSOCKET_API void __HP_CALL HP_UdpCast_SetMaxDatagramSize(HP_UdpCast pCast, DWORD dwMaxDatagramSize)
 {
@@ -1784,7 +1784,7 @@ HPSOCKET_API BOOL __HP_CALL HP_UdpCast_IsMultiCastLoop(HP_UdpCast pCast)
 }
 
 /***************************************************************************************/
-/***************************** TCP Pull Server ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Server ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullServer_Fetch(HP_TcpPullServer pServer, HP_CONNID dwConnID, BYTE* pData, int iLength)
 {
@@ -1797,10 +1797,10 @@ HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullServer_Peek(HP_TcpPullServer 
 }
 
 /***************************************************************************************/
-/***************************** TCP Pull Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Server  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pull Agent ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Agent ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullAgent_Fetch(HP_TcpPullAgent pAgent, HP_CONNID dwConnID, BYTE* pData, int iLength)
 {
@@ -1813,10 +1813,10 @@ HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullAgent_Peek(HP_TcpPullAgent pA
 }
 
 /***************************************************************************************/
-/***************************** TCP Pull Agent Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Agent  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pull Client ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Client ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullClient_Fetch(HP_TcpPullClient pClient, BYTE* pData, int iLength)
 {
@@ -1829,13 +1829,13 @@ HPSOCKET_API En_HP_FetchResult __HP_CALL HP_TcpPullClient_Peek(HP_TcpPullClient 
 }
 
 /***************************************************************************************/
-/***************************** TCP Pull Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pull Client  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pack Server ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Server ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pack Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Server  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpPackServer_SetMaxPackSize(HP_TcpPackServer pServer, DWORD dwMaxPackSize)
 {
@@ -1858,10 +1858,10 @@ HPSOCKET_API USHORT __HP_CALL HP_TcpPackServer_GetPackHeaderFlag(HP_TcpPackServe
 }
 
 /***************************************************************************************/
-/***************************** TCP Pack Agent ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Agent ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pack Agent Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Agent  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpPackAgent_SetMaxPackSize(HP_TcpPackAgent pAgent, DWORD dwMaxPackSize)
 {
@@ -1884,10 +1884,10 @@ HPSOCKET_API USHORT __HP_CALL HP_TcpPackAgent_GetPackHeaderFlag(HP_TcpPackAgent 
 }
 
 /***************************************************************************************/
-/***************************** TCP Pack Client ÁªÑ‰ª∂Êìç‰ΩúÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Client ◊Èº˛≤Ÿ◊˜∑Ω∑® *****************************/
 
 /***************************************************************************************/
-/***************************** TCP Pack Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï *****************************/
+/***************************** TCP Pack Client  Ù–‘∑√Œ ∑Ω∑® *****************************/
 
 HPSOCKET_API void __HP_CALL HP_TcpPackClient_SetMaxPackSize(HP_TcpPackClient pClient, DWORD dwMaxPackSize)
 {
@@ -2115,7 +2115,7 @@ typedef C_HP_ObjectT<CHttpClient, IHttpClientListener, sizeof(IHttpRequester)>		
 typedef C_HP_ObjectT<CHttpSyncClient, IHttpClientListener, sizeof(IHttpSyncRequester)>	C_HP_HttpSyncClient;
 
 /****************************************************/
-/***************** HTTP ÂØπË±°ÂàõÂª∫ÂáΩÊï∞ *****************/
+/***************** HTTP ∂‘œÛ¥¥Ω®∫Ø ˝ *****************/
 
 HPSOCKET_API HP_HttpServer __HP_CALL Create_HP_HttpServer(HP_HttpServerListener pListener)
 {
@@ -2188,7 +2188,7 @@ HPSOCKET_API void __HP_CALL Destroy_HP_HttpClientListener(HP_HttpClientListener 
 }
 
 /**********************************************************************************/
-/*************************** HTTP Server ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï **************************/
+/*************************** HTTP Server ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® **************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_HttpServer_OnMessageBegin(HP_HttpServerListener pListener, HP_FN_HttpServer_OnMessageBegin fn)
 {
@@ -2291,7 +2291,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_HttpServer_OnShutdown(HP_HttpServerListene
 }
 
 /**********************************************************************************/
-/**************************** HTTP Agent ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï **************************/
+/**************************** HTTP Agent ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® **************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_HttpAgent_OnMessageBegin(HP_HttpAgentListener pListener, HP_FN_HttpAgent_OnMessageBegin fn)
 {
@@ -2394,7 +2394,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_HttpAgent_OnShutdown(HP_HttpAgentListener 
 }
 
 /**********************************************************************************/
-/*************************** HTTP Client ÂõûË∞ÉÂáΩÊï∞ËÆæÁΩÆÊñπÊ≥ï **************************/
+/*************************** HTTP Client ªÿµ˜∫Ø ˝…Ë÷√∑Ω∑® **************************/
 
 HPSOCKET_API void __HP_CALL HP_Set_FN_HttpClient_OnMessageBegin(HP_HttpClientListener pListener, HP_FN_HttpClient_OnMessageBegin fn)
 {
@@ -2492,7 +2492,7 @@ HPSOCKET_API void __HP_CALL HP_Set_FN_HttpClient_OnClose(HP_HttpClientListener p
 }
 
 /**************************************************************************/
-/*************************** HTTP Server Êìç‰ΩúÊñπÊ≥ï **************************/
+/*************************** HTTP Server ≤Ÿ◊˜∑Ω∑® **************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_HttpServer_SendResponse(HP_HttpServer pServer, HP_CONNID dwConnID, USHORT usStatusCode, LPCSTR lpszDesc, const HP_THeader lpHeaders[], int iHeaderCount, const BYTE* pData, int iLength)
 {
@@ -2515,7 +2515,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpServer_Release(HP_HttpServer pServer, HP_CONN
 }
 
 /******************************************************************************/
-/*************************** HTTP Server Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï **************************/
+/*************************** HTTP Server  Ù–‘∑√Œ ∑Ω∑® **************************/
 
 HPSOCKET_API void __HP_CALL HP_HttpServer_SetReleaseDelay(HP_HttpServer pServer, DWORD dwReleaseDelay)
 {
@@ -2639,7 +2639,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpServer_GetWSMessageState(HP_HttpServer pServe
 }
 
 /**************************************************************************/
-/*************************** HTTP Agent Êìç‰ΩúÊñπÊ≥ï ***************************/
+/*************************** HTTP Agent ≤Ÿ◊˜∑Ω∑® ***************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_HttpAgent_SendRequest(HP_HttpAgent pAgent, HP_CONNID dwConnID, LPCSTR lpszMethod, LPCSTR lpszPath, const HP_THeader lpHeaders[], int iHeaderCount, const BYTE* pBody, int iLength)
 {
@@ -2702,7 +2702,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpAgent_SendWSMessage(HP_HttpAgent pAgent, HP_C
 }
 
 /******************************************************************************/
-/*************************** HTTP Agent Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï ***************************/
+/*************************** HTTP Agent  Ù–‘∑√Œ ∑Ω∑® ***************************/
 
 HPSOCKET_API USHORT __HP_CALL HP_HttpAgent_GetStatusCode(HP_HttpAgent pAgent, HP_CONNID dwConnID)
 {
@@ -2810,7 +2810,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpAgent_GetWSMessageState(HP_HttpAgent pAgent, 
 }
 
 /**************************************************************************/
-/*************************** HTTP Client Êìç‰ΩúÊñπÊ≥ï **************************/
+/*************************** HTTP Client ≤Ÿ◊˜∑Ω∑® **************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_HttpClient_SendRequest(HP_HttpClient pClient, LPCSTR lpszMethod, LPCSTR lpszPath, const HP_THeader lpHeaders[], int iHeaderCount, const BYTE* pBody, int iLength)
 {
@@ -2873,7 +2873,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpClient_SendWSMessage(HP_HttpClient pClient, B
 }
 
 /******************************************************************************/
-/*************************** HTTP Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï **************************/
+/*************************** HTTP Client  Ù–‘∑√Œ ∑Ω∑® **************************/
 
 HPSOCKET_API USHORT __HP_CALL HP_HttpClient_GetStatusCode(HP_HttpClient pClient)
 {
@@ -2981,7 +2981,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpClient_GetWSMessageState(HP_HttpClient pClien
 }
 
 /**************************************************************************/
-/************************ HTTP Sync Client Êìç‰ΩúÊñπÊ≥ï ************************/
+/************************ HTTP Sync Client ≤Ÿ◊˜∑Ω∑® ************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_HttpSyncClient_OpenUrl(HP_HttpSyncClient pClient, LPCSTR lpszMethod, LPCSTR lpszUrl, const THeader lpHeaders[], int iHeaderCount, const BYTE* pBody, int iLength, BOOL bForceReconnect)
 {
@@ -2994,7 +2994,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpSyncClient_CleanupRequestResult(HP_HttpSyncCl
 }
 
 /**************************************************************************/
-/********************** HTTP Sync Client Â±ûÊÄßËÆøÈóÆÊñπÊ≥ï **********************/
+/********************** HTTP Sync Client  Ù–‘∑√Œ ∑Ω∑® **********************/
 
 HPSOCKET_API void __HP_CALL HP_HttpSyncClient_SetConnectTimeout(HP_HttpSyncClient pClient, DWORD dwConnectTimeout)
 {
@@ -3022,7 +3022,7 @@ HPSOCKET_API BOOL __HP_CALL HP_HttpSyncClient_GetResponseBody(HP_HttpSyncClient 
 }
 
 /**************************************************************************/
-/*************************** HTTP Cookie ÁÆ°ÁêÜÊñπÊ≥ï **************************/
+/*************************** HTTP Cookie π‹¿Ì∑Ω∑® **************************/
 
 HPSOCKET_API BOOL __HP_CALL HP_HttpCookie_MGR_LoadFromFile(LPCSTR lpszFile, BOOL bKeepExists)
 {

@@ -11,20 +11,20 @@ public:
 
 	bool setLink(const std::string& host, const std::string& port, const std::string& target = "/");
 
-	// ä»¥postå½¢å¼, å‘é€send_msg(Bodyä¸­)
-	// æ­£ç¡®è¿”å›true, read_msgä¸ºè¿”å›æ•°æ®;
-	// é”™è¯¯è¿”å›false, read_msgä¸ºé”™è¯¯å†…å®¹
+	// ÒÔpostĞÎÊ½, ·¢ËÍsend_msg(BodyÖĞ)
+	// ÕıÈ··µ»Øtrue, read_msgÎª·µ»ØÊı¾İ;
+	// ´íÎó·µ»Øfalse, read_msgÎª´íÎóÄÚÈİ
 	bool post_sync(std::string& read_msg, const std::string& send_msg);
     bool post_sync(std::string& read_msg, const std::string& send_msg, const std::string& target);
 
-	// ä»¥getå½¢å¼, å‘é€send_msg
-	// æ­£ç¡®è¿”å›true, read_msgä¸ºè¿”å›æ•°æ®;
-	// é”™è¯¯è¿”å›false, read_msgä¸ºé”™è¯¯å†…å®¹
+	// ÒÔgetĞÎÊ½, ·¢ËÍsend_msg
+	// ÕıÈ··µ»Øtrue, read_msgÎª·µ»ØÊı¾İ;
+	// ´íÎó·µ»Øfalse, read_msgÎª´íÎóÄÚÈİ
 	bool get_sync(std::string& read_msg);
 
 	void stop();
 
-#pragma region https://github.com/boostorg/beast/issues/731#ref-issue-249622270ä¸­æ‰€å†™æ–¹æ³•
+#pragma region https://github.com/boostorg/beast/issues/731#ref-issue-249622270ÖĞËùĞ´·½·¨
 protected:
 	std::string ReadResponse(const std::string& input);
 

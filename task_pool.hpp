@@ -3,7 +3,7 @@ File name:  task_pool.hpp
 Author:     AChar
 Version:
 Date:
-Description:    提供各类任务线程池基类,避免外界重复创建
+Description:    �ṩ���������̳߳ػ���,��������ظ�����
 *************************************************/
 #pragma once
 #include <mutex>
@@ -15,12 +15,12 @@ Description:    提供各类任务线程池基类,避免外界重复创建
 namespace BTool
 {
     /*************************************************
-                   任务线程池基类
+                   �����̳߳ػ���
     *************************************************/
     class TaskPoolBase
     {
         enum {
-            TP_MAX_THREAD = 2000,   // 最大线程数
+            TP_MAX_THREAD = 2000,   // ����߳���
         };
 
     public:
@@ -35,8 +35,8 @@ namespace BTool
         virtual void pop_task_inner() = 0;
 
     public:
-        // 开启线程池
-        // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
+        // �����̳߳�
+        // thread_num: �����߳���,���ΪSTP_MAX_THREAD���߳�,0��ʾϵͳCPU����
         void start(size_t thread_num = std::thread::hardware_concurrency()) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
@@ -46,10 +46,10 @@ namespace BTool
             create_thread(thread_num);
         }
 
-        // 终止线程池
-        // 注意此处可能阻塞等待task的回调线程结束,故在task的回调线程中不可调用该函数
-        // bwait: 是否强制等待当前所有队列执行完毕后才结束
-        // 完全停止后方可重新开启
+        // ��ֹ�̳߳�
+        // ע��˴����������ȴ�task�Ļص��߳̽���,����task�Ļص��߳��в��ɵ��øú���
+        // bwait: �Ƿ�ǿ�Ƶȴ���ǰ���ж���ִ����Ϻ�Ž���
+        // ��ȫֹͣ�󷽿����¿���
         void stop(bool bwait = false) {
             if (!m_atomic_switch.stop())
                 return;
@@ -71,14 +71,14 @@ namespace BTool
             m_atomic_switch.reset();
         }
 
-        // 清空任务队列,不会阻塞
+        // ����������,��������
         void clear() {
             m_task_queue->clear();
         }
 
-        // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
-        // thread_num: 重置线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
-        // 注意:必须开启线程池后方可生效
+        // �����̳߳ظ���,ÿ����һ���߳�ʱ�����һ��ָ����ڴ�����(�߳���Դ���Զ��ͷ�),ִ��stop��������������������������
+        // thread_num: �����߳���,���ΪSTP_MAX_THREAD���߳�,0��ʾϵͳCPU����
+        // ע��:���뿪���̳߳غ󷽿���Ч
         void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency()) {
             if (!m_atomic_switch.has_started())
                 return;
@@ -88,7 +88,7 @@ namespace BTool
         }
 
     private:
-        // 创建线程
+        // �����߳�
         void create_thread(size_t thread_num) {
             if (thread_num == 0) {
                 thread_num = std::thread::hardware_concurrency();
@@ -100,7 +100,7 @@ namespace BTool
             }
         }
 
-        // 线程池线程
+        // �̳߳��߳�
         void thread_fun(size_t thread_ver) {
             while (true) {
                 if (m_atomic_switch.has_stoped() && m_task_queue->empty()) {
@@ -115,32 +115,32 @@ namespace BTool
         }
 
     protected:
-        // 原子启停标志
+        // ԭ����ͣ��־
         AtomicSwitch                m_atomic_switch;
-        // 队列指针,不同线程池只需替换不同队列指针即可
+        // ����ָ��,��ͬ�̳߳�ֻ���滻��ͬ����ָ�뼴��
         TaskQueueBaseVirtual*       m_task_queue;
 
         std::mutex                  m_threads_mtx;
-        // 线程队列
+        // �̶߳���
         std::vector<SafeThread*>    m_cur_thread;
-        // 当前设置线程版本号,每次重新设置线程数时,会递增该数值
+        // ��ǰ�����̰߳汾��,ÿ�����������߳���ʱ,���������ֵ
         std::atomic<size_t>         m_cur_thread_ver;
     };
 
     /*************************************************
-    Description:    提供并行有序执行的线程池
-    1, 可同时添加多个任务;
-    2, 所有任务有先后执行顺序,但可能会同时进行;
-    4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
-    5. 提供可扩展或缩容线程池数量功能。
+    Description:    �ṩ��������ִ�е��̳߳�
+    1, ��ͬʱ���Ӷ������;
+    2, �����������Ⱥ�ִ��˳��,�����ܻ�ͬʱ����;
+    4, ʵʱ��:ֻҪ�̳߳��߳��п��е�,��ô�ύ������������ִ��;����������̵߳������ʡ�
+    5. �ṩ����չ�������̳߳��������ܡ�
     *************************************************/
     class ParallelTaskPool
         : public TaskPoolBase
         , private boost::noncopyable
     {
     public:
-        // 根据新增任务顺序并行有序执行的线程池
-        // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
+        // ������������˳��������ִ�е��̳߳�
+        // max_task_count: ������񻺴����,��������������������;0���ʾ������
         ParallelTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
             set_queue_ptr(&m_task_queue);
         }
@@ -149,8 +149,8 @@ namespace BTool
             stop();
         }
 
-        // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // �����������,�������������ʱ��������
+        // �ر�ע��!����char*/char[]��ָ�����ʵ���ʱָ��,����ת��Ϊstring��ʵ������,�������������,��ָ��Ұָ��!!!!
         // add_task([param1, param2=...]{...})
         // add_task(std::bind(&func, param1, param2))
         template<typename TFunction>
@@ -170,18 +170,18 @@ namespace BTool
     };
 
     /*************************************************
-    Description:    专用于CTP,提供并行有序执行的线程池
-    1, 可同时添加多个任务;
-    2, 所有任务有先后执行顺序,但可能会同时进行;
-    4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
-    5. 提供可扩展或缩容线程池数量功能。
-    6. 每次POP时均延时1S
+    Description:    ר����CTP,�ṩ��������ִ�е��̳߳�
+    1, ��ͬʱ���Ӷ������;
+    2, �����������Ⱥ�ִ��˳��,�����ܻ�ͬʱ����;
+    4, ʵʱ��:ֻҪ�̳߳��߳��п��е�,��ô�ύ������������ִ��;����������̵߳������ʡ�
+    5. �ṩ����չ�������̳߳��������ܡ�
+    6. ÿ��POPʱ����ʱ1S
     *************************************************/
     class ParallelWaitTaskPool : public ParallelTaskPool
     {
     public:
-        // 根据新增任务顺序并行有序执行的线程池
-        // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
+        // ������������˳��������ִ�е��̳߳�
+        // max_task_count: ������񻺴����,��������������������;0���ʾ������
         ParallelWaitTaskPool(size_t max_task_count = 0)
             : ParallelTaskPool(max_task_count)
             , m_sleep_millseconds(1100)
@@ -189,7 +189,7 @@ namespace BTool
 
         ~ParallelWaitTaskPool() {}
 
-        // 设置间隔时间
+        // ���ü��ʱ��
         void set_sleep_milliseconds(long long millseconds) {
             m_sleep_millseconds = millseconds;
         }
@@ -205,12 +205,12 @@ namespace BTool
     };
 
     /*************************************************
-    Description:    提供具有相同属性任务执行最新状态的线程池
-    1, 每个属性都可以同时添加多个任务;
-    2, 有很多的属性和很多的任务;
-    3, 每个属性添加的任务必须有序串行执行,即在同一时刻不能有同时执行一个用户的两个任务;
-    4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
-    5. 提供可扩展或缩容线程池数量功能。
+    Description:    �ṩ������ͬ��������ִ������״̬���̳߳�
+    1, ÿ�����Զ�����ͬʱ���Ӷ������;
+    2, �кܶ�����Ժͺܶ������;
+    3, ÿ���������ӵ��������������ִ��,����ͬһʱ�̲�����ͬʱִ��һ���û�����������;
+    4, ʵʱ��:ֻҪ�̳߳��߳��п��е�,��ô�ύ������������ִ��;����������̵߳������ʡ�
+    5. �ṩ����չ�������̳߳��������ܡ�
     *************************************************/
     template<typename TPropType>
     class LastTaskPool
@@ -218,8 +218,8 @@ namespace BTool
         , private boost::noncopyable
     {
     public:
-        // 具有相同属性任务执行最新状态的线程池
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
+        // ������ͬ��������ִ������״̬���̳߳�
+        // max_task_count: ����������,��������������������;0���ʾ������
         LastTaskPool(size_t max_task_count = 0)
             : m_task_queue(max_task_count)
         {
@@ -230,8 +230,8 @@ namespace BTool
             stop();
         }
 
-        // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // �����������,�������������ʱ��������
+        // �ر�ע��!����char*/char[]��ָ�����ʵ���ʱָ��,����ת��Ϊstring��ʵ������,�������������,��ָ��Ұָ��!!!!
         // add_task(prop, [param1, param2=...]{...})
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
@@ -252,17 +252,17 @@ namespace BTool
         }
 
     private:
-        // 待执行任务队列
+        // ��ִ���������
         LastTaskQueue<TPropType>        m_task_queue;
     };
 
     /*************************************************
-    Description:    提供具有相同属性任务串行有序执行的线程池
-    1, 每个属性都可以同时添加多个任务;
-    2, 有很多的属性和很多的任务;
-    3, 每个属性添加的任务必须有序串行执行,即在同一时刻不能有同时执行一个用户的两个任务;
-    4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
-    5. 提供可扩展或缩容线程池数量功能。
+    Description:    �ṩ������ͬ��������������ִ�е��̳߳�
+    1, ÿ�����Զ�����ͬʱ���Ӷ������;
+    2, �кܶ�����Ժͺܶ������;
+    3, ÿ���������ӵ��������������ִ��,����ͬһʱ�̲�����ͬʱִ��һ���û�����������;
+    4, ʵʱ��:ֻҪ�̳߳��߳��п��е�,��ô�ύ������������ִ��;����������̵߳������ʡ�
+    5. �ṩ����չ�������̳߳��������ܡ�
     *************************************************/
     template<typename TPropType>
     class SerialTaskPool
@@ -270,8 +270,8 @@ namespace BTool
         , private boost::noncopyable
     {
     public:
-        // 具有相同属性任务串行有序执行的线程池
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
+        // ������ͬ��������������ִ�е��̳߳�
+        // max_task_count: ����������,��������������������;0���ʾ������
         SerialTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
             set_queue_ptr(&m_task_queue);
         }
@@ -280,8 +280,8 @@ namespace BTool
             stop();
         }
 
-        // 新增任务队列,超出最大任务数时存在阻塞
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // �����������,�������������ʱ��������
+        // �ر�ע��!����char*/char[]��ָ�����ʵ���ʱָ��,����ת��Ϊstring��ʵ������,�������������,��ָ��Ұָ��!!!!
         // add_task(prop, [param1, param2=...]{...})
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
@@ -302,7 +302,7 @@ namespace BTool
         }
 
     private:
-        // 待执行任务队列
+        // ��ִ���������
         SerialTaskQueue<TPropType>          m_task_queue;
     };
 

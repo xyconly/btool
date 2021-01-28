@@ -1,5 +1,5 @@
 /*
-* Purpose: jsonå­—ç¬¦ä¸²æ¶ˆæ¯å°åŒ…è§£åŒ…
+* Purpose: json×Ö·û´®ÏûÏ¢·â°ü½â°ü
 */
 
 #pragma once
@@ -29,20 +29,20 @@ namespace NPPbJsonPackage
 #define COMM_JSON_DATA      "data"
 #define COMM_JSON_CHK       "chk"
 
-    // æœ€å°åŒ…é•¿åº¦
+    // ×îĞ¡°ü³¤¶È
 #define COMM_JSON_MIN_PACKAGE_LEN    28
 
-    // åŒ…å¤´
+    // °üÍ·
     struct PackHeader {
         uint32_t command_;
     };
 
-    // åŒ…å°¾
+    // °üÎ²
     struct PackTail {
         uint32_t checksum_;
     };
 
-    // å¿ƒè·³åŒ…
+    // ĞÄÌø°ü
     struct HeartBeat
     {
         PackHeader	Header;
@@ -61,15 +61,15 @@ namespace NPPbJsonPackage
         }
     };
 
-    // è§£åŒ…
+    // ½â°ü
     class DecodePackage : public Package
     {
-        // è§£åŒ…çŠ¶æ€
+        // ½â°ü×´Ì¬
         enum DecodeStatus
         {
-            DecodeInit = 0, // åˆå§‹åŒ–æœªè§£æ
-            DecodeMsg,      // å½“å‰åŒ…å·²è§£æ
-            DecodeError,    // å½“å‰åŒ…éæŒ‡å®šåè®®
+            DecodeInit = 0, // ³õÊ¼»¯Î´½âÎö
+            DecodeMsg,      // µ±Ç°°üÒÑ½âÎö
+            DecodeError,    // µ±Ç°°ü·ÇÖ¸¶¨Ğ­Òé
         };
 
     public:
@@ -82,7 +82,7 @@ namespace NPPbJsonPackage
         }
 
     public:
-        // å½“å‰åŒ…æ˜¯å¦æ˜¯å®Œæ•´åŒ…
+        // µ±Ç°°üÊÇ·ñÊÇÍêÕû°ü
         bool is_entire()
         {
             if (m_status == DecodeInit)
@@ -91,22 +91,22 @@ namespace NPPbJsonPackage
             return m_buff_len - m_offset >= m_pack_len;
         }
 
-        // è·å–å½“å‰åŒ…æ€»é•¿åº¦
+        // »ñÈ¡µ±Ç°°ü×Ü³¤¶È
         size_t get_package_length() const {
             return m_pack_len;
         }
 
-        // è·å–å½“å‰åŒ…å‘½ä»¤ç 
+        // »ñÈ¡µ±Ç°°üÃüÁîÂë
         uint32_t get_command() const {
             return m_head.command_;
         }
 
-        // è·å–å½“å‰åŒ…ä½“é•¿åº¦
+        // »ñÈ¡µ±Ç°°üÌå³¤¶È
         size_t get_body_length() const {
             return m_body.length();
         }
 
-        // è§£åŒ…æ•°æ®
+        // ½â°üÊı¾İ
         bool decode_msg()
         {
             if (m_offset == m_buff_len)
@@ -116,7 +116,7 @@ namespace NPPbJsonPackage
             return vaild(m_offset);
         }
 
-        // è·å–åŒ…ä½“
+        // »ñÈ¡°üÌå
         const std::string& get_body()
         {
             return m_body;
@@ -130,7 +130,7 @@ namespace NPPbJsonPackage
             return generate_checksum(get_body().c_str(), get_body_length()) == m_tail.checksum_;
         }
 
-        // æ˜¯å¦è¿˜æœ‰æ•°æ®æœªè§£åŒ…
+        // ÊÇ·ñ»¹ÓĞÊı¾İÎ´½â°ü
         bool has_next()
         {
             if (m_status == DecodePackage::DecodeInit)
@@ -139,27 +139,27 @@ namespace NPPbJsonPackage
             return vaild(m_offset + m_pack_len);
         }
 
-        // å¼€å§‹è§£åŒ…ä¸‹ä¸€ä¸ª
+        // ¿ªÊ¼½â°üÏÂÒ»¸ö
         void decode_next()
         {
             m_offset += m_pack_len;
             init_data();
         }
 
-        // è·å–å·²å¤„ç†å®Œæ¯•åŒ…é•¿åº¦
+        // »ñÈ¡ÒÑ´¦ÀíÍê±Ï°ü³¤¶È
         size_t get_deal_len()
         {
             return m_offset;
         }
 
-        // è·å–å‰©ä½™é•¿åº¦,åŒ…å«å½“å‰è§£åŒ…é•¿åº¦
+        // »ñÈ¡Ê£Óà³¤¶È,°üº¬µ±Ç°½â°ü³¤¶È
         size_t get_res_len()
         {
             return m_buff_len - m_offset;
         }
 
     private:
-        // æ˜¯å¦æœ‰æ•ˆ
+        // ÊÇ·ñÓĞĞ§
         bool vaild(size_t offset) {
             if (m_cur_resolve_isvaild)
                 return true;
@@ -212,7 +212,7 @@ namespace NPPbJsonPackage
                     return true;
 
 
-                // åŒ…é•¿åº¦è·å–
+                // °ü³¤¶È»ñÈ¡
                 size_t startpos = cur_package.find(mem_msg);
                 if (startpos == std::string::npos)
                     return true;
@@ -227,24 +227,24 @@ namespace NPPbJsonPackage
                 endpos = cur_package.rfind("}", endpos);
                 m_pack_len = endpos - startpos + 1;
 
-                // æ¶ˆæ¯è§£æ
+                // ÏûÏ¢½âÎö
                 Json::Value& msgVaalue = rootValue[mem_msg];
                 if (msgVaalue.isNull() || !msgVaalue.isObject())
                     return true;
 
-                // å‘½ä»¤ç è§£æ
+                // ÃüÁîÂë½âÎö
                 auto& cmd = msgVaalue[mem_cmd];
                 if (cmd.isNull() || !cmd.isUInt())
                     return true;
                 m_head.command_ = cmd.asUInt();
 
-                // åŒ…ä½“è§£æ
+                // °üÌå½âÎö
                 auto& body = msgVaalue[mem_data];
                 if (body.isNull() || !body.isString())
                     return true;
                 m_body = body.asString();
 
-                // æ ¡éªŒç è§£æ
+                // Ğ£ÑéÂë½âÎö
                 auto& tail = msgVaalue[mem_chk];
                 if (tail.isNull() || !tail.isUInt())
                     return true;
@@ -269,20 +269,20 @@ namespace NPPbJsonPackage
         }
 
     private:
-        std::string         m_buffer;   // åŒ…æ€»æ•°æ®
-        size_t              m_buff_len; // åŒ…æ€»æ•°æ®é•¿åº¦
-        size_t              m_pack_len; // å½“å‰è§£çš„åŒ…æ•°æ®æ€»é•¿åº¦
-        PackHeader          m_head;     // å½“å‰åŒ…å¤´
-        std::string         m_body;     // åŒ…ä½“å†…å®¹
-        PackTail            m_tail;     // å½“å‰åŒ…å°¾
+        std::string         m_buffer;   // °ü×ÜÊı¾İ
+        size_t              m_buff_len; // °ü×ÜÊı¾İ³¤¶È
+        size_t              m_pack_len; // µ±Ç°½âµÄ°üÊı¾İ×Ü³¤¶È
+        PackHeader          m_head;     // µ±Ç°°üÍ·
+        std::string         m_body;     // °üÌåÄÚÈİ
+        PackTail            m_tail;     // µ±Ç°°üÎ²
 
-        DecodeStatus        m_status;       // å½“å‰è§£åŒ…çŠ¶æ€
-        size_t              m_offset;       // å½“å‰åŒ…å¤´æ‰€å¤„æ¼‚ç§»ä½
-        bool                m_cur_isvaild;  // å½“å‰è§£çš„åŒ…æ˜¯å¦æœ‰æ•ˆ
-        bool                m_cur_resolve_isvaild;// å½“å‰åŒ…æ˜¯å¦è§£æè¿‡
+        DecodeStatus        m_status;       // µ±Ç°½â°ü×´Ì¬
+        size_t              m_offset;       // µ±Ç°°üÍ·Ëù´¦Æ¯ÒÆÎ»
+        bool                m_cur_isvaild;  // µ±Ç°½âµÄ°üÊÇ·ñÓĞĞ§
+        bool                m_cur_resolve_isvaild;// µ±Ç°°üÊÇ·ñ½âÎö¹ı
     };
 
-    // æ‰“åŒ…
+    // ´ò°ü
     class EncodePackage : public Package
     {
     public:
@@ -312,18 +312,18 @@ namespace NPPbJsonPackage
         {
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…æ•°æ®
+        // »ñÈ¡ÍêÕû·¢ËÍ°üÊı¾İ
         const std::string& get_package() const {
             return m_send_msg;
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…é•¿åº¦
+        // »ñÈ¡ÍêÕû·¢ËÍ°ü³¤¶È
         size_t get_length() const {
             return m_send_msg.length();
         }
 
     private:
-        std::string     m_send_msg; // å‘é€æ•°æ®
+        std::string     m_send_msg; // ·¢ËÍÊı¾İ
         PackHeader      m_head;
         PackTail        m_tail;
     };

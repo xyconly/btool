@@ -3,20 +3,20 @@ File name:  atomic_switch.hpp
 Author:     AChar
 Version:
 Date:
-Description:    æä¾›åˆ¤æ–­å¯åŠ¨æˆ–åœæ­¢çš„åŸå­æ“ä½œåŸºç±»
-   æä¾›ä¸åŒçš„ä¸¤ä¸ªåˆ¤æ–­ä¾æ®,å¯åŠ¨å’Œç»ˆæ­¢,ä»¥åº”å¯¹å¯èƒ½å‡ºç°å¯åŠ¨/ç»ˆæ­¢ä¸­é—´æ€çš„é—®é¢˜;
-   ä¾‹å¦‚:åªå¸Œæœ›å¯åŠ¨ä¸€æ¬¡,ä½†å¯èƒ½å­˜åœ¨å¯åŠ¨å»¶æ—¶çš„æƒ…å†µ;æ­¤æ—¶é€šè¿‡åˆ¤æ–­m_initçš„æƒ…å†µå³å¯é¿å…é‡å¤è¿›å…¥;
+Description:    Ìá¹©ÅĞ¶ÏÆô¶¯»òÍ£Ö¹µÄÔ­×Ó²Ù×÷»ùÀà
+   Ìá¹©²»Í¬µÄÁ½¸öÅĞ¶ÏÒÀ¾İ,Æô¶¯ºÍÖÕÖ¹,ÒÔÓ¦¶Ô¿ÉÄÜ³öÏÖÆô¶¯/ÖÕÖ¹ÖĞ¼äÌ¬µÄÎÊÌâ;
+   ÀıÈç:Ö»Ï£ÍûÆô¶¯Ò»´Î,µ«¿ÉÄÜ´æÔÚÆô¶¯ÑÓÊ±µÄÇé¿ö;´ËÊ±Í¨¹ıÅĞ¶Ïm_initµÄÇé¿ö¼´¿É±ÜÃâÖØ¸´½øÈë;
                AtomicSwitch judge;
                if (!judge.init())
                    return false;
-               // å…¶ä»–åˆå§‹åŒ–æ“ä½œ
+               // ÆäËû³õÊ¼»¯²Ù×÷
                if (!judge.start())
                    return false;
-   ä¾‹å¦‚:åªå¸Œæœ›åœæ­¢ä¸€æ¬¡,ä½†å¯èƒ½å­˜åœ¨ç»ˆæ­¢å»¶æ—¶çš„æƒ…å†µ;æ­¤æ—¶ä¼˜å…ˆå°†m_bstopç½®ä½,å…¶æ¬¡å¾…é‡Šæ”¾ç»“æŸåä¿®æ”¹m_initæ ‡è¯†é˜²æ­¢é‡å¤è¿›å…¥;
+   ÀıÈç:Ö»Ï£ÍûÍ£Ö¹Ò»´Î,µ«¿ÉÄÜ´æÔÚÖÕÖ¹ÑÓÊ±µÄÇé¿ö;´ËÊ±ÓÅÏÈ½«m_bstopÖÃÎ»,Æä´Î´ıÊÍ·Å½áÊøºóĞŞ¸Äm_init±êÊ¶·ÀÖ¹ÖØ¸´½øÈë;
                AtomicSwitch judge;
                if (!judge.stop())
                    return false;
-               // å…¶ä»–é‡Šæ”¾æ“ä½œ, ä¸‹æ¬¡å¯åŠ¨å¿…é¡»è°ƒç”¨init
+               // ÆäËûÊÍ·Å²Ù×÷, ÏÂ´ÎÆô¶¯±ØĞëµ÷ÓÃinit
                judge.reset();
                return true;
 *************************************************/
@@ -27,7 +27,7 @@ Description:    æä¾›åˆ¤æ–­å¯åŠ¨æˆ–åœæ­¢çš„åŸå­æ“ä½œåŸºç±»
 
 namespace BTool
 {
-    // æä¾›åˆ¤æ–­å¯åŠ¨æˆ–åœæ­¢çš„åŸå­æ“ä½œ
+    // Ìá¹©ÅĞ¶ÏÆô¶¯»òÍ£Ö¹µÄÔ­×Ó²Ù×÷
     class AtomicSwitch
     {
     public:
@@ -35,16 +35,16 @@ namespace BTool
         virtual ~AtomicSwitch() {}
 
     public:
-        // ä¿®æ”¹åˆå§‹åŒ–æ ‡è¯†
-        // å°è¯•åŸå­ä¿®æ”¹m_binitä¸ºå·²åˆå§‹åŒ–,è‹¥å·²åˆå§‹åŒ–åˆ™è¿”å›false
+        // ĞŞ¸Ä³õÊ¼»¯±êÊ¶
+        // ³¢ÊÔÔ­×ÓĞŞ¸Äm_binitÎªÒÑ³õÊ¼»¯,ÈôÒÑ³õÊ¼»¯Ôò·µ»Øfalse
         bool init() {
             bool target(false);
             return m_binit.compare_exchange_strong(target, true);
         }
 
-        // ä¿®æ”¹å¯åŠ¨æ ‡è¯†
-        // è‹¥m_bstopå·²ä¸ºç»ˆæ­¢çŠ¶æ€ä¸­, æˆ–è€…m_binitä¸ºæœªåˆå§‹åŒ–çŠ¶æ€ä¸­, åˆ™ç›´æ¥è¿”å›false
-        // å¦åˆ™å°è¯•åŸå­ä¿®æ”¹m_bstartä¸ºå¯åŠ¨çŠ¶æ€
+        // ĞŞ¸ÄÆô¶¯±êÊ¶
+        // Èôm_bstopÒÑÎªÖÕÖ¹×´Ì¬ÖĞ, »òÕßm_binitÎªÎ´³õÊ¼»¯×´Ì¬ÖĞ, ÔòÖ±½Ó·µ»Øfalse
+        // ·ñÔò³¢ÊÔÔ­×ÓĞŞ¸Äm_bstartÎªÆô¶¯×´Ì¬
         bool start() {
             if (m_bstop.load() || !m_binit.load())
                 return false;
@@ -53,9 +53,9 @@ namespace BTool
             return m_bstart.compare_exchange_strong(target, true);
         }
 
-        // ä¿®æ”¹ç»ˆæ­¢æ ‡è¯†
-        // è‹¥m_bstartä¸ºæœªå¯åŠ¨çŠ¶æ€, æˆ–è€…m_binitä¸ºæœªåˆå§‹åŒ–çŠ¶æ€ä¸­, åˆ™ç›´æ¥è¿”å›false
-        // å¦åˆ™å°è¯•åŸå­ä¿®æ”¹m_bstopä¸ºå¯åŠ¨çŠ¶æ€
+        // ĞŞ¸ÄÖÕÖ¹±êÊ¶
+        // Èôm_bstartÎªÎ´Æô¶¯×´Ì¬, »òÕßm_binitÎªÎ´³õÊ¼»¯×´Ì¬ÖĞ, ÔòÖ±½Ó·µ»Øfalse
+        // ·ñÔò³¢ÊÔÔ­×ÓĞŞ¸Äm_bstopÎªÆô¶¯×´Ì¬
         bool stop() {
             if (!m_binit.load() || !m_bstart.load())
                 return false;
@@ -64,34 +64,34 @@ namespace BTool
             return m_bstop.compare_exchange_strong(target, true);
         }
 
-        // å¤ä½æ ‡è¯†
+        // ¸´Î»±êÊ¶
         void reset() {
             m_bstart.store(false);
             m_bstop.store(false);
             m_binit.store(false);
         }
 
-        // æ˜¯å¦å·²åˆå§‹åŒ–åˆ¤æ–­
+        // ÊÇ·ñÒÑ³õÊ¼»¯ÅĞ¶Ï
         bool has_init() const {
             return m_binit.load();
         }
 
-        // æ˜¯å¦å·²å¯åŠ¨åˆ¤æ–­
+        // ÊÇ·ñÒÑÆô¶¯ÅĞ¶Ï
         bool has_started() const {
             return !m_bstop.load() && m_bstart.load() && has_init();
         }
 
-        // æ˜¯å¦å·²ç»ˆæ­¢åˆ¤æ–­
+        // ÊÇ·ñÒÑÖÕÖ¹ÅĞ¶Ï
         bool has_stoped() const {
             return !has_init() || !m_bstart.load() || m_bstop.load();
         }
 
     private:
-        // æ˜¯å¦å·²åˆå§‹åŒ–æ ‡è¯†ç¬¦
+        // ÊÇ·ñÒÑ³õÊ¼»¯±êÊ¶·û
         std::atomic<bool>           m_binit;
-        // æ˜¯å¦å·²å¯åŠ¨æ ‡è¯†ç¬¦
+        // ÊÇ·ñÒÑÆô¶¯±êÊ¶·û
         std::atomic<bool>           m_bstart;
-        // æ˜¯å¦å·²è¿›å…¥ç»ˆæ­¢çŠ¶æ€æ ‡è¯†ç¬¦
+        // ÊÇ·ñÒÑ½øÈëÖÕÖ¹×´Ì¬±êÊ¶·û
         std::atomic<bool>           m_bstop;
     };
 }

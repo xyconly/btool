@@ -2,17 +2,17 @@
 File name:  des.hpp
 Author:     
 Date:
-Description:    åŸºäºopensslæä¾›çš„desç®—æ³•æ”¯æŒè¿›è¡Œå°è£…
+Description:    »ùÓÚopensslÌá¹©µÄdesËã·¨Ö§³Ö½øĞĞ·â×°
 
-NOTE: å¯†ç ç”Ÿæˆ
-    1 è¿›å…¥å¯¹åº”opensslä¸‹è¿è¡Œç›®å½•(æ¯”å¦‚bin)
-    2 æ–°å»ºæ–‡ä»¶å¤¹(æ¯”å¦‚keygen),åœ¨è¯¥æ–‡ä»¶å¤¹ä¸‹åˆ›å»ºå¯†ç æœ¬(æ¯”å¦‚passphrase.txt),åœ¨å¯†ç æœ¬ä¸­è¾“å…¥åŸå§‹å¯†ç (æ¯”å¦‚:12345678)
-    3 opensslè¿è¡Œç›®å½•ä¸­
-            windowsä¸‹æ‰“å¼€cmd,æ‰§è¡Œopenssl enc -des-cfb -kfile keygen/passphrase.txt -md md5 -P -salt
-            è¾“å‡ºsalt=2367639D67CF379D
+NOTE: ÃÜÂëÉú³É
+    1 ½øÈë¶ÔÓ¦opensslÏÂÔËĞĞÄ¿Â¼(±ÈÈçbin)
+    2 ĞÂ½¨ÎÄ¼ş¼Ğ(±ÈÈçkeygen),ÔÚ¸ÃÎÄ¼ş¼ĞÏÂ´´½¨ÃÜÂë±¾(±ÈÈçpassphrase.txt),ÔÚÃÜÂë±¾ÖĞÊäÈëÔ­Ê¼ÃÜÂë(±ÈÈç:12345678)
+    3 opensslÔËĞĞÄ¿Â¼ÖĞ
+            windowsÏÂ´ò¿ªcmd,Ö´ĞĞopenssl enc -des-cfb -kfile keygen/passphrase.txt -md md5 -P -salt
+            Êä³ösalt=2367639D67CF379D
                 key=A574B92F77AA3233
                 iv =AD27557C4587BB8A
-            saltæ¯æ¬¡å‡ä¸ºéšæœºç”Ÿæˆ
+            saltÃ¿´Î¾ùÎªËæ»úÉú³É
 *************************************************/
 #pragma once
 
@@ -28,8 +28,8 @@ namespace BTool {
     class Des : public EncryptBase
     {
     private:
-        // æ ¡éªŒå¯†é’¥
-        // è¿”å›å¯†é’¥ä¸ªæ•°
+        // Ğ£ÑéÃÜÔ¿
+        // ·µ»ØÃÜÔ¿¸öÊı
         static size_t check_key(const unsigned char* key) {
             size_t len = strlen((const char*)key);
             if (len != 8 && len != 16 && len != 24)
@@ -39,24 +39,24 @@ namespace BTool {
         }
 
     public:
-        // åŠ å¯†æ–¹å¼
+        // ¼ÓÃÜ·½Ê½
         enum class Mode : int {
             CBC = 0,
             CFB,
             ECB
         };
 
-#pragma region DESåŠ å¯†/è§£å¯†
+#pragma region DES¼ÓÃÜ/½âÃÜ
         /************************************************************************
-         *åŠŸèƒ½: DESåŠ å¯† - zeropadding
-         *å‚æ•°: key: 8byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                src_buff: è¾“å…¥å¾…åŠ å¯†å‚æ•°å†…å®¹
-                src_len:  è¾“å…¥å¾…åŠ å¯†å‚æ•°é•¿åº¦
-                out_buff: è¾“å‡ºåŠ å¯†åæ•°æ®æŒ‡é’ˆ
-                out_len:  è¾“å‡ºåŠ å¯†åæ•°æ®é•¿åº¦
-                mode:     åŠ å¯†æ–¹å¼
-                iv:       ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›æ˜¯å¦æ­£ç¡®åŠ å¯†
+         *¹¦ÄÜ: DES¼ÓÃÜ - zeropadding
+         *²ÎÊı: key: 8byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                src_buff: ÊäÈë´ı¼ÓÃÜ²ÎÊıÄÚÈİ
+                src_len:  ÊäÈë´ı¼ÓÃÜ²ÎÊı³¤¶È
+                out_buff: Êä³ö¼ÓÃÜºóÊı¾İÖ¸Õë
+                out_len:  Êä³ö¼ÓÃÜºóÊı¾İ³¤¶È
+                mode:     ¼ÓÃÜ·½Ê½
+                iv:       ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»ØÊÇ·ñÕıÈ·¼ÓÃÜ
          ************************************************************************/
         static bool encrypt(const unsigned char* key, const unsigned char* src_buff, size_t src_len, unsigned char* out_buff, size_t& out_len, Mode mode = Mode::ECB, unsigned char iv[8] = {0})
         {
@@ -108,13 +108,13 @@ namespace BTool {
             return true;
         }
         /************************************************************************
-         *åŠŸèƒ½: DESåŠ å¯† + base64åŠ å¯† - zeropadding
-         *ç›®çš„: ä¸ºå®ç°å­—ç¬¦ä¸²ä¼ è¾“,å¯¹DESåŠ å¯†åçš„å†…å­˜æ•°æ®è¿›è¡Œbase64åŠ å¯†,æ”¹ä¸ºå¯è¯†åˆ«å­—ç¬¦ä¸²è¿›è¡Œä¼ è¾“
-         *å‚æ•°: key:  8byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
-                mode: åŠ å¯†æ–¹å¼
-                iv:   ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›åŠ å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
+         *¹¦ÄÜ: DES¼ÓÃÜ + base64¼ÓÃÜ - zeropadding
+         *Ä¿µÄ: ÎªÊµÏÖ×Ö·û´®´«Êä,¶ÔDES¼ÓÃÜºóµÄÄÚ´æÊı¾İ½øĞĞbase64¼ÓÃÜ,¸ÄÎª¿ÉÊ¶±ğ×Ö·û´®½øĞĞ´«Êä
+         *²ÎÊı: key:  8byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
+                mode: ¼ÓÃÜ·½Ê½
+                iv:   ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»Ø¼ÓÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
          ************************************************************************/
         static std::string encrypt_base64(const unsigned char* key, const std::string& data, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {
@@ -133,15 +133,15 @@ namespace BTool {
             return rslt;
         }
         /************************************************************************
-         *åŠŸèƒ½: DESè§£å¯† - zeropadding
-         *å‚æ•°: key:      8byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                src_buff: è¾“å…¥å¾…è§£å¯†å‚æ•°å†…å®¹
-                src_len:  è¾“å…¥å¾…è§£å¯†å‚æ•°é•¿åº¦
-                out_buff: è¾“å‡ºè§£å¯†åæ•°æ®æŒ‡é’ˆ
-                out_len:  è¾“å‡ºè§£å¯†åæ•°æ®é•¿åº¦
-                mode:     è§£å¯†æ–¹å¼
-                iv:       ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›æ˜¯å¦æ­£ç¡®è§£å¯†
+         *¹¦ÄÜ: DES½âÃÜ - zeropadding
+         *²ÎÊı: key:      8byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                src_buff: ÊäÈë´ı½âÃÜ²ÎÊıÄÚÈİ
+                src_len:  ÊäÈë´ı½âÃÜ²ÎÊı³¤¶È
+                out_buff: Êä³ö½âÃÜºóÊı¾İÖ¸Õë
+                out_len:  Êä³ö½âÃÜºóÊı¾İ³¤¶È
+                mode:     ½âÃÜ·½Ê½
+                iv:       ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»ØÊÇ·ñÕıÈ·½âÃÜ
          ************************************************************************/
         static bool decrypt(const unsigned char* key, const unsigned char* src_buff, size_t src_len, unsigned char* out_buff, size_t& out_len, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {
@@ -193,13 +193,13 @@ namespace BTool {
             return true;
         }
         /************************************************************************
-         *åŠŸèƒ½: base64è§£å¯† + DESè§£å¯† - zeropadding
-         *ç›®çš„: å…ˆå¯¹æ•°æ®è¿›è¡Œbase64è§£å¯†,å†é‡‡ç”¨DESè§£å¯†
-         *å‚æ•°: key:  8byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
-                mode: åŠ å¯†æ–¹å¼
-                iv:   ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›è§£å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
+         *¹¦ÄÜ: base64½âÃÜ + DES½âÃÜ - zeropadding
+         *Ä¿µÄ: ÏÈ¶ÔÊı¾İ½øĞĞbase64½âÃÜ,ÔÙ²ÉÓÃDES½âÃÜ
+         *²ÎÊı: key:  8byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
+                mode: ¼ÓÃÜ·½Ê½
+                iv:   ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»Ø½âÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
          ************************************************************************/
         static std::string decrypt_base64(const unsigned char* key, const std::string& data, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {
@@ -217,17 +217,17 @@ namespace BTool {
         }
 #pragma endregion
 
-#pragma region 3DESåŠ å¯†/è§£å¯†
+#pragma region 3DES¼ÓÃÜ/½âÃÜ
         /************************************************************************
-         *åŠŸèƒ½: 3DESåŠ å¯† - zeropadding
-         *å‚æ•°: key: 8/16/24byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                src_buff: è¾“å…¥å¾…åŠ å¯†å‚æ•°å†…å®¹
-                src_len:  è¾“å…¥å¾…åŠ å¯†å‚æ•°é•¿åº¦
-                out_buff: è¾“å‡ºåŠ å¯†åæ•°æ®æŒ‡é’ˆ
-                out_len:  è¾“å‡ºåŠ å¯†åæ•°æ®é•¿åº¦
-                mode:     åŠ å¯†æ–¹å¼
-                iv:       ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›æ˜¯å¦æ­£ç¡®åŠ å¯†
+         *¹¦ÄÜ: 3DES¼ÓÃÜ - zeropadding
+         *²ÎÊı: key: 8/16/24byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                src_buff: ÊäÈë´ı¼ÓÃÜ²ÎÊıÄÚÈİ
+                src_len:  ÊäÈë´ı¼ÓÃÜ²ÎÊı³¤¶È
+                out_buff: Êä³ö¼ÓÃÜºóÊı¾İÖ¸Õë
+                out_len:  Êä³ö¼ÓÃÜºóÊı¾İ³¤¶È
+                mode:     ¼ÓÃÜ·½Ê½
+                iv:       ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»ØÊÇ·ñÕıÈ·¼ÓÃÜ
          ************************************************************************/
         static bool triple_encrypt(const unsigned char* key, const unsigned char* src_buff, size_t src_len, unsigned char* out_buff, size_t& out_len, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {
@@ -305,13 +305,13 @@ namespace BTool {
             return true;
         }
         /************************************************************************
-         *åŠŸèƒ½: 3DESåŠ å¯† + base64åŠ å¯† - zeropadding
-         *ç›®çš„: ä¸ºå®ç°å­—ç¬¦ä¸²ä¼ è¾“,å¯¹3DESåŠ å¯†åçš„å†…å­˜æ•°æ®è¿›è¡Œbase64åŠ å¯†,æ”¹ä¸ºå¯è¯†åˆ«å­—ç¬¦ä¸²è¿›è¡Œä¼ è¾“
-         *å‚æ•°: key:  8/16/24byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
-                mode: åŠ å¯†æ–¹å¼
-                iv:   ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›åŠ å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
+         *¹¦ÄÜ: 3DES¼ÓÃÜ + base64¼ÓÃÜ - zeropadding
+         *Ä¿µÄ: ÎªÊµÏÖ×Ö·û´®´«Êä,¶Ô3DES¼ÓÃÜºóµÄÄÚ´æÊı¾İ½øĞĞbase64¼ÓÃÜ,¸ÄÎª¿ÉÊ¶±ğ×Ö·û´®½øĞĞ´«Êä
+         *²ÎÊı: key:  8/16/24byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
+                mode: ¼ÓÃÜ·½Ê½
+                iv:   ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»Ø¼ÓÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
          ************************************************************************/
         static std::string triple_encrypt_base64(const unsigned char* key, const std::string& data, Mode mode = Mode::ECB, unsigned char iv[8] = {0})
         {
@@ -333,15 +333,15 @@ namespace BTool {
             return rslt;
         }
         /************************************************************************
-         *åŠŸèƒ½: 3DESè§£å¯† - zeropadding
-         *å‚æ•°: key: 8/16/24byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                src_buff: è¾“å…¥å¾…è§£å¯†å‚æ•°å†…å®¹
-                src_len:  è¾“å…¥å¾…è§£å¯†å‚æ•°é•¿åº¦
-                out_buff: è¾“å‡ºè§£å¯†åæ•°æ®æŒ‡é’ˆ
-                out_len:  è¾“å‡ºè§£å¯†åæ•°æ®é•¿åº¦
-                mode:     è§£å¯†æ–¹å¼
-                iv:       ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›æ˜¯å¦æ­£ç¡®è§£å¯†
+         *¹¦ÄÜ: 3DES½âÃÜ - zeropadding
+         *²ÎÊı: key: 8/16/24byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                src_buff: ÊäÈë´ı½âÃÜ²ÎÊıÄÚÈİ
+                src_len:  ÊäÈë´ı½âÃÜ²ÎÊı³¤¶È
+                out_buff: Êä³ö½âÃÜºóÊı¾İÖ¸Õë
+                out_len:  Êä³ö½âÃÜºóÊı¾İ³¤¶È
+                mode:     ½âÃÜ·½Ê½
+                iv:       ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»ØÊÇ·ñÕıÈ·½âÃÜ
          ************************************************************************/
         static bool triple_decrypt(const unsigned char* key, const unsigned char* src_buff, size_t src_len, unsigned char* out_buff, size_t& out_len, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {
@@ -417,13 +417,13 @@ namespace BTool {
             return true;
         }
         /************************************************************************
-         *åŠŸèƒ½: base64è§£å¯† + 3DESè§£å¯† - zeropadding
-         *ç›®çš„: å…ˆå¯¹æ•°æ®è¿›è¡Œbase64è§£å¯†,å†é‡‡ç”¨3DESè§£å¯†
-         *å‚æ•°: key:  8/16/24byteå¯†é’¥,å¦‚: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
-                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
-                mode: åŠ å¯†æ–¹å¼
-                iv:   ä»…CBC CFBä¸¤ç§æ¨¡å¼æ‰æœ‰æ­¤å€¼,é•¿åº¦ä¸º8byte
-          è¿”å›è§£å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
+         *¹¦ÄÜ: base64½âÃÜ + 3DES½âÃÜ - zeropadding
+         *Ä¿µÄ: ÏÈ¶ÔÊı¾İ½øĞĞbase64½âÃÜ,ÔÙ²ÉÓÃ3DES½âÃÜ
+         *²ÎÊı: key:  8/16/24byteÃÜÔ¿,Èç: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
+                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
+                mode: ¼ÓÃÜ·½Ê½
+                iv:   ½öCBC CFBÁ½ÖÖÄ£Ê½²ÅÓĞ´ËÖµ,³¤¶ÈÎª8byte
+          ·µ»Ø½âÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
          ************************************************************************/
         static std::string triple_decrypt_base64(const unsigned char* key, const std::string& data, Mode mode = Mode::ECB, unsigned char iv[8] = { 0 })
         {

@@ -1,5 +1,5 @@
 /*
-* Purpose: å†…å­˜æ¶ˆæ¯å°åŒ…è§£åŒ…
+* Purpose: ÄÚ´æÏûÏ¢·â°ü½â°ü
 */
 
 #pragma once
@@ -20,7 +20,7 @@
 
 namespace NPPbWebsocketPackage
 {
-    // åŒ…å¤´
+    // °üÍ·
     struct PackHeader {
         char command_[4];
         char pb_body_length_[8];
@@ -28,7 +28,7 @@ namespace NPPbWebsocketPackage
         char body_length_[8];
     };
 
-    // å¿ƒè·³åŒ…
+    // ĞÄÌø°ü
     struct HeartBeat
     {
         PackHeader	Header;
@@ -47,14 +47,14 @@ namespace NPPbWebsocketPackage
         }
     };
 
-    // è§£åŒ…
+    // ½â°ü
     class DecodePackage : public Package
     {
-        // è§£åŒ…çŠ¶æ€
+        // ½â°ü×´Ì¬
         enum DecodeStatus
         {
-            DecodeInit = 0, // åˆå§‹åŒ–æœªè§£æ
-            DecodeMsg,      // å½“å‰åŒ…å·²è§£æ
+            DecodeInit = 0, // ³õÊ¼»¯Î´½âÎö
+            DecodeMsg,      // µ±Ç°°üÒÑ½âÎö
         };
 
     public:
@@ -67,7 +67,7 @@ namespace NPPbWebsocketPackage
         }
 
     public:
-        // å½“å‰åŒ…æ˜¯å¦æ˜¯å®Œæ•´åŒ…
+        // µ±Ç°°üÊÇ·ñÊÇÍêÕû°ü
         bool is_entire() const
         {
             if (m_status == DecodeInit)
@@ -76,33 +76,33 @@ namespace NPPbWebsocketPackage
             return vaild(m_pack_len);
         }
 
-        // è·å–å½“å‰åŒ…æ€»é•¿åº¦
+        // »ñÈ¡µ±Ç°°ü×Ü³¤¶È
         size_t get_package_length() const {
             return m_pack_len;
         }
 
-        // è·å–å½“å‰åŒ…å‘½ä»¤ç 
+        // »ñÈ¡µ±Ç°°üÃüÁîÂë
         size_t get_command() const {
             size_t cmd(0);
             BTool::ValueConvert::SafeConvert(m_head.command_, sizeof(m_head.command_), cmd);
             return cmd;
         }
 
-        // è·å–å½“å‰åŒ…ä½“é•¿åº¦
+        // »ñÈ¡µ±Ç°°üÌå³¤¶È
         size_t get_body_length() const {
             size_t len(0);
             BTool::ValueConvert::SafeConvert(m_head.body_length_, sizeof(m_head.body_length_), len);
             return len;
         }
 
-        // è·å–å½“å‰åŒ…æ ¡éªŒç 
+        // »ñÈ¡µ±Ç°°üĞ£ÑéÂë
         size_t get_checksum() const {
             size_t chk(0);
             BTool::ValueConvert::SafeConvert(m_head.checksum_, sizeof(m_head.checksum_), chk);
             return chk;
         }
 
-        // è§£åŒ…æ•°æ®
+        // ½â°üÊı¾İ
         bool decode_msg()
         {
             if (!vaild(sizeof(PackHeader)))
@@ -123,7 +123,7 @@ namespace NPPbWebsocketPackage
             return true;
         }
 
-        // è·å–åŒ…ä½“
+        // »ñÈ¡°üÌå
         const char* get_body()
         {
             if (m_status == DecodeInit)
@@ -144,7 +144,7 @@ namespace NPPbWebsocketPackage
             return false;
         }
 
-        // æ˜¯å¦è¿˜æœ‰æ•°æ®æœªè§£åŒ…
+        // ÊÇ·ñ»¹ÓĞÊı¾İÎ´½â°ü
         bool has_next()
         {
             if (m_status == DecodePackage::DecodeInit)
@@ -153,27 +153,27 @@ namespace NPPbWebsocketPackage
             return vaild(m_pack_len + 1);
         }
 
-        // å¼€å§‹è§£åŒ…ä¸‹ä¸€ä¸ª
+        // ¿ªÊ¼½â°üÏÂÒ»¸ö
         void decode_next()
         {
             m_offset += m_pack_len;
             init_data();
         }
 
-        // è·å–å·²å¤„ç†å®Œæ¯•åŒ…é•¿åº¦
+        // »ñÈ¡ÒÑ´¦ÀíÍê±Ï°ü³¤¶È
         size_t get_deal_len()
         {
             return m_offset;
         }
 
-        // è·å–å‰©ä½™é•¿åº¦,åŒ…å«å½“å‰è§£åŒ…é•¿åº¦
+        // »ñÈ¡Ê£Óà³¤¶È,°üº¬µ±Ç°½â°ü³¤¶È
         size_t get_res_len()
         {
             return m_buff_len - m_offset;
         }
 
     private:
-        // æ˜¯å¦æœ‰æ•ˆ
+        // ÊÇ·ñÓĞĞ§
         bool vaild(size_t read_length) const {
             return m_buffer && m_offset + read_length <= m_buff_len;
         }
@@ -187,17 +187,17 @@ namespace NPPbWebsocketPackage
         }
 
     private:
-        const char*     m_buffer;   // åŒ…æ•°æ®
-        size_t          m_buff_len; // å½“å‰åŒ…æ•°æ®é•¿åº¦
-        size_t          m_offset;   // å½“å‰åŒ…å¤´æ‰€å¤„æ¼‚ç§»ä½
+        const char*     m_buffer;   // °üÊı¾İ
+        size_t          m_buff_len; // µ±Ç°°üÊı¾İ³¤¶È
+        size_t          m_offset;   // µ±Ç°°üÍ·Ëù´¦Æ¯ÒÆÎ»
 
-        DecodeStatus    m_status;   // å½“å‰è§£åŒ…çŠ¶æ€
-        size_t          m_pack_len; // å½“å‰åŒ…æ€»é•¿åº¦
-        size_t          m_body_len; // å½“å‰åŒ…ä½“é•¿åº¦
-        PackHeader      m_head;     // å½“å‰åŒ…å¤´
+        DecodeStatus    m_status;   // µ±Ç°½â°ü×´Ì¬
+        size_t          m_pack_len; // µ±Ç°°ü×Ü³¤¶È
+        size_t          m_body_len; // µ±Ç°°üÌå³¤¶È
+        PackHeader      m_head;     // µ±Ç°°üÍ·
     };
 
-    // æ‰“åŒ…
+    // ´ò°ü
     class EncodePackage : public Package
     {
     public:
@@ -233,18 +233,18 @@ namespace NPPbWebsocketPackage
             delete[] m_send_msg;
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…æ•°æ®
+        // »ñÈ¡ÍêÕû·¢ËÍ°üÊı¾İ
         const char* get_package() const {
             return m_send_msg;
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…é•¿åº¦
+        // »ñÈ¡ÍêÕû·¢ËÍ°ü³¤¶È
         size_t get_length() const {
             return m_send_len;
         }
 
     private:
-        char*           m_send_msg; // å‘é€æ•°æ®
+        char*           m_send_msg; // ·¢ËÍÊı¾İ
         size_t          m_send_len;
         PackHeader      m_head;
     };

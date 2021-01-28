@@ -1,22 +1,22 @@
 #pragma once
 
-/* HP-Socket 版本号 */
-#define HP_VERSION_MAJOR		5	// 主版本号
-#define HP_VERSION_MINOR		2	// 子版本号
-#define HP_VERSION_REVISE		1	// 修正版本号
-#define HP_VERSION_BUILD		2	// 构建编号
+/* HP-Socket �汾�� */
+#define HP_VERSION_MAJOR		5	// ���汾��
+#define HP_VERSION_MINOR		2	// �Ӱ汾��
+#define HP_VERSION_REVISE		1	// �����汾��
+#define HP_VERSION_BUILD		2	// �������
 
-//#define _SSL_DISABLED			// 禁用 SSL
-//#define _HTTP_DISABLED		// 禁用 HTTP
+//#define _SSL_DISABLED			// ���� SSL
+//#define _HTTP_DISABLED		// ���� HTTP
 
-/* 是否启用 SSL，如果定义了 _SSL_DISABLED 则禁用（默认：启用） */
+/* �Ƿ����� SSL����������� _SSL_DISABLED ����ã�Ĭ�ϣ����ã� */
 #if !defined(_SSL_DISABLED)
 	#ifndef _SSL_SUPPORT
 		#define _SSL_SUPPORT
 	#endif
 #endif
 
-/* 是否启用 HTTP，如果定义了 _HTTP_DISABLED 则禁用（默认：启用） */
+/* �Ƿ����� HTTP����������� _HTTP_DISABLED ����ã�Ĭ�ϣ����ã� */
 #if !defined(_HTTP_DISABLED)
 	#ifndef _HTTP_SUPPORT
 		#define _HTTP_SUPPORT
@@ -45,26 +45,26 @@
 typedef const BYTE*	LPCBYTE, PCBYTE;
 
 /************************************************************************
-名称：连接 ID 数据类型
-描述：应用程序可以把 CONNID 定义为自身需要的类型（如：ULONG / ULONGLONG）
+���ƣ����� ID ��������
+������Ӧ�ó�����԰� CONNID ����Ϊ������Ҫ�����ͣ��磺ULONG / ULONGLONG��
 ************************************************************************/
 typedef ULONG_PTR	CONNID, HP_CONNID;
 
 /************************************************************************
-名称：通信组件服务状态
-描述：应用程序可以通过通信组件的 GetState() 方法获取组件当前服务状态
+���ƣ�ͨ���������״̬
+������Ӧ�ó������ͨ��ͨ������� GetState() ������ȡ�����ǰ����״̬
 ************************************************************************/
 typedef enum EnServiceState
 {
-	SS_STARTING	= 0,	// 正在启动
-	SS_STARTED	= 1,	// 已经启动
-	SS_STOPPING	= 2,	// 正在停止
-	SS_STOPPED	= 3,	// 已经停止
+	SS_STARTING	= 0,	// ��������
+	SS_STARTED	= 1,	// �Ѿ�����
+	SS_STOPPING	= 2,	// ����ֹͣ
+	SS_STOPPED	= 3,	// �Ѿ�ֹͣ
 } En_HP_ServiceState;
 
 /************************************************************************
-名称：Socket 操作类型
-描述：应用程序的 OnClose() 事件中通过该参数标识是哪种操作导致的错误
+���ƣ�Socket ��������
+������Ӧ�ó���� OnClose() �¼���ͨ���ò�����ʶ�����ֲ������µĴ���
 ************************************************************************/
 typedef enum EnSocketOperation
 {
@@ -77,93 +77,93 @@ typedef enum EnSocketOperation
 } En_HP_SocketOperation;
 
 /************************************************************************
-名称：事件处理结果
-描述：事件的返回值，不同的返回值会影响通信组件的后续行为
+���ƣ��¼��������
+�������¼��ķ���ֵ����ͬ�ķ���ֵ��Ӱ��ͨ������ĺ�����Ϊ
 ************************************************************************/
 typedef enum EnHandleResult
 {
-	HR_OK		= 0,	// 成功
-	HR_IGNORE	= 1,	// 忽略
-	HR_ERROR	= 2,	// 错误
+	HR_OK		= 0,	// �ɹ�
+	HR_IGNORE	= 1,	// ����
+	HR_ERROR	= 2,	// ����
 } En_HP_HandleResult;
 
 /************************************************************************
-名称：数据抓取结果
-描述：数据抓取操作的返回值
+���ƣ�����ץȡ���
+����������ץȡ�����ķ���ֵ
 ************************************************************************/
 typedef enum EnFetchResult
 {
-	FR_OK				= 0,	// 成功
-	FR_LENGTH_TOO_LONG	= 1,	// 抓取长度过大
-	FR_DATA_NOT_FOUND	= 2,	// 找不到 ConnID 对应的数据
+	FR_OK				= 0,	// �ɹ�
+	FR_LENGTH_TOO_LONG	= 1,	// ץȡ���ȹ���
+	FR_DATA_NOT_FOUND	= 2,	// �Ҳ��� ConnID ��Ӧ������
 } En_HP_FetchResult;
 
 /************************************************************************
-名称：数据发送策略
-描述：Server 组件和 Agent 组件的数据发送策略
+���ƣ����ݷ��Ͳ���
+������Server ����� Agent ��������ݷ��Ͳ���
 
-* 打包模式（默认）	：尽量把多个发送操作的数据组合在一起发送，增加传输效率
-* 安全模式			：尽量把多个发送操作的数据组合在一起发送，并控制传输速度，避免缓冲区溢出
-* 直接模式			：对每一个发送操作都直接投递，适用于负载不高但要求实时性较高的场合
+* ���ģʽ��Ĭ�ϣ�	�������Ѷ�����Ͳ��������������һ���ͣ����Ӵ���Ч��
+* ��ȫģʽ			�������Ѷ�����Ͳ��������������һ���ͣ������ƴ����ٶȣ����⻺�������
+* ֱ��ģʽ			����ÿһ�����Ͳ�����ֱ��Ͷ�ݣ������ڸ��ز��ߵ�Ҫ��ʵʱ�Խϸߵĳ���
 
 ************************************************************************/
 typedef enum EnSendPolicy
 {
-	SP_PACK				= 0,	// 打包模式（默认）
-	SP_SAFE				= 1,	// 安全模式
-	SP_DIRECT			= 2,	// 直接模式
+	SP_PACK				= 0,	// ���ģʽ��Ĭ�ϣ�
+	SP_SAFE				= 1,	// ��ȫģʽ
+	SP_DIRECT			= 2,	// ֱ��ģʽ
 } En_HP_SendPolicy;
 
 /************************************************************************
-名称：操作结果代码
-描述：组件 Start() / Stop() 方法执行失败时，可通过 GetLastError() 获取错误代码
+���ƣ������������
+��������� Start() / Stop() ����ִ��ʧ��ʱ����ͨ�� GetLastError() ��ȡ�������
 ************************************************************************/
 typedef enum EnSocketError
 {
-	SE_OK						= NO_ERROR,	// 成功
-	SE_ILLEGAL_STATE			= 1,		// 当前状态不允许操作
-	SE_INVALID_PARAM			= 2,		// 非法参数
-	SE_SOCKET_CREATE			= 3,		// 创建 SOCKET 失败
-	SE_SOCKET_BIND				= 4,		// 绑定 SOCKET 失败
-	SE_SOCKET_PREPARE			= 5,		// 设置 SOCKET 失败
-	SE_SOCKET_LISTEN			= 6,		// 监听 SOCKET 失败
-	SE_CP_CREATE				= 7,		// 创建完成端口失败
-	SE_WORKER_THREAD_CREATE		= 8,		// 创建工作线程失败
-	SE_DETECT_THREAD_CREATE		= 9,		// 创建监测线程失败
-	SE_SOCKE_ATTACH_TO_CP		= 10,		// 绑定完成端口失败
-	SE_CONNECT_SERVER			= 11,		// 连接服务器失败
-	SE_NETWORK					= 12,		// 网络错误
-	SE_DATA_PROC				= 13,		// 数据处理错误
-	SE_DATA_SEND				= 14,		// 数据发送失败
+	SE_OK						= NO_ERROR,	// �ɹ�
+	SE_ILLEGAL_STATE			= 1,		// ��ǰ״̬����������
+	SE_INVALID_PARAM			= 2,		// �Ƿ�����
+	SE_SOCKET_CREATE			= 3,		// ���� SOCKET ʧ��
+	SE_SOCKET_BIND				= 4,		// �� SOCKET ʧ��
+	SE_SOCKET_PREPARE			= 5,		// ���� SOCKET ʧ��
+	SE_SOCKET_LISTEN			= 6,		// ���� SOCKET ʧ��
+	SE_CP_CREATE				= 7,		// ������ɶ˿�ʧ��
+	SE_WORKER_THREAD_CREATE		= 8,		// ���������߳�ʧ��
+	SE_DETECT_THREAD_CREATE		= 9,		// ��������߳�ʧ��
+	SE_SOCKE_ATTACH_TO_CP		= 10,		// ����ɶ˿�ʧ��
+	SE_CONNECT_SERVER			= 11,		// ���ӷ�����ʧ��
+	SE_NETWORK					= 12,		// �������
+	SE_DATA_PROC				= 13,		// ���ݴ�������
+	SE_DATA_SEND				= 14,		// ���ݷ���ʧ��
 
-	/***** SSL Socket 扩展操作结果代码 *****/
-	SE_SSL_ENV_NOT_READY		= 101,		// SSL 环境未就绪
+	/***** SSL Socket ��չ����������� *****/
+	SE_SSL_ENV_NOT_READY		= 101,		// SSL ����δ����
 } En_HP_SocketError;
 
 /************************************************************************
-名称：播送模式
-描述：UDP 组件的播送模式（组播或广播）
+���ƣ�����ģʽ
+������UDP ����Ĳ���ģʽ���鲥��㲥��
 ************************************************************************/
 typedef enum EnCastMode
 {
-	CM_MULTICAST	= 0,	// 组播
-	CM_BROADCAST	= 1,	// 广播
+	CM_MULTICAST	= 0,	// �鲥
+	CM_BROADCAST	= 1,	// �㲥
 } En_HP_CastMode;
 
 /************************************************************************
-名称：IP 地址类型
-描述：IP 地址类型枚举值
+���ƣ�IP ��ַ����
+������IP ��ַ����ö��ֵ
 ************************************************************************/
 typedef enum EnIPAddrType
 {
-	IPT_ALL		= 0,		// 所有
+	IPT_ALL		= 0,		// ����
 	IPT_IPV4	= 1,		// IPv4
 	IPT_IPV6	= 2,		// IPv6
 } En_HP_IPAddrType;
 
 /************************************************************************
-名称：IP 地址条目结构体
-描述：IP 地址的地址簇/地址值结构体
+���ƣ�IP ��ַ��Ŀ�ṹ��
+������IP ��ַ�ĵ�ַ��/��ֵַ�ṹ��
 ************************************************************************/
 typedef struct TIPAddr
 {
@@ -178,18 +178,18 @@ typedef struct TIPAddr
 #ifdef _SSL_SUPPORT
 
 /************************************************************************
-名称：SSL 工作模式
-描述：标识 SSL 的工作模式，客户端模式或服务端模式
+���ƣ�SSL ����ģʽ
+��������ʶ SSL �Ĺ���ģʽ���ͻ���ģʽ������ģʽ
 ************************************************************************/
 typedef enum EnSSLSessionMode
 {
-	SSL_SM_CLIENT	= 0,	// 客户端模式
-	SSL_SM_SERVER	= 1,	// 服务端模式
+	SSL_SM_CLIENT	= 0,	// �ͻ���ģʽ
+	SSL_SM_SERVER	= 1,	// �����ģʽ
 } En_HP_SSLSessionMode;
 
 /************************************************************************
-名称：SSL 验证模式
-描述：SSL 验证模式选项，SSL_VM_PEER 可以和后面两个选项组合一起
+���ƣ�SSL ��֤ģʽ
+������SSL ��֤ģʽѡ�SSL_VM_PEER ���Ժͺ�������ѡ�����һ��
 ************************************************************************/
 typedef enum EnSSLVerifyMode
 {
@@ -200,15 +200,15 @@ typedef enum EnSSLVerifyMode
 } En_HP_SSLVerifyMode;
 
 /************************************************************************
-名称：SNI 服务名称回调函数
-描述：根据服务器名称选择 SSL 证书
-参数：	
-		lpszServerName -- 服务器名称（域名）
+���ƣ�SNI �������ƻص�����
+���������ݷ���������ѡ�� SSL ֤��
+������	
+		lpszServerName -- ���������ƣ�������
 
-返回值：
-		0	 -- 成功，使用默认 SSL 证书
-		正数	 -- 成功，使用返回值对应的 SNI 主机证书
-		负数	 -- 失败，中断 SSL 握手
+����ֵ��
+		0	 -- �ɹ���ʹ��Ĭ�� SSL ֤��
+		����	 -- �ɹ���ʹ�÷���ֵ��Ӧ�� SNI ����֤��
+		����	 -- ʧ�ܣ��ж� SSL ����
 
 ************************************************************************/
 typedef int (CALLBACK *Fn_SNI_ServerNameCallback)(LPCTSTR lpszServerName);
@@ -223,8 +223,8 @@ typedef Fn_SNI_ServerNameCallback	HP_Fn_SNI_ServerNameCallback;
 #ifdef _HTTP_SUPPORT
 
 /************************************************************************
-名称：HTTP 版本
-描述：低字节：主版本号，高字节：次版本号
+���ƣ�HTTP �汾
+���������ֽڣ����汾�ţ����ֽڣ��ΰ汾��
 ************************************************************************/
 
 typedef enum EnHttpVersion
@@ -234,8 +234,8 @@ typedef enum EnHttpVersion
 } En_HP_HttpVersion;
 
 /************************************************************************
-名称：URL 域
-描述：HTTP 请求行中 URL 段位的域定义
+���ƣ�URL ��
+������HTTP �������� URL ��λ������
 ************************************************************************/
 typedef enum EnHttpUrlField
 { 
@@ -250,32 +250,32 @@ typedef enum EnHttpUrlField
 } En_HP_HttpUrlField;
 
 /************************************************************************
-名称：HTTP 解析结果标识
-描述：指示 HTTP 解析器是否继续执行解析操作
+���ƣ�HTTP ���������ʶ
+������ָʾ HTTP �������Ƿ����ִ�н�������
 ************************************************************************/
 typedef enum EnHttpParseResult
 {
-	HPR_OK			= 0,	// 解析成功
-	HPR_SKIP_BODY	= 1,	// 跳过当前请求 BODY（仅用于 OnHeadersComplete 事件）
-	HPR_UPGRADE		= 2,	// 升级协议（仅用于 OnHeadersComplete 事件）
-	HPR_ERROR		= -1,	// 解析错误，终止解析，断开连接
+	HPR_OK			= 0,	// �����ɹ�
+	HPR_SKIP_BODY	= 1,	// ������ǰ���� BODY�������� OnHeadersComplete �¼���
+	HPR_UPGRADE		= 2,	// ����Э�飨������ OnHeadersComplete �¼���
+	HPR_ERROR		= -1,	// ����������ֹ�������Ͽ�����
 } En_HP_HttpParseResult;
 
 /************************************************************************
-名称：HTTP 协议升级类型
-描述：标识 HTTP 升级为哪种协议
+���ƣ�HTTP Э����������
+��������ʶ HTTP ����Ϊ����Э��
 ************************************************************************/
 typedef enum EnHttpUpgradeType
 {
-	HUT_NONE		= 0,	// 没有升级
+	HUT_NONE		= 0,	// û������
 	HUT_WEB_SOCKET	= 1,	// WebSocket
-	HUT_HTTP_TUNNEL	= 2,	// HTTP 隧道
-	HUT_UNKNOWN		= -1,	// 未知类型
+	HUT_HTTP_TUNNEL	= 2,	// HTTP ����
+	HUT_UNKNOWN		= -1,	// δ֪����
 } En_HP_HttpUpgradeType;
 
 /************************************************************************
-名称：HTTP 状态码
-描述：HTTP 标准状态码
+���ƣ�HTTP ״̬��
+������HTTP ��׼״̬��
 ************************************************************************/
 typedef enum EnHttpStatusCode
 { 
@@ -351,8 +351,8 @@ typedef enum EnHttpStatusCode
 } En_HP_HttpStatusCode;
 
 /************************************************************************
-名称：Name/Value 结构体
-描述：字符串名值对结构体
+���ƣ�Name/Value �ṹ��
+�������ַ�����ֵ�Խṹ��
 ************************************************************************/
 typedef struct TNVPair
 { 
@@ -366,8 +366,8 @@ typedef struct TNVPair
 #endif
 
 /************************************************************************
-名称：获取 HPSocket 版本号
-描述：版本号（4 个字节分别为：主版本号，子版本号，修正版本号，构建编号）
+���ƣ���ȡ HPSocket �汾��
+�������汾�ţ�4 ���ֽڷֱ�Ϊ�����汾�ţ��Ӱ汾�ţ������汾�ţ�������ţ�
 ************************************************************************/
 inline DWORD GetHPSocketVersion()
 {

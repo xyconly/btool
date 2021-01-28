@@ -1,19 +1,19 @@
 /******************************************************************************
 File name:  websocket_session.hpp
 Author:	    AChar
-Purpose:    websocketè¿æ¥ç±»
-Note:       ä¸ºäº†å¤–éƒ¨å°½å¯èƒ½çš„æ— ç¼“å­˜,å¤–éƒ¨æ“ä½œè¯»å–æ•°æ®åéœ€è¦ä¸»åŠ¨è°ƒç”¨consume_read_buf,
-            ä»¥æ­¤æ¥åˆ é™¤è¯»ç¼“å­˜
+Purpose:    websocketÁ¬½ÓÀà
+Note:       ÎªÁËÍâ²¿¾¡¿ÉÄÜµÄÎŞ»º´æ,Íâ²¿²Ù×÷¶ÁÈ¡Êı¾İºóĞèÒªÖ÷¶¯µ÷ÓÃconsume_read_buf,
+            ÒÔ´ËÀ´É¾³ı¶Á»º´æ
 
-Special Note: æ„é€ å‡½æ•°ä¸­ios_type& iosä¸ºå¤–éƒ¨å¼•ç”¨,éœ€è¦ä¼˜å…ˆé‡Šæ”¾è¯¥å¯¹è±¡ä¹‹åæ‰èƒ½é‡Šæ”¾ioså¯¹è±¡
-            è¿™å°±å¯¼è‡´å¤–éƒ¨å•ç‹¬ä½¿ç”¨ä½¿ç”¨éœ€è¦å…ˆå£°æ˜ioså¯¹è±¡,ç„¶åå£°æ˜è¯¥å¯¹è±¡,ä¾‹å¦‚:
+Special Note: ¹¹Ôìº¯ÊıÖĞios_type& iosÎªÍâ²¿ÒıÓÃ,ĞèÒªÓÅÏÈÊÍ·Å¸Ã¶ÔÏóÖ®ºó²ÅÄÜÊÍ·Åios¶ÔÏó
+            Õâ¾Íµ¼ÖÂÍâ²¿µ¥¶ÀÊ¹ÓÃÊ¹ÓÃĞèÒªÏÈÉùÃ÷ios¶ÔÏó,È»ºóÉùÃ÷¸Ã¶ÔÏó,ÀıÈç:
                 class WebsocketClient{
                     ...
                 private:
                     ios_type            m_ios;
                     WebsocketSession    m_session;
                 };
-            å½“ç„¶å¦‚æœå¤–éƒ¨ä¸»åŠ¨æ§åˆ¶å…¶å…ˆåé¡ºåºä¼šæ›´å¥½,ä¾‹å¦‚:
+            µ±È»Èç¹ûÍâ²¿Ö÷¶¯¿ØÖÆÆäÏÈºóË³Ğò»á¸üºÃ,ÀıÈç:
                 class WebsocketClient {
                 public:
                     WebsocketClient(ios_type& ios) {
@@ -43,7 +43,7 @@ namespace BTool
 {
     namespace BoostNet1_68
     {
-        // Websocketè¿æ¥å¯¹è±¡
+        // WebsocketÁ¬½Ó¶ÔÏó
         class WebsocketSession : public std::enable_shared_from_this<WebsocketSession>
         {
         public:
@@ -56,16 +56,16 @@ namespace BTool
             typedef BoostNet::NetCallBack::SessionID                                SessionID;
 
             enum {
-                NOLIMIT_WRITE_BUFFER_SIZE = 0, // æ— é™åˆ¶
+                NOLIMIT_WRITE_BUFFER_SIZE = 0, // ÎŞÏŞÖÆ
                 MAX_WRITE_BUFFER_SIZE = 30000,
                 MAX_READSINGLE_BUFFER_SIZE = 20000,
             };
 
         public:
-            // Websocketè¿æ¥å¯¹è±¡
-            // ios: ioè¯»å†™åŠ¨åŠ›æœåŠ¡, ä¸ºå¤–éƒ¨å¼•ç”¨, éœ€è¦ä¼˜å…ˆé‡Šæ”¾è¯¥å¯¹è±¡ä¹‹åæ‰èƒ½é‡Šæ”¾ioså¯¹è±¡
-            // max_wbuffer_size: æœ€å¤§å†™ç¼“å†²åŒºå¤§å°
-            // max_rbuffer_size: å•æ¬¡è¯»å–æœ€å¤§ç¼“å†²åŒºå¤§å°
+            // WebsocketÁ¬½Ó¶ÔÏó
+            // ios: io¶ÁĞ´¶¯Á¦·şÎñ, ÎªÍâ²¿ÒıÓÃ, ĞèÒªÓÅÏÈÊÍ·Å¸Ã¶ÔÏóÖ®ºó²ÅÄÜÊÍ·Åios¶ÔÏó
+            // max_wbuffer_size: ×î´óĞ´»º³åÇø´óĞ¡
+            // max_rbuffer_size: µ¥´Î¶ÁÈ¡×î´ó»º³åÇø´óĞ¡
             WebsocketSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_io_service(ios)
                 , m_socket(ios)
@@ -85,42 +85,42 @@ namespace BTool
                 shutdown();
             }
 
-            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
+            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
             void register_cbk(BoostNet::NetCallBack* handler) {
                 m_handler = handler;
             }
 
-            // è·å¾—socket
+            // »ñµÃsocket
             socket_type& get_socket() {
                 return m_socket.lowest_layer();
             }
 
-            // è·å¾—io_service
+            // »ñµÃio_service
             ios_type& get_io_service() {
                 return m_io_service;
             }
 
-            // æ˜¯å¦å·²å¼€å¯
+            // ÊÇ·ñÒÑ¿ªÆô
             bool is_open() const {
                 return  m_atomic_switch.has_started() && m_socket.is_open();
             }
 
-            // è·å–è¿æ¥ID
+            // »ñÈ¡Á¬½ÓID
             SessionID get_session_id() const {
                 return m_session_id;
             }
 
-            // è·å–è¿æ¥è€…IP
+            // »ñÈ¡Á¬½ÓÕßIP
             const std::string& get_ip() const {
                 return m_connect_ip;
             }
 
-            // è·å–è¿æ¥è€…port
+            // »ñÈ¡Á¬½ÓÕßport
             unsigned short get_port() const {
                 return m_connect_port;
             }
 
-            // å®¢æˆ·ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
+            // ¿Í»§¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
             void connect(const char* ip, unsigned short port, char const* addr = "/") {
                 if (!m_atomic_switch.init())
                     return;
@@ -137,12 +137,12 @@ namespace BTool
                         std::placeholders::_2));
             }
 
-            // å®¢æˆ·ç«¯é‡è¿
+            // ¿Í»§¶ËÖØÁ¬
             void reconnect() {
                 connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
             }
 
-            // æœåŠ¡ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
+            // ·şÎñ¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
             void start() {
                 if (!m_atomic_switch.init())
                     return;
@@ -152,7 +152,7 @@ namespace BTool
                     , std::placeholders::_1));
             }
 
-            // åŒæ­¥å…³é—­
+            // Í¬²½¹Ø±Õ
             void shutdown() {
                 if (!m_atomic_switch.stop())
                     return;
@@ -160,7 +160,7 @@ namespace BTool
                 close();
             }
 
-            // æŒ‰é¡ºåºå†™å…¥
+            // °´Ë³ĞòĞ´Èë
             bool write(const char* send_msg, size_t size) {
                 if (!m_atomic_switch.has_started()) {
                     return false;
@@ -173,7 +173,7 @@ namespace BTool
                 if (!m_write_buf.append(send_msg, size)) {
                     return false;
                 }
-                // æ˜¯å¦å¤„äºå‘é€çŠ¶æ€ä¸­
+                // ÊÇ·ñ´¦ÓÚ·¢ËÍ×´Ì¬ÖĞ
                 if (m_current_send_msg) {
                     return true;
                 }
@@ -182,8 +182,8 @@ namespace BTool
                 return true;
             }
 
-            // åœ¨å½“å‰æ¶ˆæ¯å°¾è¿½åŠ 
-            // max_package_size: å•ä¸ªæ¶ˆæ¯æœ€å¤§åŒ…é•¿
+            // ÔÚµ±Ç°ÏûÏ¢Î²×·¼Ó
+            // max_package_size: µ¥¸öÏûÏ¢×î´ó°ü³¤
             bool write_tail(const char* send_msg, size_t size, size_t max_package_size = 65535) {
                 if (!m_atomic_switch.has_started()) {
                     return false;
@@ -196,7 +196,7 @@ namespace BTool
                 if (!m_write_buf.append_tail(send_msg, size, max_package_size)) {
                     return false;
                 }
-                // æ˜¯å¦å¤„äºå‘é€çŠ¶æ€ä¸­
+                // ÊÇ·ñ´¦ÓÚ·¢ËÍ×´Ì¬ÖĞ
                 if (m_current_send_msg) {
                     return true;
                 }
@@ -205,7 +205,7 @@ namespace BTool
                 return true;
             }
 
-            // æ¶ˆè´¹æ‰æŒ‡å®šé•¿åº¦çš„è¯»ç¼“å­˜
+            // Ïû·ÑµôÖ¸¶¨³¤¶ÈµÄ¶Á»º´æ
             void consume_read_buf(size_t bytes_transferred) {
                 if (m_atomic_switch.has_stoped()) {
                     return;
@@ -221,7 +221,7 @@ namespace BTool
             }
 
         private:
-            // å¼‚æ­¥è¯»
+            // Òì²½¶Á
             bool read() {
                 try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
@@ -235,7 +235,7 @@ namespace BTool
                 }
             }
 
-            // å¼‚æ­¥å†™
+            // Òì²½Ğ´
             void write() {
                 m_current_send_msg = m_write_buf.pop_front();
                 m_socket.async_write(boost::asio::buffer(m_current_send_msg->data(), m_current_send_msg->size())
@@ -258,7 +258,7 @@ namespace BTool
                         , std::placeholders::_1));
             }
 
-            // å¤„ç†è¿æ¥å›è°ƒ
+            // ´¦ÀíÁ¬½Ó»Øµ÷
             void handle_connect(const boost::system::error_code& error)
             {
                 if (error) {
@@ -285,7 +285,7 @@ namespace BTool
                 handle_start(ec);
             }
 
-            // å¤„ç†å¼€å§‹
+            // ´¦Àí¿ªÊ¼
             void handle_start(const boost::system::error_code& error) {
                 boost::system::error_code ec;
                 m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
@@ -296,7 +296,7 @@ namespace BTool
                 }
             }
 
-            // å¤„ç†è¯»å›è°ƒ
+            // ´¦Àí¶Á»Øµ÷
             void handle_read(const boost::system::error_code& error, size_t bytes_transferred) {
                 if (error) {
                     shutdown();
@@ -319,7 +319,7 @@ namespace BTool
                 read();
             }
 
-            // å¤„ç†å†™å›è°ƒ
+            // ´¦ÀíĞ´»Øµ÷
             void handle_write(const boost::system::error_code& ec, size_t bytes_transferred)
             {
                 if (ec) {
@@ -361,38 +361,38 @@ namespace BTool
             }
 
         private:
-            // TCPè§£æå™¨
+            // TCP½âÎöÆ÷
             boost::asio::ip::tcp::resolver m_resolver;
-            // asioçš„socketå°è£…
+            // asioµÄsocket·â×°
             websocket_stream_type   m_socket;
             ios_type&               m_io_service;
             SessionID               m_session_id;
 
-            // è¯»ç¼“å†²
+            // ¶Á»º³å
             ReadBufferType          m_read_buf;
-            // æœ€å¤§è¯»ç¼“å†²åŒºå¤§å°
+            // ×î´ó¶Á»º³åÇø´óĞ¡
             size_t                  m_max_rbuffer_size;
 
-            // å†™ç¼“å­˜æ•°æ®ä¿æŠ¤é”
+            // Ğ´»º´æÊı¾İ±£»¤Ëø
             std::recursive_mutex    m_write_mtx;
-            // å†™ç¼“å†²
+            // Ğ´»º³å
             WriteBufferType         m_write_buf;
-            // å½“å‰æ­£åœ¨å‘é€çš„ç¼“å­˜
+            // µ±Ç°ÕıÔÚ·¢ËÍµÄ»º´æ
             WriteMemoryStreamPtr    m_current_send_msg;
-            // æœ€å¤§å†™ç¼“å†²åŒºå¤§å°
+            // ×î´óĞ´»º³åÇø´óĞ¡
             size_t                  m_max_wbuffer_size;
 
-            // å›è°ƒæ“ä½œ
+            // »Øµ÷²Ù×÷
             BoostNet::NetCallBack*  m_handler;
 
-            // åŸå­å¯åœæ ‡å¿—
+            // Ô­×ÓÆôÍ£±êÖ¾
             AtomicSwitch            m_atomic_switch;
 
-            // è¿æ¥è€…IP
+            // Á¬½ÓÕßIP
             std::string             m_connect_ip;
-            // è¿æ¥è€…Port
+            // Á¬½ÓÕßPort
             unsigned short          m_connect_port;
-			// åœ°å€
+			// µØÖ·
             std::string             m_hand_addr;
         };
     }

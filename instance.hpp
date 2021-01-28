@@ -3,9 +3,9 @@ File name:  instance.hpp
 Author:     AChar
 Version:
 Date:
-Purpose: å•å®ä¾‹å…¬å…±åŸºç±»,æä¾›æ‡’æƒ°ç®—æ³•çš„instanceåŠunInstanceè·å–æ–¹æ³•
-Note:    å¤–éƒ¨ä½¿ç”¨æ—¶ç›´æ¥ä½¿ç”¨instance()è·å–
-         volatileå¯¹äºVSå¯æœ‰å¯æ— ,åŠ ä¸åŠ éƒ½ä¸ä¼šå€ä¼˜åŒ–,ä½†æ˜¯åœ¨gccä¸‹ä¼šè¢«ä¼˜åŒ–æ‰
+Purpose: µ¥ÊµÀı¹«¹²»ùÀà,Ìá¹©ÀÁ¶èËã·¨µÄinstance¼°unInstance»ñÈ¡·½·¨
+Note:    Íâ²¿Ê¹ÓÃÊ±Ö±½ÓÊ¹ÓÃinstance()»ñÈ¡
+         volatile¶ÔÓÚVS¿ÉÓĞ¿ÉÎŞ,¼Ó²»¼Ó¶¼²»»á±¶ÓÅ»¯,µ«ÊÇÔÚgccÏÂ»á±»ÓÅ»¯µô
 *************************************************/
 
 #pragma once
@@ -14,7 +14,7 @@ Note:    å¤–éƒ¨ä½¿ç”¨æ—¶ç›´æ¥ä½¿ç”¨instance()è·å–
 
 namespace BTool
 {
-    // å•å®ä¾‹å…¬å…±åŸºç±»
+    // µ¥ÊµÀı¹«¹²»ùÀà
     template<class _Ty>
     class instance_base {
     public:

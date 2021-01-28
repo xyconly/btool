@@ -3,7 +3,7 @@ File name:  io_context_pool.hpp
 Author:     AChar
 Version:
 Date:
-Description:    æä¾›io_contextçš„å¯¹è±¡æ± ,æä¾›å¼‚æ­¥startåŠåŒæ­¥stopæ¥å£
+Description:    Ìá¹©io_contextµÄ¶ÔÏó³Ø,Ìá¹©Òì²½start¼°Í¬²½stop½Ó¿Ú
 *************************************************/
 #pragma once
 
@@ -16,15 +16,15 @@ Description:    æä¾›io_contextçš„å¯¹è±¡æ± ,æä¾›å¼‚æ­¥startåŠåŒæ­¥stopæ¥å
 
 namespace BTool
 {
-    // io_contextçš„å¯¹è±¡æ± 
+    // io_contextµÄ¶ÔÏó³Ø
     class AsioContextPool : private boost::noncopyable
     {
     public:
         typedef boost::asio::io_context         ioc_type;
         typedef boost::asio::io_context::work   work_type;
 
-        // io_contextçš„å¯¹è±¡æ± 
-        // pool_size ç¼ºçœæ—¶,æœåŠ¡å¯¹è±¡æ•°æ˜¯æœºå™¨é‡Œcpuæ•°
+        // io_contextµÄ¶ÔÏó³Ø
+        // pool_size È±Ê¡Ê±,·şÎñ¶ÔÏóÊıÊÇ»úÆ÷ÀïcpuÊı
         AsioContextPool(int pool_size = 0)
             : m_bstart(false)
             , m_pool_size(pool_size)
@@ -41,10 +41,10 @@ namespace BTool
             stop();
         }
 
-        // éé˜»å¡å¼å¯åŠ¨æœåŠ¡
+        // ·Ç×èÈûÊ½Æô¶¯·şÎñ
         void start() {
             bool expected = false;
-            if (!m_bstart.compare_exchange_strong(expected, true))  // å·²å¯åŠ¨åˆ™é€€å‡º
+            if (!m_bstart.compare_exchange_strong(expected, true))  // ÒÑÆô¶¯ÔòÍË³ö
                 return;
 
             init(m_pool_size);
@@ -59,22 +59,22 @@ namespace BTool
             init(m_pool_size);
         }
 
-        // é˜»å¡å¼å¯åŠ¨æœåŠ¡,ä½¿ç”¨join_allç­‰å¾…
+        // ×èÈûÊ½Æô¶¯·şÎñ,Ê¹ÓÃjoin_allµÈ´ı
         void run() {
             start();
             m_threads.join_all();
         }
 
-        // åœæ­¢æœåŠ¡,å¯èƒ½äº§ç”Ÿé˜»å¡
+        // Í£Ö¹·şÎñ,¿ÉÄÜ²úÉú×èÈû
         void stop() {
             bool expected = true;
-            if (!m_bstart.compare_exchange_strong(expected, false))  // æœªå¯åŠ¨åˆ™é€€å‡º
+            if (!m_bstart.compare_exchange_strong(expected, false))  // Î´Æô¶¯ÔòÍË³ö
                 return;
 
             stop_sync();
         }
 
-        // å¾ªç¯è·å–io_context
+        // Ñ­»·»ñÈ¡io_context
         ioc_type& get_io_context() {
             return *m_io_context;
         }
@@ -106,15 +106,15 @@ namespace BTool
         }
 
     private:
-        // çº¿ç¨‹æ± ä¸ªæ•°
+        // Ïß³Ì³Ø¸öÊı
         int                     m_pool_size;
-        // io_contextçš„å¯¹è±¡æ± 
+        // io_contextµÄ¶ÔÏó³Ø
         ioc_type*               m_io_context;
-        // io_contextåœ¨æ— ä»»ä½•ä»»åŠ¡çš„æƒ…å†µä¸‹ä¾¿ä¼šé€€å‡º,ä¸ºç¡®ä¿æ— ä»»åŠ¡ä¸‹ä¸ä¼šé€€å‡º,å¢åŠ workç¡®ä¿æœ‰ä»»åŠ¡
+        // io_contextÔÚÎŞÈÎºÎÈÎÎñµÄÇé¿öÏÂ±ã»áÍË³ö,ÎªÈ·±£ÎŞÈÎÎñÏÂ²»»áÍË³ö,Ôö¼ÓworkÈ·±£ÓĞÈÎÎñ
         work_type*              m_io_work;
-        // çº¿ç¨‹æ± 
+        // Ïß³Ì³Ø
         boost::thread_group     m_threads;
-        // æ˜¯å¦å·²å¼€å¯
+        // ÊÇ·ñÒÑ¿ªÆô
         std::atomic<bool>       m_bstart;
     };
 }

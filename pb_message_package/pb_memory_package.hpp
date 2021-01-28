@@ -1,5 +1,5 @@
 /*
-* Purpose: å†…å­˜æ¶ˆæ¯å°åŒ…è§£åŒ…
+* Purpose: ÄÚ´æÏûÏ¢·â°ü½â°ü
 */
 
 #pragma once
@@ -19,18 +19,18 @@ namespace NPPbMemoryPackage
 {
 #pragma pack(push)
 #pragma pack(2) 
-    // åŒ…å¤´
+    // °üÍ·
     struct PackHeader {
         uint16_t command_;
         uint32_t body_length_;
     };
 
-    // åŒ…å°¾
+    // °üÎ²
     struct PackTail {
         uint16_t checksum_;
     };
 
-    // å¿ƒè·³åŒ…
+    // ĞÄÌø°ü
     struct HeartBeat
     {
         PackHeader	Header;
@@ -50,14 +50,14 @@ namespace NPPbMemoryPackage
         }
     };
 
-    // è§£åŒ…
+    // ½â°ü
     class DecodePackage : public Package
     {
-        // è§£åŒ…çŠ¶æ€
+        // ½â°ü×´Ì¬
         enum DecodeStatus
         {
-            DecodeInit = 0, // åˆå§‹åŒ–æœªè§£æ
-            DecodeMsg,      // å½“å‰åŒ…å·²è§£æ
+            DecodeInit = 0, // ³õÊ¼»¯Î´½âÎö
+            DecodeMsg,      // µ±Ç°°üÒÑ½âÎö
         };
 
     public:
@@ -70,7 +70,7 @@ namespace NPPbMemoryPackage
         }
 
     public:
-        // å½“å‰åŒ…æ˜¯å¦æ˜¯å®Œæ•´åŒ…
+        // µ±Ç°°üÊÇ·ñÊÇÍêÕû°ü
         bool is_entire() const
         {
             if (m_status == DecodeInit)
@@ -79,22 +79,22 @@ namespace NPPbMemoryPackage
             return vaild(m_pack_len);
         }
 
-        // è·å–å½“å‰åŒ…æ€»é•¿åº¦
+        // »ñÈ¡µ±Ç°°ü×Ü³¤¶È
         uint32_t get_package_length() const {
             return m_pack_len;
         }
 
-        // è·å–å½“å‰åŒ…å‘½ä»¤ç 
+        // »ñÈ¡µ±Ç°°üÃüÁîÂë
         uint32_t get_command() const {
             return m_head.command_;
         }
 
-        // è·å–å½“å‰åŒ…ä½“é•¿åº¦
+        // »ñÈ¡µ±Ç°°üÌå³¤¶È
         uint32_t get_body_length() const {
             return m_head.body_length_;
         }
 
-        // è§£åŒ…æ•°æ®
+        // ½â°üÊı¾İ
         bool decode_msg()
         {
             if (!vaild(sizeof(PackHeader) + sizeof(PackTail)))
@@ -117,7 +117,7 @@ namespace NPPbMemoryPackage
             return true;
         }
 
-        // è·å–åŒ…ä½“
+        // »ñÈ¡°üÌå
         const char* get_body()
         {
             if (m_status == DecodeInit)
@@ -134,7 +134,7 @@ namespace NPPbMemoryPackage
             return generate_checksum(get_body(), get_body_length()) == m_tail.checksum_;
         }
 
-        // æ˜¯å¦è¿˜æœ‰æ•°æ®æœªè§£åŒ…
+        // ÊÇ·ñ»¹ÓĞÊı¾İÎ´½â°ü
         bool has_next()
         {
             if (m_status == DecodePackage::DecodeInit)
@@ -143,27 +143,27 @@ namespace NPPbMemoryPackage
             return vaild(m_pack_len + 1);
         }
 
-        // å¼€å§‹è§£åŒ…ä¸‹ä¸€ä¸ª
+        // ¿ªÊ¼½â°üÏÂÒ»¸ö
         void decode_next()
         {
             m_offset += m_pack_len;
             init_data();
         }
 
-        // è·å–å·²å¤„ç†å®Œæ¯•åŒ…é•¿åº¦
+        // »ñÈ¡ÒÑ´¦ÀíÍê±Ï°ü³¤¶È
         uint32_t get_deal_len()
         {
             return m_offset;
         }
 
-        // è·å–å‰©ä½™é•¿åº¦,åŒ…å«å½“å‰è§£åŒ…é•¿åº¦
+        // »ñÈ¡Ê£Óà³¤¶È,°üº¬µ±Ç°½â°ü³¤¶È
         uint32_t get_res_len()
         {
             return m_buff_len - m_offset;
         }
 
     private:
-        // æ˜¯å¦æœ‰æ•ˆ
+        // ÊÇ·ñÓĞĞ§
         bool vaild(uint32_t read_length) const {
             return m_offset + read_length <= m_buff_len;
         }
@@ -178,18 +178,18 @@ namespace NPPbMemoryPackage
         }
 
     private:
-        const char*     m_buffer;   // åŒ…æ•°æ®
-        uint32_t        m_buff_len; // åŒ…æ•°æ®é•¿åº¦
-        uint32_t        m_offset;   // åŒ…å¤´æ‰€å¤„æ¼‚ç§»ä½
+        const char*     m_buffer;   // °üÊı¾İ
+        uint32_t        m_buff_len; // °üÊı¾İ³¤¶È
+        uint32_t        m_offset;   // °üÍ·Ëù´¦Æ¯ÒÆÎ»
 
-        DecodeStatus    m_status;   // å½“å‰è§£åŒ…çŠ¶æ€
-        uint32_t        m_pack_len; // å½“å‰åŒ…æ€»é•¿åº¦
-        uint32_t        m_body_len; // å½“å‰åŒ…ä½“é•¿åº¦
-        PackHeader      m_head;     // å½“å‰åŒ…å¤´
-        PackTail        m_tail;     // å½“å‰åŒ…å°¾
+        DecodeStatus    m_status;   // µ±Ç°½â°ü×´Ì¬
+        uint32_t        m_pack_len; // µ±Ç°°ü×Ü³¤¶È
+        uint32_t        m_body_len; // µ±Ç°°üÌå³¤¶È
+        PackHeader      m_head;     // µ±Ç°°üÍ·
+        PackTail        m_tail;     // µ±Ç°°üÎ²
     };
 
-    // æ‰“åŒ…
+    // ´ò°ü
     class EncodePackage : public Package
     {
     public:
@@ -214,18 +214,18 @@ namespace NPPbMemoryPackage
             delete[] m_send_msg;
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…æ•°æ®
+        // »ñÈ¡ÍêÕû·¢ËÍ°üÊı¾İ
         const char* get_package() const {
             return m_send_msg;
         }
 
-        // è·å–å®Œæ•´å‘é€åŒ…é•¿åº¦
+        // »ñÈ¡ÍêÕû·¢ËÍ°ü³¤¶È
         size_t get_length() const {
             return m_send_len;
         }
 
     private:
-        char*           m_send_msg; // å‘é€æ•°æ®
+        char*           m_send_msg; // ·¢ËÍÊı¾İ
         size_t          m_send_len;
         PackHeader      m_head;
         PackTail        m_tail;

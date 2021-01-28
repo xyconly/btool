@@ -28,53 +28,53 @@ namespace HXWebsocket
 		virtual ~CHXWebsocket() {};
 
 		//************************************
-		// å¤‡æ³¨:      
-		// å‡½æ•°å:    SendMessage
-		// å‡½æ•°å…¨å:  CHXNetWebsocket::SendMessage
-		// è®¿é—®æƒé™:  virtual public 
-		// è¿”å›å€¼:    int
-		// è¯´æ˜:      å‘é€é€æ¶ˆæ¯
-		// å‚æ•°: 	  unsigned int uiConnID   
-		// å‚æ•°: 	  char * pData   
-		// å‚æ•°: 	  int nLen   
+		// ±¸×¢:      
+		// º¯ÊıÃû:    SendMessage
+		// º¯ÊıÈ«Ãû:  CHXNetWebsocket::SendMessage
+		// ·ÃÎÊÈ¨ÏŞ:  virtual public 
+		// ·µ»ØÖµ:    int
+		// ËµÃ÷:      ·¢ËÍËÍÏûÏ¢
+		// ²ÎÊı: 	  unsigned int uiConnID   
+		// ²ÎÊı: 	  char * pData   
+		// ²ÎÊı: 	  int nLen   
 		//************************************
 		virtual int			sendMessage(unsigned int uiConnID, char* pData, int nLen) = 0;
 
 
 
 		//////////////////////////////////////////////////////////////////////////
-		///æœåŠ¡ç«¯
+		///·şÎñ¶Ë
 	public:
 		//************************************
-		// å¤‡æ³¨:      
-		// å‡½æ•°å:    StartNetService
-		// å‡½æ•°å…¨å:  HXNet::CHXNetServerImpl::StartNetService
-		// è®¿é—®æƒé™:  virtual public 
-		// è¿”å›å€¼:    int
-		// è¯´æ˜:      å¯åŠ¨æœåŠ¡
-		// å‚æ•°: 	  int nPort   
-		// å‚æ•°: 	  char * strIp   
+		// ±¸×¢:      
+		// º¯ÊıÃû:    StartNetService
+		// º¯ÊıÈ«Ãû:  HXNet::CHXNetServerImpl::StartNetService
+		// ·ÃÎÊÈ¨ÏŞ:  virtual public 
+		// ·µ»ØÖµ:    int
+		// ËµÃ÷:      Æô¶¯·şÎñ
+		// ²ÎÊı: 	  int nPort   
+		// ²ÎÊı: 	  char * strIp   
 		//************************************
 		virtual int					startNetService(int nPort, wchar_t* strIp = nullptr) = 0;
 
 		//************************************
-		// å¤‡æ³¨:      
-		// å‡½æ•°å:    EndNetService
-		// å‡½æ•°å…¨å:  HXNet::CHXNetServerImpl::EndNetService
-		// è®¿é—®æƒé™:  virtual public 
-		// è¿”å›å€¼:    bool
-		// è¯´æ˜:      ç»ˆæ­¢ç½‘ç»œæœåŠ¡
+		// ±¸×¢:      
+		// º¯ÊıÃû:    EndNetService
+		// º¯ÊıÈ«Ãû:  HXNet::CHXNetServerImpl::EndNetService
+		// ·ÃÎÊÈ¨ÏŞ:  virtual public 
+		// ·µ»ØÖµ:    bool
+		// ËµÃ÷:      ÖÕÖ¹ÍøÂç·şÎñ
 		//************************************
 		virtual bool				endNetService() = 0;
 
 		//************************************
-		// å¤‡æ³¨:      
-		// å‡½æ•°å:    RegisterCallBack
-		// å‡½æ•°å…¨å:  HXNet::CHXNetServerImpl::RegisterCallBack
-		// è®¿é—®æƒé™:  virtual public 
-		// è¿”å›å€¼:    int
-		// è¯´æ˜:      è®¾ç½®å›è°ƒå‡½æ•°
-		// å‚æ•°: 	  CHXNetServerCallBack * pCallBackFun   
+		// ±¸×¢:      
+		// º¯ÊıÃû:    RegisterCallBack
+		// º¯ÊıÈ«Ãû:  HXNet::CHXNetServerImpl::RegisterCallBack
+		// ·ÃÎÊÈ¨ÏŞ:  virtual public 
+		// ·µ»ØÖµ:    int
+		// ËµÃ÷:      ÉèÖÃ»Øµ÷º¯Êı
+		// ²ÎÊı: 	  CHXNetServerCallBack * pCallBackFun   
 		//************************************
 		virtual void					registerCallBack(CHXWebsocketCallBack* pCallBackFun) = 0;
 	};

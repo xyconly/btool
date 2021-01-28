@@ -3,8 +3,8 @@ File name:  work_queue.hpp
 Author:     AChar
 Version:
 Date:
-Purpose: å¯¹boost::asio::io_serviceå°è£…,å®ç°çº¿ç¨‹æ± ä»»åŠ¡é˜Ÿåˆ—
-Note:    åŠ å…¥ä»»åŠ¡å¯¹è±¡å¿…é¡»å«æœ‰void operator()()æ“ä½œæ¥æ‰§è¡Œå›è°ƒ
+Purpose: ¶Ôboost::asio::io_service·â×°,ÊµÏÖÏß³Ì³ØÈÎÎñ¶ÓÁĞ
+Note:    ¼ÓÈëÈÎÎñ¶ÔÏó±ØĞëº¬ÓĞvoid operator()()²Ù×÷À´Ö´ĞĞ»Øµ÷
 *************************************************/
 #pragma once
 
@@ -17,7 +17,7 @@ namespace BTool {
     class WorkQueue
     {
     public:
-        // workers: å·¥ä½œçº¿ç¨‹æ•°,ä¸º0æ—¶é»˜è®¤ç³»ç»Ÿæ ¸æ•°
+        // workers: ¹¤×÷Ïß³ÌÊı,Îª0Ê±Ä¬ÈÏÏµÍ³ºËÊı
         WorkQueue(size_t workers = 0)
             : m_io_service(new boost::asio::io_service)
             , m_work(new boost::asio::io_service::work(*m_io_service))

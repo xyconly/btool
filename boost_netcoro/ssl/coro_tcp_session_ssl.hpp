@@ -3,7 +3,7 @@ File name:      coro_tcp_session_ssl.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: åˆ©ç”¨beastå®ç°é…åˆCoroServerSslçš„TCPè¿æ¥å¯¹è±¡
+Purpose: ÀûÓÃbeastÊµÏÖÅäºÏCoroServerSslµÄTCPÁ¬½Ó¶ÔÏó
 *************************************************/
 
 #pragma once
@@ -23,12 +23,12 @@ namespace BTool
 {
     namespace BeastCoro
     {
-        // TCPè¿æ¥å¯¹è±¡
+        // TCPÁ¬½Ó¶ÔÏó
         class TCPSessionSsl : public std::enable_shared_from_this<TCPSessionSsl>
         {
-            // ç”¨ä»¥è®¾ç½®"tcp"è¿æ¥ä¸­"Keepalive"é€‰é¡¹çš„æ•°æ®ç»“æ„ï¼›
-            // TCPé»˜è®¤å¹¶ä¸å¼€å¯KeepaliveåŠŸèƒ½ï¼Œå› ä¸ºå¼€å¯KeepaliveåŠŸèƒ½éœ€è¦æ¶ˆè€—é¢å¤–çš„å®½å¸¦å’Œæµé‡ï¼Œå°½ç®¡è¿™å¾®ä¸è¶³é“ï¼Œä½†åœ¨æŒ‰æµé‡è®¡è´¹çš„ç¯å¢ƒä¸‹å¢åŠ äº†è´¹ç”¨ï¼Œ
-            // å¦ä¸€æ–¹é¢ï¼ŒKeepaliveè®¾ç½®ä¸åˆç†æ—¶å¯èƒ½ä¼šå› ä¸ºçŸ­æš‚çš„ç½‘ç»œæ³¢åŠ¨è€Œæ–­å¼€å¥åº·çš„TCPè¿æ¥ã€‚å¹¶ä¸”ï¼Œé»˜è®¤çš„Keepaliveè¶…æ—¶éœ€è¦7,200,000 millisecondsï¼Œå³2å°æ—¶ï¼Œæ¢æµ‹æ¬¡æ•°ä¸º5æ¬¡ã€‚
+            // ÓÃÒÔÉèÖÃ"tcp"Á¬½ÓÖĞ"Keepalive"Ñ¡ÏîµÄÊı¾İ½á¹¹£»
+            // TCPÄ¬ÈÏ²¢²»¿ªÆôKeepalive¹¦ÄÜ£¬ÒòÎª¿ªÆôKeepalive¹¦ÄÜĞèÒªÏûºÄ¶îÍâµÄ¿í´øºÍÁ÷Á¿£¬¾¡¹ÜÕâÎ¢²»×ãµÀ£¬µ«ÔÚ°´Á÷Á¿¼Æ·ÑµÄ»·¾³ÏÂÔö¼ÓÁË·ÑÓÃ£¬
+            // ÁíÒ»·½Ãæ£¬KeepaliveÉèÖÃ²»ºÏÀíÊ±¿ÉÄÜ»áÒòÎª¶ÌÔİµÄÍøÂç²¨¶¯¶ø¶Ï¿ª½¡¿µµÄTCPÁ¬½Ó¡£²¢ÇÒ£¬Ä¬ÈÏµÄKeepalive³¬Ê±ĞèÒª7,200,000 milliseconds£¬¼´2Ğ¡Ê±£¬Ì½²â´ÎÊıÎª5´Î¡£
             struct TcpKeepAliveST
             {
                 unsigned long onoff;
@@ -64,17 +64,17 @@ namespace BTool
 
             ~TCPSessionSsl() {}
 
-#pragma region é€šç”¨TCPè¿æ¥ä¿¡æ¯
+#pragma region Í¨ÓÃTCPÁ¬½ÓĞÅÏ¢
         public:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>::lowest_layer_type& socket() {
                 return m_tcp_ssl_socket.lowest_layer();
             }
 
-            // å·¥å…·å‡½æ•°ï¼šè·å–æœ¬åœ°ã€è¿œç«¯çš„ç½‘ç»œåœ°å€å’Œç«¯å£å·
+            // ¹¤¾ßº¯Êı£º»ñÈ¡±¾µØ¡¢Ô¶¶ËµÄÍøÂçµØÖ·ºÍ¶Ë¿ÚºÅ
             unsigned long getLocalAddress() const {
                 return m_local_addr_u;
             }
-            // è¿”å›æœ¬åœ°æœºå™¨IPï¼ˆV4ï¼‰åœ°å€å­—ç¬¦ä¸²
+            // ·µ»Ø±¾µØ»úÆ÷IP£¨V4£©µØÖ·×Ö·û´®
             std::string getLocalAddress_str() const {
                 return m_local_addr_str;
             }
@@ -91,7 +91,7 @@ namespace BTool
                 return m_peer_port;
             }
 
-            // è®¾ç½®æ— å»¶è¿Ÿå‘é€é€‰é¡¹
+            // ÉèÖÃÎŞÑÓ³Ù·¢ËÍÑ¡Ïî
             bool setnodelay(bool isnodelay, std::string& errmsg)
             {
                 boost::asio::ip::tcp::no_delay nodelay(isnodelay);
@@ -104,40 +104,40 @@ namespace BTool
                 }
                 return true;
             }
-            // è®¾ç½®å¿ƒè·³æ£€æµ‹é€‰é¡¹ï¼›ultime: KeepAliveæ¢æµ‹çš„æ—¶é—´é—´éš”(æ¯«ç§’)
+            // ÉèÖÃĞÄÌø¼ì²âÑ¡Ïî£»ultime: KeepAliveÌ½²âµÄÊ±¼ä¼ä¸ô(ºÁÃë)
             bool setkeepalive(unsigned long ultime)
             {
-                // å¼€å¯ KeepAlive
+                // ¿ªÆô KeepAlive
                 boost::asio::ip::tcp::socket::keep_alive option(true);
                 socket().set_option(option);
 
-#if defined(_WINDOWS_) // WINDOWSçš„APIå®ç°
-                // KeepAliveå®ç°å¿ƒè·³
+#if defined(_WINDOWS_) // WINDOWSµÄAPIÊµÏÖ
+                // KeepAliveÊµÏÖĞÄÌø
                 //SOCKET st = reinterpret_cast<SOCKET>(work_socket_.native().as_handle());
                 SOCKET st = socket().native_handle();
 
-                TcpKeepAliveST inKeepAlive = { 0 }; //è¾“å…¥å‚æ•°
+                TcpKeepAliveST inKeepAlive = { 0 }; //ÊäÈë²ÎÊı
                 unsigned long ulInLen = sizeof(TcpKeepAliveST);
 
-                TcpKeepAliveST outKeepAlive = { 0 }; //è¾“å‡ºå‚æ•°
+                TcpKeepAliveST outKeepAlive = { 0 }; //Êä³ö²ÎÊı
                 unsigned long ulOutLen = sizeof(TcpKeepAliveST);
                 unsigned long ulBytesReturn = 0;
 
-                //è®¾ç½®socketçš„keep aliveä¸º3ç§’
+                //ÉèÖÃsocketµÄkeep aliveÎª3Ãë
                 inKeepAlive.onoff = 1;
-                inKeepAlive.keepaliveinterval = ultime;	//ä¸¤æ¬¡KeepAliveæ¢æµ‹é—´çš„æ—¶é—´é—´éš”
-                inKeepAlive.keepalivetime = 3000;		//å¼€å§‹é¦–æ¬¡KeepAliveæ¢æµ‹å‰çš„TCPç©ºé—²æ—¶é—´
+                inKeepAlive.keepaliveinterval = ultime;	//Á½´ÎKeepAliveÌ½²â¼äµÄÊ±¼ä¼ä¸ô
+                inKeepAlive.keepalivetime = 3000;		//¿ªÊ¼Ê×´ÎKeepAliveÌ½²âÇ°µÄTCP¿ÕÏĞÊ±¼ä
 
                 if (WSAIoctl(st, SIO_KEEPALIVE_VALS, (LPVOID)&inKeepAlive, ulInLen, (LPVOID)&outKeepAlive, ulOutLen, &ulBytesReturn, NULL, NULL) == SOCKET_ERROR)
                 {
                     return false;
                 }
 #elif
-                ////KeepAliveå®ç°ï¼Œå•ä½ç§’
-                int keepAlive = 1;//è®¾å®šKeepAlive
-                int keepIdle = 3;//å¼€å§‹é¦–æ¬¡KeepAliveæ¢æµ‹å‰çš„TCPç©ºé—­æ—¶é—´
-                int keepInterval = ultime / 1000;//ä¸¤æ¬¡KeepAliveæ¢æµ‹é—´çš„æ—¶é—´é—´éš”
-                int keepCount = 3;//åˆ¤å®šæ–­å¼€å‰çš„KeepAliveæ¢æµ‹æ¬¡æ•°
+                ////KeepAliveÊµÏÖ£¬µ¥Î»Ãë
+                int keepAlive = 1;//Éè¶¨KeepAlive
+                int keepIdle = 3;//¿ªÊ¼Ê×´ÎKeepAliveÌ½²âÇ°µÄTCP¿Õ±ÕÊ±¼ä
+                int keepInterval = ultime / 1000;//Á½´ÎKeepAliveÌ½²â¼äµÄÊ±¼ä¼ä¸ô
+                int keepCount = 3;//ÅĞ¶¨¶Ï¿ªÇ°µÄKeepAliveÌ½²â´ÎÊı
                 if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive)) == -1) {
                     return false;
                 }
@@ -155,7 +155,7 @@ namespace BTool
             }
 #pragma endregion
 
-#pragma region æ•°æ®è§£æä¸å›åº”
+#pragma region Êı¾İ½âÎöÓë»ØÓ¦
 
             void coro_start()
             {
@@ -170,11 +170,11 @@ namespace BTool
                         return;
             }
 
-            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃ¶ÁÈ¡ÏûÏ¢»Øµ÷,Ğ­³Ì¶¯Á¦
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
             }
-            // è®¾ç½®æ–­å¼€è¿æ¥å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃ¶Ï¿ªÁ¬½Ó»Øµ÷,Ğ­³Ì¶¯Á¦
             void setDisConnectCbk(const disconn_func_t& cbk) {
                 m_disconnect_cbk = cbk;
             }
@@ -224,22 +224,22 @@ namespace BTool
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>	 m_tcp_ssl_socket;
 
             boost::asio::yield_context&			m_yield;
-            std::array<char, BufferLength + 1>	buffer = { 0 }; // \0ä½
+            std::array<char, BufferLength + 1>	buffer = { 0 }; // \0Î»
 
         private:
-            // æœ¬åœ°è¿æ¥ä¿¡æ¯
+            // ±¾µØÁ¬½ÓĞÅÏ¢
             unsigned long   m_local_addr_u;
             std::string     m_local_addr_str;
             unsigned short  m_local_port;
-            // è¿æ¥å¯¹è±¡ä¿¡æ¯
+            // Á¬½Ó¶ÔÏóĞÅÏ¢
             unsigned long   m_peer_addr_u;
             std::string     m_peer_addr_str;
             unsigned short  m_peer_port;
 
         private:
-            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
             read_msg_func_t     m_read_cbk;
-            // æ–­å¼€è¿æ¥å›è°ƒ
+            // ¶Ï¿ªÁ¬½Ó»Øµ÷
             disconn_func_t      m_disconnect_cbk;
 
         };

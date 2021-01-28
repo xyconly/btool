@@ -3,11 +3,11 @@ File name:      coro_tcp_session.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: åˆ©ç”¨beastå®ç°é…åˆCoroServerçš„Httpè¿æ¥å¯¹è±¡
-Note:    httpåŠŸèƒ½æš‚ä¸é½å…¨,
-         æµ‹è¯•æ—¶éœ€å°†btool/boost_netserver_coro/exampleä¸‹copyè‡³è¿è¡Œç›®å½•ä¸‹,
-         è¯¥indel.htmlæ˜¯æµ‹è¯•websocketä½¿ç”¨çš„^^,
-         æºè‡ªQTçš„http://doc.qt.io/qt-5/qtwebsockets-echoserver-echoclient-html.html
+Purpose: ÀûÓÃbeastÊµÏÖÅäºÏCoroServerµÄHttpÁ¬½Ó¶ÔÏó
+Note:    http¹¦ÄÜÔİ²»ÆëÈ«,
+         ²âÊÔÊ±Ğè½«btool/boost_netserver_coro/exampleÏÂcopyÖÁÔËĞĞÄ¿Â¼ÏÂ,
+         ¸Ãindel.htmlÊÇ²âÊÔwebsocketÊ¹ÓÃµÄ^^,
+         Ô´×ÔQTµÄhttp://doc.qt.io/qt-5/qtwebsockets-echoserver-echoclient-html.html
 *************************************************/
 
 #pragma once
@@ -26,7 +26,7 @@ namespace BTool
 {
     namespace BeastCoro
     {
-        // Httpè¿æ¥å¯¹è±¡
+        // HttpÁ¬½Ó¶ÔÏó
         class HttpSession : public std::enable_shared_from_this<HttpSession>
         {
             // This is the C++11 equivalent of a generic lambda.
@@ -76,15 +76,15 @@ namespace BTool
 
             ~HttpSession() {}
 
-#pragma region é€šç”¨è¿æ¥ä¿¡æ¯
+#pragma region Í¨ÓÃÁ¬½ÓĞÅÏ¢
             boost::asio::ip::tcp::socket& get_socket() const {
                 return const_cast<HttpSession*>(this)->m_socket;
             }
-            // å·¥å…·å‡½æ•°ï¼šè·å–æœ¬åœ°ã€è¿œç«¯çš„ç½‘ç»œåœ°å€å’Œç«¯å£å·
+            // ¹¤¾ßº¯Êı£º»ñÈ¡±¾µØ¡¢Ô¶¶ËµÄÍøÂçµØÖ·ºÍ¶Ë¿ÚºÅ
             unsigned long getLocalAddress() const {
                 return m_socket.local_endpoint().address().to_v4().to_ulong();
             }
-            // è¿”å›æœ¬åœ°æœºå™¨IPï¼ˆV4ï¼‰åœ°å€å­—ç¬¦ä¸²
+            // ·µ»Ø±¾µØ»úÆ÷IP£¨V4£©µØÖ·×Ö·û´®
             std::string getLocalAddress_str() const {
                 return m_socket.local_endpoint().address().to_v4().to_string();
             }
@@ -102,20 +102,20 @@ namespace BTool
             }
 #pragma endregion
 
-#pragma region æ•°æ®è§£æä¸å›åº”
-            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ,åç¨‹åŠ¨åŠ›
+#pragma region Êı¾İ½âÎöÓë»ØÓ¦
+            // ÉèÖÃ¶ÁÈ¡ÏûÏ¢»Øµ÷,Ğ­³Ì¶¯Á¦
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
             }
-            // è®¾ç½®æ–­å¼€è¿æ¥å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃ¶Ï¿ªÁ¬½Ó»Øµ÷,Ğ­³Ì¶¯Á¦
             void setDisConnectCbk(const disconn_func_t& cbk) {
                 m_disconnect_cbk = cbk;
             }
 
-            // è®¾ç½®httpæ ¹è·¯å¾„
-            // æ³¨1: å½“è¿æ¥ä¸º"http://127.0.0.1:12345/home/user/index.html"æ—¶, doc_rootä¸ºè¿è¡Œè·¯å¾„
-            // æ³¨2: å½“è¿æ¥ä¸º"http://127.0.0.1:12345"æ—¶, doc_rootä¸ºhttp://127.0.0.1:12345/home/user
-            // å‰è€…éœ€è¦å¸¦ä¸Šè¿è¡Œè·¯å¾„ä¸‹çš„,é¢å¤–çš„è·¯å¾„,ä»¥åŠå¯¹åº”æ–‡ä»¶å;  åè€…ç›´æ¥é»˜è®¤è¯»å–index.htmlæ–‡ä»¶
+            // ÉèÖÃhttp¸ùÂ·¾¶
+            // ×¢1: µ±Á¬½ÓÎª"http://127.0.0.1:12345/home/user/index.html"Ê±, doc_rootÎªÔËĞĞÂ·¾¶
+            // ×¢2: µ±Á¬½ÓÎª"http://127.0.0.1:12345"Ê±, doc_rootÎªhttp://127.0.0.1:12345/home/user
+            // Ç°ÕßĞèÒª´øÉÏÔËĞĞÂ·¾¶ÏÂµÄ,¶îÍâµÄÂ·¾¶,ÒÔ¼°¶ÔÓ¦ÎÄ¼şÃû;  ºóÕßÖ±½ÓÄ¬ÈÏ¶ÁÈ¡index.htmlÎÄ¼ş
             void set_doc_root(const std::string& doc_root)
             {
                 m_doc_root = doc_root;
@@ -172,7 +172,7 @@ namespace BTool
 
 #pragma endregion
 
-#pragma region å†…éƒ¨å‡½æ•°
+#pragma region ÄÚ²¿º¯Êı
         private:
             // Return a reasonable mime type based on the extension of a file.
             boost::beast::string_view
@@ -347,9 +347,9 @@ namespace BTool
             boost::asio::ip::tcp::socket&	m_socket;
             boost::asio::yield_context&		m_yield;
             std::string						m_doc_root;
-            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
             read_msg_func_t					m_read_cbk;
-            // æ–­å¼€è¿æ¥å›è°ƒ
+            // ¶Ï¿ªÁ¬½Ó»Øµ÷
             disconn_func_t					m_disconnect_cbk;
         };
     }

@@ -3,7 +3,7 @@ File name:      coro_http_session_ssl.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: åˆ©ç”¨beastå®ç°é…åˆCoroServerSslçš„Httpè¿æ¥å¯¹è±¡
+Purpose: ÀûÓÃbeastÊµÏÖÅäºÏCoroServerSslµÄHttpÁ¬½Ó¶ÔÏó
 *************************************************/
 
 #pragma once
@@ -23,7 +23,7 @@ namespace BTool
 {
     namespace BeastCoro
     {
-        // Httpè¿æ¥å¯¹è±¡
+        // HttpÁ¬½Ó¶ÔÏó
         class HttpSessionSsl : public std::enable_shared_from_this<HttpSessionSsl>
         {
             // This is the C++11 equivalent of a generic lambda.
@@ -80,16 +80,16 @@ namespace BTool
 
             ~HttpSessionSsl() {}
 
-#pragma region é€šç”¨è¿æ¥ä¿¡æ¯
+#pragma region Í¨ÓÃÁ¬½ÓĞÅÏ¢
         public:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>::lowest_layer_type& socket() {
                 return m_socket.lowest_layer();
             }
-            // å·¥å…·å‡½æ•°ï¼šè·å–æœ¬åœ°ã€è¿œç«¯çš„ç½‘ç»œåœ°å€å’Œç«¯å£å·
+            // ¹¤¾ßº¯Êı£º»ñÈ¡±¾µØ¡¢Ô¶¶ËµÄÍøÂçµØÖ·ºÍ¶Ë¿ÚºÅ
             unsigned long getLocalAddress() const {
                 return m_local_addr_u;
             }
-            // è¿”å›æœ¬åœ°æœºå™¨IPï¼ˆV4ï¼‰åœ°å€å­—ç¬¦ä¸²
+            // ·µ»Ø±¾µØ»úÆ÷IP£¨V4£©µØÖ·×Ö·û´®
             std::string getLocalAddress_str() const {
                 return m_local_addr_str;
             }
@@ -107,20 +107,20 @@ namespace BTool
             }
 #pragma endregion
 
-#pragma region æ•°æ®è§£æä¸å›åº”
-            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ,åç¨‹åŠ¨åŠ›
+#pragma region Êı¾İ½âÎöÓë»ØÓ¦
+            // ÉèÖÃ¶ÁÈ¡ÏûÏ¢»Øµ÷,Ğ­³Ì¶¯Á¦
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
             }
-            // è®¾ç½®æ–­å¼€è¿æ¥å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃ¶Ï¿ªÁ¬½Ó»Øµ÷,Ğ­³Ì¶¯Á¦
             void setDisConnectCbk(const disconn_func_t& cbk) {
                 m_disconnect_cbk = cbk;
             }
 
-            // è®¾ç½®httpæ ¹è·¯å¾„
-            // æ³¨1: å½“è¿æ¥ä¸º"http://127.0.0.1:12345/home/user/index.html"æ—¶, doc_rootä¸ºè¿è¡Œè·¯å¾„
-            // æ³¨2: å½“è¿æ¥ä¸º"http://127.0.0.1:12345"æ—¶, doc_rootä¸ºhttp://127.0.0.1:12345/home/user
-            // å‰è€…éœ€è¦å¸¦ä¸Šè¿è¡Œè·¯å¾„ä¸‹çš„,é¢å¤–çš„è·¯å¾„,ä»¥åŠå¯¹åº”æ–‡ä»¶å;  åè€…ç›´æ¥é»˜è®¤è¯»å–index.htmlæ–‡ä»¶
+            // ÉèÖÃhttp¸ùÂ·¾¶
+            // ×¢1: µ±Á¬½ÓÎª"http://127.0.0.1:12345/home/user/index.html"Ê±, doc_rootÎªÔËĞĞÂ·¾¶
+            // ×¢2: µ±Á¬½ÓÎª"http://127.0.0.1:12345"Ê±, doc_rootÎªhttp://127.0.0.1:12345/home/user
+            // Ç°ÕßĞèÒª´øÉÏÔËĞĞÂ·¾¶ÏÂµÄ,¶îÍâµÄÂ·¾¶,ÒÔ¼°¶ÔÓ¦ÎÄ¼şÃû;  ºóÕßÖ±½ÓÄ¬ÈÏ¶ÁÈ¡index.htmlÎÄ¼ş
             void set_doc_root(const std::string& doc_root)
             {
                 m_doc_root = doc_root;
@@ -176,7 +176,7 @@ namespace BTool
 
 #pragma endregion
 
-#pragma region å†…éƒ¨å‡½æ•°
+#pragma region ÄÚ²¿º¯Êı
         private:
             // Return a reasonable mime type based on the extension of a file.
             boost::beast::string_view
@@ -353,18 +353,18 @@ namespace BTool
             boost::asio::yield_context&		m_yield;
             std::string						m_doc_root;
         private:
-            // æœ¬åœ°è¿æ¥ä¿¡æ¯
+            // ±¾µØÁ¬½ÓĞÅÏ¢
             unsigned long m_local_addr_u;
             std::string m_local_addr_str;
             unsigned short m_local_port;
-            // è¿æ¥å¯¹è±¡ä¿¡æ¯
+            // Á¬½Ó¶ÔÏóĞÅÏ¢
             unsigned long m_peer_addr_u;
             std::string m_peer_addr_str;
             unsigned short m_peer_port;
 
-            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
             read_msg_func_t					m_read_cbk;
-            // æ–­å¼€è¿æ¥å›è°ƒ
+            // ¶Ï¿ªÁ¬½Ó»Øµ÷
             disconn_func_t					m_disconnect_cbk;
 
         };

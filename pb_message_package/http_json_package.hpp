@@ -1,9 +1,9 @@
 /************************************************************************
-* Purpose: ç”¨äºhttpé€šè®¯çš„jsonå­—ç¬¦ä¸²æ¶ˆæ¯å°åŒ…è§£åŒ…
-    Jsonæ ¼å¼:
+* Purpose: ÓÃÓÚhttpÍ¨Ñ¶µÄjson×Ö·û´®ÏûÏ¢·â°ü½â°ü
+    Json¸ñÊ½:
     {
         "Code": 200,
-        #"Msg": "",# // æ— é”™è¯¯æ—¶ä¸ºç©º
+        #"Msg": "",# // ÎŞ´íÎóÊ±Îª¿Õ
         "ServerTime": 2256612312,
         "Data": {}
     }
@@ -35,24 +35,24 @@
 
 namespace NPHttpJsonPackage
 {
-#define HEAD_MSG_ContentType       "Content-Type"   // å†…å®¹ç±»å‹,ä¸€èˆ¬ä¸ºapplication/json,getè¯·æ±‚æ—¶æ— éœ€è¯¥å‚æ•°
-#define HEAD_MSG_Nonce             "Nonce"          // å”¯ä¸€ç ,å…¬é’¥
-#define HEAD_MSG_CurTime           "CurTime"        // å½“å‰æ—¶é—´(unixæ—¶é—´æˆ³),ç§’
-#define HEAD_MSG_CheckSum          "CheckSum"       // æ ¡éªŒç (Secret(ç§é’¥)+Nonce+CurTime(å­—ç¬¦ä¸²),SHA1 ,ç„¶åå…¨å°å†™)
+#define HEAD_MSG_ContentType       "Content-Type"   // ÄÚÈİÀàĞÍ,Ò»°ãÎªapplication/json,getÇëÇóÊ±ÎŞĞè¸Ã²ÎÊı
+#define HEAD_MSG_Nonce             "Nonce"          // Î¨Ò»Âë,¹«Ô¿
+#define HEAD_MSG_CurTime           "CurTime"        // µ±Ç°Ê±¼ä(unixÊ±¼ä´Á),Ãë
+#define HEAD_MSG_CheckSum          "CheckSum"       // Ğ£ÑéÂë(Secret(Ë½Ô¿)+Nonce+CurTime(×Ö·û´®),SHA1 ,È»ºóÈ«Ğ¡Ğ´)
 
-#define SHA_DIGEST_LENGTH   20  // SHAæ•£åˆ—å€¼é•¿åº¦
+#define SHA_DIGEST_LENGTH   20  // SHAÉ¢ÁĞÖµ³¤¶È
 
-#define RSP_Code            "code"          // è¿”å›ç ,int,200:æˆåŠŸ; 500:å¤±è´¥
-#define RSP_Msg             "msg"           // Error Message,æ— é”™è¯¯æ—¶ä¸ºç©º
-#define RSP_ServerTime      "serverTime"    // æœåŠ¡å™¨æ—¶é—´
-#define RSP_Data            "data"          // æ•°æ®
+#define RSP_Code            "code"          // ·µ»ØÂë,int,200:³É¹¦; 500:Ê§°Ü
+#define RSP_Msg             "msg"           // Error Message,ÎŞ´íÎóÊ±Îª¿Õ
+#define RSP_ServerTime      "serverTime"    // ·şÎñÆ÷Ê±¼ä
+#define RSP_Data            "data"          // Êı¾İ
 
-    // åŒ…å¤´
+    // °üÍ·
     struct PackHeader {
-        std::string content_type_;  // å†…å®¹ç±»å‹
-        std::string nonce_;         // å”¯ä¸€ç 
-        std::string cur_time_;      // å½“å‰æ—¶é—´
-        std::string check_sum_;     // æ ¡éªŒç 
+        std::string content_type_;  // ÄÚÈİÀàĞÍ
+        std::string nonce_;         // Î¨Ò»Âë
+        std::string cur_time_;      // µ±Ç°Ê±¼ä
+        std::string check_sum_;     // Ğ£ÑéÂë
     };
 
     class Package
@@ -76,7 +76,7 @@ namespace NPHttpJsonPackage
         }
     };
 
-    // è§£åŒ…
+    // ½â°ü
     class DecodePackage : public Package
     {
     public:
@@ -147,58 +147,58 @@ namespace NPHttpJsonPackage
         }
 
     public:
-        // å½“å‰åŒ…æ˜¯å¦æ˜¯å®Œæ•´åŒ…
+        // µ±Ç°°üÊÇ·ñÊÇÍêÕû°ü
         bool is_entire() const {
             return m_cur_isvaild;
         }
-        // è·å–pathè·¯å¾„,å‡ä¸ºå°å†™
+        // »ñÈ¡pathÂ·¾¶,¾ùÎªĞ¡Ğ´
         const std::string& get_path() const {
             return m_path;
         }
-        // è·å–paramså‚æ•°,å‡ä¸ºå°å†™
+        // »ñÈ¡params²ÎÊı,¾ùÎªĞ¡Ğ´
         const std::string& get_params() const {
             return m_params;
         }
-        // è·å–httpè¯·æ±‚æ–¹æ³•
+        // »ñÈ¡httpÇëÇó·½·¨
         const boost::beast::http::verb& get_method() const {
             return m_method;
         }
-        // è·å–å†…å®¹ç±»å‹,ä¸€èˆ¬ä¸ºapplication/json
+        // »ñÈ¡ÄÚÈİÀàĞÍ,Ò»°ãÎªapplication/json
         const std::string& get_content_type() const {
             return m_head.content_type_;
         }
-        // è·å–å”¯ä¸€ç 
+        // »ñÈ¡Î¨Ò»Âë
         const std::string& get_nonce() const {
             return m_head.nonce_;
         }
-        // è·å–å½“å‰æ—¶é—´
+        // »ñÈ¡µ±Ç°Ê±¼ä
         const std::string& get_cur_time() const {
             return m_head.cur_time_;
         }
-        // è·å–æ ¡éªŒç 
+        // »ñÈ¡Ğ£ÑéÂë
         const std::string& get_check_sum() const {
             return m_head.check_sum_;
         }
-        // è·å–åŒ…å¤´
+        // »ñÈ¡°üÍ·
         const PackHeader& get_head() const {
             return m_head;
         }
-        // è·å–åŒ…ä½“
+        // »ñÈ¡°üÌå
         const std::string& get_body() const {
             return m_body;
         }
 
     private:
-        PackHeader          m_head;                 // å½“å‰åŒ…å¤´
-        std::string         m_body;                 // åŒ…ä½“å†…å®¹
-        std::string         m_path;                 // pathè·¯å¾„(http://127.0.0.1:22/path/)
-        std::string         m_params;               // paramså‚æ•°(?ä¹‹åçš„å‚æ•°)
-        boost::beast::http::verb    m_method;       // httpè¯·æ±‚æ–¹æ³•
+        PackHeader          m_head;                 // µ±Ç°°üÍ·
+        std::string         m_body;                 // °üÌåÄÚÈİ
+        std::string         m_path;                 // pathÂ·¾¶(http://127.0.0.1:22/path/)
+        std::string         m_params;               // params²ÎÊı(?Ö®ºóµÄ²ÎÊı)
+        boost::beast::http::verb    m_method;       // httpÇëÇó·½·¨
 
-        bool                m_cur_isvaild;          // å½“å‰è§£çš„åŒ…æ˜¯å¦æœ‰æ•ˆ
+        bool                m_cur_isvaild;          // µ±Ç°½âµÄ°üÊÇ·ñÓĞĞ§
     };
 
-    // æ‰“åŒ…
+    // ´ò°ü
     class EncodePackage : public Package
     {
     public:
@@ -250,7 +250,7 @@ namespace NPHttpJsonPackage
         }
 
     private:
-        // is_true:ä¸ºtrueæ—¶bodyè¡¨ç¤ºå‘é€æ•°æ®; ä¸ºfalseæ—¶è¡¨ç¤ºé”™è¯¯å†…å®¹
+        // is_true:ÎªtrueÊ±body±íÊ¾·¢ËÍÊı¾İ; ÎªfalseÊ±±íÊ¾´íÎóÄÚÈİ
         template<typename BodyType>
         std::string rsp_body(bool is_true, const BodyType& body) {
             Json::Value body_json;

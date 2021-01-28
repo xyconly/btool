@@ -3,8 +3,8 @@ File name:      tcp_server.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: åˆ©ç”¨boostå®ç°ç›‘å¬æœåŠ¡ç«¯å£
-Note:    serveræœ¬èº«å­˜å‚¨sessionå¯¹è±¡,å¤–éƒ¨ä»…æä¾›IDè¿›è¡Œæ“ä½œ
+Purpose: ÀûÓÃboostÊµÏÖ¼àÌı·şÎñ¶Ë¿Ú
+Note:    server±¾Éí´æ´¢session¶ÔÏó,Íâ²¿½öÌá¹©ID½øĞĞ²Ù×÷
 *************************************************/
 
 #pragma once
@@ -20,7 +20,7 @@ namespace BTool
 {
     namespace BoostNet
     {
-        // TCPæœåŠ¡
+        // TCP·şÎñ
         class TcpServer
         {
             typedef NetCallBack::SessionID                  SessionID;
@@ -30,8 +30,8 @@ namespace BTool
             typedef std::map<SessionID, TcpSessionPtr>      TcpSessionMap;
 
         public:
-            // TCPæœåŠ¡
-            // handler: sessionè¿”å›å›è°ƒ
+            // TCP·şÎñ
+            // handler: session·µ»Ø»Øµ÷
             TcpServer(AsioContextPool& ioc, size_t max_wbuffer_size = TcpSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = TcpSession::MAX_READSINGLE_BUFFER_SIZE)
                 : m_ioc_pool(ioc)
                 , m_acceptor(ioc.get_io_context())
@@ -46,35 +46,35 @@ namespace BTool
                 m_acceptor.close(ec);
             }
 
-            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
+            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
             void register_cbk(const NetCallBack& handler) {
                 m_handler = handler;
             }
-            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
+            // ÉèÖÃ¿ªÆôÁ¬½Ó»Øµ÷
             TcpServer& register_open_cbk(const NetCallBack::open_cbk& cbk) {
                 m_handler.open_cbk_ = cbk;
                 return *this;
             }
-            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
+            // ÉèÖÃ¹Ø±ÕÁ¬½Ó»Øµ÷
             TcpServer& register_close_cbk(const NetCallBack::close_cbk& cbk) {
                 m_handler.close_cbk_ = cbk;
                 return *this;
             }
-            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ÉèÖÃ¶ÁÈ¡ÏûÏ¢»Øµ÷
             TcpServer& register_read_cbk(const NetCallBack::read_cbk& cbk) {
                 m_handler.read_cbk_ = cbk;
                 return *this;
             }
-            // è®¾ç½®å·²å‘é€æ¶ˆæ¯å›è°ƒ
+            // ÉèÖÃÒÑ·¢ËÍÏûÏ¢»Øµ÷
             TcpServer& register_write_cbk(const NetCallBack::write_cbk& cbk) {
                 m_handler.write_cbk_ = cbk;
                 return *this;
             }
 
-            // éé˜»å¡å¼å¯åŠ¨æœåŠ¡,
-            // ip: ç›‘å¬IP,é»˜è®¤æœ¬åœ°IPV4åœ°å€
-            // port: ç›‘å¬ç«¯å£
-            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
+            // ·Ç×èÈûÊ½Æô¶¯·şÎñ,
+            // ip: ¼àÌıIP,Ä¬ÈÏ±¾µØIPV4µØÖ·
+            // port: ¼àÌı¶Ë¿Ú
+            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
             bool start(unsigned short port, bool reuse_address = true) {
                 return start(nullptr, port, reuse_address);
             }
@@ -87,10 +87,10 @@ namespace BTool
                 return true;
             }
 
-            // é˜»å¡å¼å¯åŠ¨æœåŠ¡,ä½¿ç”¨join_allç­‰å¾…
-            // ip: ç›‘å¬IP,é»˜è®¤æœ¬åœ°IPV4åœ°å€
-            // port: ç›‘å¬ç«¯å£
-            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
+            // ×èÈûÊ½Æô¶¯·şÎñ,Ê¹ÓÃjoin_allµÈ´ı
+            // ip: ¼àÌıIP,Ä¬ÈÏ±¾µØIPV4µØÖ·
+            // port: ¼àÌı¶Ë¿Ú
+            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
             void run(unsigned short port, bool reuse_address = false) {
                 run(nullptr, port, reuse_address);
             }
@@ -102,20 +102,20 @@ namespace BTool
                 m_ioc_pool.run();
             }
 
-            // ç»ˆæ­¢å½“å‰æœåŠ¡
+            // ÖÕÖ¹µ±Ç°·şÎñ
             void stop() {
                 clear();
                 m_ioc_pool.stop();
             }
 
-            // æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥
-            // æ³¨æ„,è¯¥å‡½æ•°ä¸ä¼šç»ˆæ­¢å½“å‰æœåŠ¡,ä»…ç»ˆæ­¢å¹¶æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥,æœåŠ¡çš„ç»ˆæ­¢åœ¨stop()ä¸­æ“ä½œ
+            // Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó
+            // ×¢Òâ,¸Ãº¯Êı²»»áÖÕÖ¹µ±Ç°·şÎñ,½öÖÕÖ¹²¢Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó,·şÎñµÄÖÕÖ¹ÔÚstop()ÖĞ²Ù×÷
             void clear() {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_sessions.clear();
             }
 
-            // å¼‚æ­¥å†™å…¥
+            // Òì²½Ğ´Èë
             bool write(SessionID session_id, const char* send_msg, size_t size) {
                 auto sess_ptr = find_session(session_id);
                 if (!sess_ptr) {
@@ -123,8 +123,8 @@ namespace BTool
                 }
                 return sess_ptr->write(send_msg, size);
             }
-            // å¼‚æ­¥å‘é€æ‰€æœ‰æ¶ˆæ¯
-            // setä¸­è¿”å›å¤±è´¥çš„session id
+            // Òì²½·¢ËÍËùÓĞÏûÏ¢
+            // setÖĞ·µ»ØÊ§°ÜµÄsession id
             std::set<SessionID> writeAll(const char* send_msg, size_t size) {
                 std::set<SessionID> err_session;
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -135,8 +135,8 @@ namespace BTool
                 return err_session;
             }
 
-            // åœ¨å½“å‰æ¶ˆæ¯å°¾è¿½åŠ 
-            // max_package_size: å•ä¸ªæ¶ˆæ¯æœ€å¤§åŒ…é•¿,å•æ¬¡å†…æœªå‘é€å®Œæ¯•æˆ–è€…è¶…å‡ºè¯¥æ•°å€¼,åˆ™ä¼šåˆ†åŒ…,ç­‰å¾…ä¸‹æ¬¡å‘é€
+            // ÔÚµ±Ç°ÏûÏ¢Î²×·¼Ó
+            // max_package_size: µ¥¸öÏûÏ¢×î´ó°ü³¤,µ¥´ÎÄÚÎ´·¢ËÍÍê±Ï»òÕß³¬³ö¸ÃÊıÖµ,Ôò»á·Ö°ü,µÈ´ıÏÂ´Î·¢ËÍ
             bool write_tail(SessionID session_id, const char* send_msg, size_t size, size_t max_package_size = 65535) {
                 auto sess_ptr = find_session(session_id);
                 if (!sess_ptr) {
@@ -145,7 +145,7 @@ namespace BTool
                 return sess_ptr->write_tail(send_msg, size, max_package_size);
             }
 
-            // æ¶ˆè´¹æ‰æŒ‡å®šé•¿åº¦çš„è¯»ç¼“å­˜
+            // Ïû·ÑµôÖ¸¶¨³¤¶ÈµÄ¶Á»º´æ
             void consume_read_buf(SessionID session_id, size_t bytes_transferred) {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -153,7 +153,7 @@ namespace BTool
                 }
             }
 
-            // åŒæ­¥å…³é—­è¿æ¥,æ³¨æ„æ­¤æ—¶çš„close_cbkä¾æ—§åœ¨å½“å‰çº¿ç¨‹ä¸‹
+            // Í¬²½¹Ø±ÕÁ¬½Ó,×¢Òâ´ËÊ±µÄclose_cbkÒÀ¾ÉÔÚµ±Ç°Ïß³ÌÏÂ
             void close(SessionID session_id) {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -161,7 +161,7 @@ namespace BTool
                 }
             }
 
-            // è·å–è¿æ¥è€…IP
+            // »ñÈ¡Á¬½ÓÕßIP
             bool get_ip(SessionID session_id, std::string& ip) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -171,7 +171,7 @@ namespace BTool
                 return false;
             }
 
-            // è·å–è¿æ¥è€…port
+            // »ñÈ¡Á¬½ÓÕßport
             bool get_port(SessionID session_id, unsigned short& port) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -199,7 +199,7 @@ namespace BTool
                 }
                 return boost::asio::ip::tcp::endpoint();
             }
-            // å¯åŠ¨ç›‘å¬ç«¯å£
+            // Æô¶¯¼àÌı¶Ë¿Ú
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::system::error_code ec;
@@ -230,7 +230,7 @@ namespace BTool
                 return true;
             }
 
-            // å¼€å§‹ç›‘å¬
+            // ¿ªÊ¼¼àÌı
             void start_accept() {
                 try {
                     TcpSessionPtr session = std::make_shared<TcpSession>(m_ioc_pool.get_io_context(), m_max_wbuffer_size, m_max_rbuffer_size);
@@ -241,7 +241,7 @@ namespace BTool
                 }
             }
 
-            // å¤„ç†æ¥å¬å›è°ƒ
+            // ´¦Àí½ÓÌı»Øµ÷
             void handle_accept(const boost::system::error_code& ec, const TcpSessionPtr& session_ptr) {
                 start_accept();
                 if (ec) {
@@ -258,11 +258,11 @@ namespace BTool
                         return session_ptr->shutdown();
                 }
 
-                // æŠŠtcp_sessionçš„startçš„è°ƒç”¨äº¤ç»™io_context,ç”±io_contextæ¥å†³å®šä½•æ—¶æ‰§è¡Œ,å¯ä»¥å¢åŠ å¹¶å‘åº¦
+                // °Ñtcp_sessionµÄstartµÄµ÷ÓÃ½»¸øio_context,ÓÉio_contextÀ´¾ö¶¨ºÎÊ±Ö´ĞĞ,¿ÉÒÔÔö¼Ó²¢·¢¶È
                 session_ptr->get_io_context().dispatch(std::bind(&TcpSession::start, session_ptr));
             }
 
-            // æŸ¥æ‰¾è¿æ¥å¯¹è±¡
+            // ²éÕÒÁ¬½Ó¶ÔÏó
             TcpSessionPtr find_session(SessionID session_id) const {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
@@ -272,14 +272,14 @@ namespace BTool
                 return iter->second;
             }
 
-            // åˆ é™¤è¿æ¥å¯¹è±¡
+            // É¾³ıÁ¬½Ó¶ÔÏó
             void remove_session(SessionID session_id) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_sessions.erase(session_id);
             }
 
         private:
-            // å…³é—­è¿æ¥å›è°ƒ
+            // ¹Ø±ÕÁ¬½Ó»Øµ÷
             void on_close_cbk(SessionID session_id) {
                 remove_session(session_id);
                 if (m_handler.close_cbk_)
@@ -294,7 +294,7 @@ namespace BTool
             size_t              m_max_rbuffer_size;
 
             mutable std::mutex  m_mutex;
-            // æ‰€æœ‰è¿æ¥å¯¹è±¡ï¼ŒåæœŸæ”¹ä¸ºå†…å­˜å—ï¼ŒèŠ‚çœå¼€è¾Ÿ/é‡Šæ”¾å†…å­˜æ—¶é—´
+            // ËùÓĞÁ¬½Ó¶ÔÏó£¬ºóÆÚ¸ÄÎªÄÚ´æ¿é£¬½ÚÊ¡¿ª±Ù/ÊÍ·ÅÄÚ´æÊ±¼ä
             TcpSessionMap       m_sessions;
         };
     }

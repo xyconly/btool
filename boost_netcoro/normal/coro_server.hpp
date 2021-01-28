@@ -3,7 +3,7 @@ File name:      coro_server.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: åˆ©ç”¨beastå®ç°çš„åç¨‹serverå¯¹è±¡, ç”±å¤–éƒ¨ä¼ å…¥sessionå†³å®šè¿æ¥æ–¹å¼
+Purpose: ÀûÓÃbeastÊµÏÖµÄĞ­³Ìserver¶ÔÏó, ÓÉÍâ²¿´«Èësession¾ö¶¨Á¬½Ó·½Ê½
 *************************************************/
 
 #pragma once
@@ -19,9 +19,9 @@ namespace BTool
 {
     namespace BeastCoro
     {
-        // TSession: é€šè®¯è¿æ¥ç±»,ç”¨äºå­˜å‚¨æ–°å»ºè¿æ¥çš„ç›¸å…³å‚æ•°
-        // å¿…é¡»å«æœ‰TSession(boost::asio::ip::tcp::socket& dev, boost::asio::yield_context& yield)æ„é€ å‡½æ•°
-        // ä»¥åŠcoro_start()å‡½æ•°
+        // TSession: Í¨Ñ¶Á¬½ÓÀà,ÓÃÓÚ´æ´¢ĞÂ½¨Á¬½ÓµÄÏà¹Ø²ÎÊı
+        // ±ØĞëº¬ÓĞTSession(boost::asio::ip::tcp::socket& dev, boost::asio::yield_context& yield)¹¹Ôìº¯Êı
+        // ÒÔ¼°coro_start()º¯Êı
         template<typename TSession>
         class CoroServer : public std::enable_shared_from_this<CoroServer<TSession>>
         {
@@ -31,31 +31,31 @@ namespace BTool
 
             enum class ServerErrCode : int {
                 Err_Success = 0,
-                Err_Open,		// å¼€å¯ç›‘å¬é”™è¯¯
-                Err_Bind,		// ç»‘å®šç›‘å¬é”™è¯¯
-                Err_Listen,		// ç›‘å¬é”™è¯¯
-                Err_Accept,		// socketç›‘å¬é”™è¯¯
-                Err_Close,		// å…³é—­é”™è¯¯
-                Err_Other,		// æœªçŸ¥é”™è¯¯
+                Err_Open,		// ¿ªÆô¼àÌı´íÎó
+                Err_Bind,		// °ó¶¨¼àÌı´íÎó
+                Err_Listen,		// ¼àÌı´íÎó
+                Err_Accept,		// socket¼àÌı´íÎó
+                Err_Close,		// ¹Ø±Õ´íÎó
+                Err_Other,		// Î´Öª´íÎó
             };
 
-#pragma region å›è°ƒä¿¡å·
+#pragma region »Øµ÷ĞÅºÅ
         public:
             typedef std::function<void(const TSessionPtr& session_ptr)>		session_func_t;
             typedef std::function<void(std::string&& err_msg)>				error_func_t;
 
-            // è®¾ç½®é”™è¯¯å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃ´íÎó»Øµ÷,Ğ­³Ì¶¯Á¦
             void setErrorCbk(const error_func_t& cbk) {
                 m_error_cbk = cbk;
             }
-            // è®¾ç½®æœ‰æ–°çš„è¿æ¥å›è°ƒ,åç¨‹åŠ¨åŠ›
+            // ÉèÖÃÓĞĞÂµÄÁ¬½Ó»Øµ÷,Ğ­³Ì¶¯Á¦
             void setConnectCbk(const session_func_t& cbk) {
                 m_connect_cbk = cbk;
             }
         protected:
-            // é”™è¯¯å›è°ƒ,å¯åŠ¨ç›‘å¬å¤±è´¥
+            // ´íÎó»Øµ÷,Æô¶¯¼àÌıÊ§°Ü
             error_func_t		m_error_cbk;
-            // æœ‰æ–°çš„è¿æ¥å›è°ƒ
+            // ÓĞĞÂµÄÁ¬½Ó»Øµ÷
             session_func_t		m_connect_cbk;
 
 #pragma endregion
@@ -74,14 +74,14 @@ namespace BTool
                 close();
             }
 
-            // å¯åŠ¨è¿æ¥ä¾¦å¬ï¼›é‡‡ç”¨åç¨‹æ¨¡å¼
-            // "port"ï¼šè¿æ¥ä¾¦å¬ç”¨ç«¯å£å·ï¼Œå¿…éœ€æŒ‡å®šä¸€ä¸ªæœ‰æ•ˆå€¼ï¼Œæ³¨æ„é¿å¼€å¸¸ç”¨çš„ç³»ç»ŸæœåŠ¡ç«¯å£
-            // "thread_num"ï¼šå¼€å¯çº¿ç¨‹æ•°,0ä¸ºç³»ç»Ÿçº¿ç¨‹æ•°
-            // "addr"ï¼šè¿æ¥ä¾¦å¬æœ¬åœ°ç½‘ç»œåœ°å€ï¼Œé€‚ç”¨äºå¤šç½‘å¡æƒ…å†µï¼Œä¼ å…¥"0.0.0.0"/"127.0.0.1"äº¦ä½¿ç”¨é»˜è®¤åœ°å€ï¼›
+            // Æô¶¯Á¬½ÓÕìÌı£»²ÉÓÃĞ­³ÌÄ£Ê½
+            // "port"£ºÁ¬½ÓÕìÌıÓÃ¶Ë¿ÚºÅ£¬±ØĞèÖ¸¶¨Ò»¸öÓĞĞ§Öµ£¬×¢Òâ±Ü¿ª³£ÓÃµÄÏµÍ³·şÎñ¶Ë¿Ú
+            // "thread_num"£º¿ªÆôÏß³ÌÊı,0ÎªÏµÍ³Ïß³ÌÊı
+            // "addr"£ºÁ¬½ÓÕìÌı±¾µØÍøÂçµØÖ·£¬ÊÊÓÃÓÚ¶àÍø¿¨Çé¿ö£¬´«Èë"0.0.0.0"/"127.0.0.1"ÒàÊ¹ÓÃÄ¬ÈÏµØÖ·£»
             long acceptor(unsigned short port, std::size_t thread_num = 0, const std::string& addr = "")
             {
                 bool expected = false;
-                if (!m_bstart.compare_exchange_strong(expected, true))	// æ˜¯å¦å·²å¯åŠ¨
+                if (!m_bstart.compare_exchange_strong(expected, true))	// ÊÇ·ñÒÑÆô¶¯
                     return 1;
 
 //                 bool useSpecAddr(true);
@@ -107,7 +107,7 @@ namespace BTool
             void close()
             {
                 bool expected = true;
-                if (!m_bstart.compare_exchange_strong(expected, false))  // æœªå¯åŠ¨åˆ™é€€å‡º
+                if (!m_bstart.compare_exchange_strong(expected, false))  // Î´Æô¶¯ÔòÍË³ö
                     return;
 
                 if (m_ios)
@@ -195,7 +195,7 @@ namespace BTool
             }
 
         private:
-            // è¿è¡ŒçŠ¶æ€
+            // ÔËĞĞ×´Ì¬
             std::atomic<bool>					m_bstart;
             boost::asio::io_service*			m_ios;
             boost::thread						m_thrd;

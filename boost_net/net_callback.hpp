@@ -1,7 +1,7 @@
 /******************************************************************************
 File name:  websocket_callback.hpp
 Author:	    AChar
-Purpose:    ç½‘ç»œé€šè®¯å›è°ƒæ¥å£
+Purpose:    ÍøÂçÍ¨Ñ¶»Øµ÷½Ó¿Ú
 *****************************************************************************/
 #pragma once
 
@@ -24,13 +24,13 @@ namespace BTool
                 InvalidSessionID = 0,
             };
 
-            // å¼€å¯è¿æ¥å›è°ƒ
+            // ¿ªÆôÁ¬½Ó»Øµ÷
             open_cbk open_cbk_ = nullptr;
-            // å…³é—­è¿æ¥å›è°ƒ
+            // ¹Ø±ÕÁ¬½Ó»Øµ÷
             close_cbk close_cbk_ = nullptr;
-            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
             read_cbk read_cbk_ = nullptr;
-            // å·²å‘é€æ¶ˆæ¯å›è°ƒ
+            // ÒÑ·¢ËÍÏûÏ¢»Øµ÷
             write_cbk write_cbk_ = nullptr;
         };
     }

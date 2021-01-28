@@ -1,10 +1,10 @@
 /******************************************************************************
 File name:  http_server.hpp
 Author:	    AChar
-Purpose:    httpæœåŠ¡ç±»
-Note:       å¯ç›´æ¥ä½¿ç”¨HttpService,è°ƒç”¨HttpServiceNetCallBackå›è°ƒ
+Purpose:    http·şÎñÀà
+Note:       ¿ÉÖ±½ÓÊ¹ÓÃHttpService,µ÷ÓÃHttpServiceNetCallBack»Øµ÷
 
-ç¤ºä¾‹ä»£ç :
+Ê¾Àı´úÂë:
         class TestHttpService : public BTool::BoostNet::HttpServiceNetCallBack
         {
             typedef BTool::BoostNet1_71::HttpService    service_type;
@@ -18,24 +18,24 @@ Note:       å¯ç›´æ¥ä½¿ç”¨HttpService,è°ƒç”¨HttpServiceNetCallBackå›è°ƒ
             }
 
         protected:
-            // å¼€å¯è¿æ¥å›è°ƒ
+            // ¿ªÆôÁ¬½Ó»Øµ÷
             virtual void on_open_cbk(SessionID session_id) override;
 
-            // å…³é—­è¿æ¥å›è°ƒ
+            // ¹Ø±ÕÁ¬½Ó»Øµ÷
             virtual void on_close_cbk(SessionID session_id) override;
 
-            // è¯»å–æ¶ˆæ¯å›è°ƒ,æ­¤æ—¶read_msg_typeä¸ºboost::beast::http::request<boost::beast::http::string_body>
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷,´ËÊ±read_msg_typeÎªboost::beast::http::request<boost::beast::http::string_body>
             virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) override;
 
-            // å†™å…¥æ¶ˆæ¯å›è°ƒ,æ­¤æ—¶send_msg_typeä¸ºboost::beast::http::response<boost::beast::http::string_body>
+            // Ğ´ÈëÏûÏ¢»Øµ÷,´ËÊ±send_msg_typeÎªboost::beast::http::response<boost::beast::http::string_body>
             virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) override;
 
         private:
             service_ptr_type            m_service;
         }
 
-å¤‡æ³¨:
-        ä¹Ÿå¯ç›´æ¥è‡ªå®šä¹‰å‘é€åŠè¿”å›æ¶ˆæ¯ç±»å‹, å¦‚
+±¸×¢:
+        Ò²¿ÉÖ±½Ó×Ô¶¨Òå·¢ËÍ¼°·µ»ØÏûÏ¢ÀàĞÍ, Èç
             using SelfHttpServiceNetCallBack = HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
             using SelfHttpServer = HttpServer<true, boost::beast::http::string_body, boost::beast::http::file_body>
 *****************************************************************************/
@@ -52,7 +52,7 @@ namespace BTool
 {
     namespace BoostNet1_71
     {
-        // HttpæœåŠ¡
+        // Http·şÎñ
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
         class HttpServer 
             : public BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
@@ -61,24 +61,24 @@ namespace BTool
             typedef boost::asio::io_context                         io_context_type;
             typedef boost::asio::ip::tcp::acceptor                  accept_type;
 
-            // è‡ªèº«å‘½å
+            // ×ÔÉíÃüÃû
             typedef HttpServer<isRequest, ReadType, WriteType, Fields>          ServerType;
 
-            // å›è°ƒç›¸å…³å‘½å
+            // »Øµ÷Ïà¹ØÃüÃû
             typedef BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
             typedef typename callback_type::read_msg_type                       read_msg_type;
             typedef typename callback_type::send_msg_type                       send_msg_type;
             typedef typename callback_type::SessionID                           SessionID;
             typedef typename callback_type::method_type                         method_type;
 
-            // Sessionå‘½å
+            // SessionÃüÃû
             typedef HttpSession<isRequest, ReadType, WriteType, Fields>         session_type;
             typedef std::shared_ptr<session_type>                               session_ptr_type;
             typedef std::map<SessionID, session_ptr_type>                       session_map_type;
 
         public:
-            // HttpæœåŠ¡
-            // handler: sessionè¿”å›å›è°ƒ
+            // Http·şÎñ
+            // handler: session·µ»Ø»Øµ÷
             HttpServer(AsioContextPool& ioc)
                 : m_ioc_pool(ioc)
                 , m_acceptor(boost::asio::make_strand(ioc.get_io_context()))
@@ -93,15 +93,15 @@ namespace BTool
                 m_acceptor.close(ec);
             }
 
-            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
+            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
             void register_cbk(callback_type* handler) {
                 m_handler = handler;
             }
 
-            // éé˜»å¡å¼å¯åŠ¨æœåŠ¡,
-            // ip: ç›‘å¬IP,é»˜è®¤æœ¬åœ°IPV4åœ°å€
-            // port: ç›‘å¬ç«¯å£
-            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
+            // ·Ç×èÈûÊ½Æô¶¯·şÎñ,
+            // ip: ¼àÌıIP,Ä¬ÈÏ±¾µØIPV4µØÖ·
+            // port: ¼àÌı¶Ë¿Ú
+            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
             bool start(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = true)
             {
                 m_ioc_pool.start();
@@ -111,10 +111,10 @@ namespace BTool
                 return true;
             }
 
-            // é˜»å¡å¼å¯åŠ¨æœåŠ¡,ä½¿ç”¨join_allç­‰å¾…
-            // ip: ç›‘å¬IP,é»˜è®¤æœ¬åœ°IPV4åœ°å€
-            // port: ç›‘å¬ç«¯å£
-            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
+            // ×èÈûÊ½Æô¶¯·şÎñ,Ê¹ÓÃjoin_allµÈ´ı
+            // ip: ¼àÌıIP,Ä¬ÈÏ±¾µØIPV4µØÖ·
+            // port: ¼àÌı¶Ë¿Ú
+            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
             void run(const char* ip = nullptr, unsigned short port = 80, bool reuse_address = true)
             {
                 if (!start_listen(ip, port, reuse_address)) {
@@ -123,20 +123,20 @@ namespace BTool
                 m_ioc_pool.run();
             }
 
-            // ç»ˆæ­¢å½“å‰æœåŠ¡
+            // ÖÕÖ¹µ±Ç°·şÎñ
             void stop() {
                 clear();
                 m_ioc_pool.stop();
             }
 
-            // æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥
-            // æ³¨æ„,è¯¥å‡½æ•°ä¸ä¼šç»ˆæ­¢å½“å‰æœåŠ¡,ä»…ç»ˆæ­¢å¹¶æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥,æœåŠ¡çš„ç»ˆæ­¢åœ¨stop()ä¸­æ“ä½œ
+            // Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó
+            // ×¢Òâ,¸Ãº¯Êı²»»áÖÕÖ¹µ±Ç°·şÎñ,½öÖÕÖ¹²¢Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó,·şÎñµÄÖÕÖ¹ÔÚstop()ÖĞ²Ù×÷
             void clear() {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_sessions.clear();
             }
 
-            // å¼‚æ­¥å†™å…¥
+            // Òì²½Ğ´Èë
             bool write(SessionID session_id, send_msg_type&& msg)
             {
                 auto sess_ptr = find_session(session_id);
@@ -146,7 +146,7 @@ namespace BTool
                 return sess_ptr->async_write(std::forward<send_msg_type>(msg));
             }
 
-            // åŒæ­¥å…³é—­è¿æ¥,æ³¨æ„æ­¤æ—¶çš„close_cbkä¾æ—§åœ¨å½“å‰çº¿ç¨‹ä¸‹
+            // Í¬²½¹Ø±ÕÁ¬½Ó,×¢Òâ´ËÊ±µÄclose_cbkÒÀ¾ÉÔÚµ±Ç°Ïß³ÌÏÂ
             void close(SessionID session_id)
             {
                 auto sess_ptr = find_session(session_id);
@@ -155,22 +155,22 @@ namespace BTool
                 }
             }
 
-            // è®¾ç½®æ”¯æŒçš„è¯·æ±‚æ–¹æ³•
+            // ÉèÖÃÖ§³ÖµÄÇëÇó·½·¨
             void set_allow_method(const std::set<method_type>& methods) {
                 m_allow_methods = methods;
             }
 
-            // æ–°å¢æ”¯æŒçš„è¯·æ±‚æ–¹æ³•
+            // ĞÂÔöÖ§³ÖµÄÇëÇó·½·¨
             void add_allow_method(method_type method) {
                 m_allow_methods.emplace(method);
             }
 
-            // è·å–æ˜¯å¦æ”¯æŒè¯¥è¯·æ±‚æ–¹æ³•
+            // »ñÈ¡ÊÇ·ñÖ§³Ö¸ÃÇëÇó·½·¨
             bool is_allow_method(method_type method) {
                 return m_allow_methods.find(method) != m_allow_methods.end();
             }
 
-            // è·å–è¿æ¥è€…IP
+            // »ñÈ¡Á¬½ÓÕßIP
             bool get_ip(SessionID session_id, std::string& ip) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -180,7 +180,7 @@ namespace BTool
                 return false;
             }
 
-            // è·å–è¿æ¥è€…port
+            // »ñÈ¡Á¬½ÓÕßport
             bool get_port(SessionID session_id, unsigned short& port) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -191,7 +191,7 @@ namespace BTool
             }
 
         private:
-            // å¯åŠ¨ç›‘å¬ç«¯å£
+            // Æô¶¯¼àÌı¶Ë¿Ú
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::system::error_code ec;
@@ -231,7 +231,7 @@ namespace BTool
                 return true;
             }
 
-            // å¼€å§‹ç›‘å¬
+            // ¿ªÊ¼¼àÌı
             void start_accept()
             {
                 try {
@@ -244,7 +244,7 @@ namespace BTool
                 }
             }
 
-            // å¤„ç†æ¥å¬å›è°ƒ
+            // ´¦Àí½ÓÌı»Øµ÷
             void handle_accept(const boost::system::error_code& ec, boost::asio::ip::tcp::socket socket)
             {
                 start_accept();
@@ -264,7 +264,7 @@ namespace BTool
                 session_ptr->start();
             }
 
-            // æŸ¥æ‰¾è¿æ¥å¯¹è±¡
+            // ²éÕÒÁ¬½Ó¶ÔÏó
             session_ptr_type find_session(SessionID session_id) const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -275,7 +275,7 @@ namespace BTool
                 return iter->second;
             }
 
-            // åˆ é™¤è¿æ¥å¯¹è±¡
+            // É¾³ıÁ¬½Ó¶ÔÏó
             void remove_session(SessionID session_id) 
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -283,20 +283,20 @@ namespace BTool
             }
 
         private:
-            // å¼€å¯è¿æ¥å›è°ƒ
+            // ¿ªÆôÁ¬½Ó»Øµ÷
             virtual void on_open_cbk(SessionID session_id) override
             {
                 if(m_handler)
                     m_handler->on_open_cbk(session_id);
             }
-            // å…³é—­è¿æ¥å›è°ƒ
+            // ¹Ø±ÕÁ¬½Ó»Øµ÷
             virtual void on_close_cbk(SessionID session_id) override
             {
                 remove_session(session_id);
                 if (m_handler)
                     m_handler->on_close_cbk(session_id);
             }
-            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
             virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) override
             {
                 if (m_handler)
@@ -307,15 +307,15 @@ namespace BTool
             AsioContextPool&                        m_ioc_pool;
             accept_type                             m_acceptor;
             callback_type*                          m_handler;
-            // æœåŠ¡æ”¯æŒçš„æ–¹æ³•ç±»å‹
+            // ·şÎñÖ§³ÖµÄ·½·¨ÀàĞÍ
             std::set<method_type>             m_allow_methods;
 
             mutable std::mutex                      m_mutex;
-            // æ‰€æœ‰è¿æ¥å¯¹è±¡ï¼ŒåæœŸæ”¹ä¸ºå†…å­˜å—ï¼ŒèŠ‚çœå¼€è¾Ÿ/é‡Šæ”¾å†…å­˜æ—¶é—´
+            // ËùÓĞÁ¬½Ó¶ÔÏó£¬ºóÆÚ¸ÄÎªÄÚ´æ¿é£¬½ÚÊ¡¿ª±Ù/ÊÍ·ÅÄÚ´æÊ±¼ä
             session_map_type                        m_sessions;
         };
 
-        // é»˜è®¤çš„æœåŠ¡ç«¯, è¯»å–è¯·æ±‚,å‘é€åº”ç­”
+        // Ä¬ÈÏµÄ·şÎñ¶Ë, ¶ÁÈ¡ÇëÇó,·¢ËÍÓ¦´ğ
         using HttpService = HttpServer<true, boost::beast::http::string_body>;
     }
 }

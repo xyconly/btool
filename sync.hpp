@@ -21,21 +21,21 @@ using namespace std;
 #ifdef _MSC_VER
 //#  define _WINSOCKAPI_   // prevent inclusion of winsock.h, since we need winsock2.h
 
-#ifndef _WIN32_WINNT		// å…è®¸ä½¿ç”¨ç‰¹å®šäº Windows XP æˆ–æ›´é«˜ç‰ˆæœ¬çš„åŠŸèƒ½ã€‚
-# define _WIN32_WINNT 0x0501	// å°†æ­¤å€¼æ›´æ”¹ä¸ºç›¸åº”çš„å€¼ï¼Œä»¥é€‚ç”¨äº Windows çš„å…¶ä»–ç‰ˆæœ¬ã€‚
+#ifndef _WIN32_WINNT		// ÔÊĞíÊ¹ÓÃÌØ¶¨ÓÚ Windows XP »ò¸ü¸ß°æ±¾µÄ¹¦ÄÜ¡£
+# define _WIN32_WINNT 0x0501	// ½«´ËÖµ¸ü¸ÄÎªÏàÓ¦µÄÖµ£¬ÒÔÊÊÓÃÓÚ Windows µÄÆäËû°æ±¾¡£
 #endif						
 
-#ifndef _WIN32_WINDOWS		// å…è®¸ä½¿ç”¨ç‰¹å®šäº Windows 98 æˆ–æ›´é«˜ç‰ˆæœ¬çš„åŠŸèƒ½ã€‚
-# define _WIN32_WINDOWS 0x0410 // å°†æ­¤å€¼æ›´æ”¹ä¸ºé€‚å½“çš„å€¼ï¼Œä»¥æŒ‡å®šå°† Windows Me æˆ–æ›´é«˜ç‰ˆæœ¬ä½œä¸ºç›®æ ‡ã€‚
+#ifndef _WIN32_WINDOWS		// ÔÊĞíÊ¹ÓÃÌØ¶¨ÓÚ Windows 98 »ò¸ü¸ß°æ±¾µÄ¹¦ÄÜ¡£
+# define _WIN32_WINDOWS 0x0410 // ½«´ËÖµ¸ü¸ÄÎªÊÊµ±µÄÖµ£¬ÒÔÖ¸¶¨½« Windows Me »ò¸ü¸ß°æ±¾×÷ÎªÄ¿±ê¡£
 #endif
 
 #ifndef WIN32_LEAN_AND_MEAN
-# define WIN32_LEAN_AND_MEAN		// ä» Windows å¤´ä¸­æ’é™¤æå°‘ä½¿ç”¨çš„èµ„æ–™
+# define WIN32_LEAN_AND_MEAN		// ´Ó Windows Í·ÖĞÅÅ³ı¼«ÉÙÊ¹ÓÃµÄ×ÊÁÏ
 #endif
 //#  define _WINSOCK2API_
 
 #  if !defined(_WINDOWS_)
-#	 include "pointerdef.h"				// å› ä¸‹é¢çš„æ–‡ä»¶ç”¨åˆ°"winnt.h"
+#	 include "pointerdef.h"				// ÒòÏÂÃæµÄÎÄ¼şÓÃµ½"winnt.h"
 #    include <windows.h>
 #    include <winbase.h>
 #  endif
@@ -903,7 +903,7 @@ namespace BTool
     class wait_for_multiple_events
     {
     public:
-        // wait_for_multiple_events,ä¼šè‡ªåŠ¨å¤ä½äº‹ä»¶ä¿¡å·
+        // wait_for_multiple_events,»á×Ô¶¯¸´Î»ÊÂ¼şĞÅºÅ
         int operator()(handler events[], int count, bool wait_all = false) {
 #ifdef _MSC_VER
             try {
@@ -960,7 +960,7 @@ namespace BTool
     class wait_for_multiple_events_timed
     {
     public:
-        // wait_for_multiple_events,ä¼šè‡ªåŠ¨å¤ä½äº‹ä»¶ä¿¡å·
+        // wait_for_multiple_events,»á×Ô¶¯¸´Î»ÊÂ¼şĞÅºÅ
         int operator()(handler events[], int count, int timeout = -1, bool wait_all = false) {
 #ifdef _MSC_VER
             assert(count < (int)max_handler_array_size);
