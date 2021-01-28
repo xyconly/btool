@@ -280,8 +280,9 @@ namespace BTool
 {
     namespace BoostNet
     {
-        enum class msg_status : uint8_t {
-            ok,             // 服务端执行正确
+        enum class msg_status : int8_t {
+            no_bind = -1,   // 未绑定
+            ok = 0,         // 服务端执行正确
             fail,           // 服务端执行失败
             timeout,        // 等待应答超时
             unpack_error,   // 解析数据失败
@@ -448,13 +449,20 @@ namespace BTool
             template<typename Type>
             typename std::enable_if<!std::is_void<Type>::value, Type>::type
                 get_rsp_params(MemoryStream& msg, msg_status& status) {
+                if (msg.size() < sizeof(msg_status)) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+                msg.read(&status);
+                if (status == msg_status::no_bind) {
+                    return Type();
+                }
+
                 if (msg.size() < sizeof(msg_status) + sizeof(Type)) {
                     status = msg_status::unpack_error;
                     return Type();
                 }
-
-                msg.read(&status);
-                if (status > msg_status::send_error) {
+                if (status > msg_status::wait_error) {
                     status = msg_status::unpack_error;
                     return Type();
                 }
@@ -1067,8 +1075,9 @@ namespace BTool
                     if (item->get_comm_model() == comm_model::request) {
                         if (!this->deal_bind(session_id, item)) {
                             //this->m_error_proxy.invoke(item);
-                            m_service->close(session_id);
-                            return;
+                            //m_service->close(session_id);
+                            this->rsp_bind(item->get_rpc_name(), session_id, item->get_req_id(), item->get_rpc_model(), msg_status::no_bind);
+                            //return;
                         }
                         continue;
                     }
@@ -1201,8 +1210,9 @@ namespace BTool
                     if (item->get_comm_model() == comm_model::request) {
                         if (!this->deal_bind(session_id, item)) {
                             //this->m_error_proxy.invoke(item);
-                            m_session->shutdown();
-                            return;
+                            //m_session->shutdown();
+                            this->rsp_bind(item->get_rpc_name(), session_id, item->get_req_id(), item->get_rpc_model(), msg_status::no_bind);
+                            //return;
                         }
                         continue;
                     }

@@ -32,6 +32,7 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 
 #include <mutex>
 #include <string>
+#include <boost/beast/http/write.hpp> // for error C2039: 'write_some_impl': is not a member of 'boost::beast::http::detail'
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/cast.hpp>
@@ -41,7 +42,7 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 #include "../../atomic_switch.hpp"
 
 // 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
-#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
+//#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 namespace BTool
 {
