@@ -1,19 +1,19 @@
 /******************************************************************************
 File name:  tcp_session.hpp
 Author:	    AChar
-Purpose:    tcpÁ¬½ÓÀà
-Note:       ÎªÁËÍâ²¿¾¡¿ÉÄÜµÄÎŞ»º´æ,Íâ²¿²Ù×÷¶ÁÈ¡Êı¾İºóĞèÒªÖ÷¶¯µ÷ÓÃconsume_read_buf,
-            ÒÔ´ËÀ´É¾³ı¶Á»º´æ
+Purpose:    tcpè¿æ¥ç±»
+Note:       ä¸ºäº†å¤–éƒ¨å°½å¯èƒ½çš„æ— ç¼“å­˜,å¤–éƒ¨æ“ä½œè¯»å–æ•°æ®åéœ€è¦ä¸»åŠ¨è°ƒç”¨consume_read_buf,
+            ä»¥æ­¤æ¥åˆ é™¤è¯»ç¼“å­˜
 
-Special Note: ¹¹Ôìº¯ÊıÖĞioc_type& iosÎªÍâ²¿ÒıÓÃ,ĞèÒªÓÅÏÈÊÍ·Å¸Ã¶ÔÏóÖ®ºó²ÅÄÜÊÍ·Åios¶ÔÏó
-            Õâ¾Íµ¼ÖÂÍâ²¿µ¥¶ÀÊ¹ÓÃÊ¹ÓÃĞèÒªÏÈÉùÃ÷ios¶ÔÏó,È»ºóÉùÃ÷¸Ã¶ÔÏó,ÀıÈç:
+Special Note: æ„é€ å‡½æ•°ä¸­ioc_type& iosä¸ºå¤–éƒ¨å¼•ç”¨,éœ€è¦ä¼˜å…ˆé‡Šæ”¾è¯¥å¯¹è±¡ä¹‹åæ‰èƒ½é‡Šæ”¾ioså¯¹è±¡
+            è¿™å°±å¯¼è‡´å¤–éƒ¨å•ç‹¬ä½¿ç”¨ä½¿ç”¨éœ€è¦å…ˆå£°æ˜ioså¯¹è±¡,ç„¶åå£°æ˜è¯¥å¯¹è±¡,ä¾‹å¦‚:
                 class TcpClient{
                     ...
                 private:
                     ioc_type                    m_ios;
                     std::shared_ptr<TcpSession> m_session;
                 };
-            µ±È»Èç¹ûÍâ²¿Ö÷¶¯¿ØÖÆÆäÏÈºóË³Ğò»á¸üºÃ,ÀıÈç:
+            å½“ç„¶å¦‚æœå¤–éƒ¨ä¸»åŠ¨æ§åˆ¶å…¶å…ˆåé¡ºåºä¼šæ›´å¥½,ä¾‹å¦‚:
                 class TcpClient {
                 public:
                     TcpClient(ioc_type& ios) {
@@ -40,7 +40,7 @@ namespace BTool
 {
     namespace BoostNet
     {
-        // TCPÁ¬½Ó¶ÔÏó
+        // TCPè¿æ¥å¯¹è±¡
         class TcpSession : public std::enable_shared_from_this<TcpSession>
         {
         public:
@@ -52,23 +52,22 @@ namespace BTool
             typedef NetCallBack::SessionID              SessionID;
 
             enum {
-                NOLIMIT_WRITE_BUFFER_SIZE = 0, // ÎŞÏŞÖÆ
+                NOLIMIT_WRITE_BUFFER_SIZE = 0, // æ— é™åˆ¶
                 MAX_WRITE_BUFFER_SIZE = 30000,
                 MAX_READSINGLE_BUFFER_SIZE = 2000,
             };
 
         public:
-            // TCPÁ¬½Ó¶ÔÏó,Ä¬ÈÏ¶ÓÁĞ·¢ËÍÄ£Ê½,¿ÉÍ¨¹ıset_only_one_modeÉèÖÃÎªÅúÁ¿·¢ËÍÄ£Ê½
-            // ios: io¶ÁĞ´¶¯Á¦·şÎñ, ÎªÍâ²¿ÒıÓÃ, ĞèÒªÓÅÏÈÊÍ·Å¸Ã¶ÔÏóÖ®ºó²ÅÄÜÊÍ·Åios¶ÔÏó
-            // max_buffer_size: ×î´óĞ´»º³åÇø´óĞ¡
-            // max_rbuffer_size: µ¥´Î¶ÁÈ¡×î´ó»º³åÇø´óĞ¡
+            // TCPè¿æ¥å¯¹è±¡,é»˜è®¤é˜Ÿåˆ—å‘é€æ¨¡å¼,å¯é€šè¿‡set_only_one_modeè®¾ç½®ä¸ºæ‰¹é‡å‘é€æ¨¡å¼
+            // ios: ioè¯»å†™åŠ¨åŠ›æœåŠ¡, ä¸ºå¤–éƒ¨å¼•ç”¨, éœ€è¦ä¼˜å…ˆé‡Šæ”¾è¯¥å¯¹è±¡ä¹‹åæ‰èƒ½é‡Šæ”¾ioså¯¹è±¡
+            // max_buffer_size: æœ€å¤§å†™ç¼“å†²åŒºå¤§å°
+            // max_rbuffer_size: å•æ¬¡è¯»å–æœ€å¤§ç¼“å†²åŒºå¤§å°
             TcpSession(ioc_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_io_context(ios)
                 , m_socket(ios)
                 , m_overtime_timer(ios)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
-                , m_handler(nullptr)
                 , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
                 , m_current_send_msg(nullptr)
@@ -76,47 +75,67 @@ namespace BTool
             }
 
             ~TcpSession() {
-                m_handler = nullptr;
                 m_overtime_timer.cancel();
                 close();
             }
 
-            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
-            void register_cbk(NetCallBack* handler) {
+            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
+            TcpSession& register_cbk(const NetCallBack& handler) {
                 m_handler = handler;
+                return *this;
+            }
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
+            TcpSession& register_open_cbk(const NetCallBack::open_cbk& cbk) {
+                m_handler.open_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
+            TcpSession& register_close_cbk(const NetCallBack::close_cbk& cbk) {
+                m_handler.close_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ
+            TcpSession& register_read_cbk(const NetCallBack::read_cbk& cbk) {
+                m_handler.read_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®å·²å‘é€æ¶ˆæ¯å›è°ƒ
+            TcpSession& register_write_cbk(const NetCallBack::write_cbk& cbk) {
+                m_handler.write_cbk_ = cbk;
+                return *this;
             }
 
-            // »ñµÃsocket
+            // è·å¾—socket
             socket_type& get_socket() {
                 return m_socket;
             }
 
-            // »ñµÃio_context
+            // è·å¾—io_context
             ioc_type& get_io_context() {
                 return m_io_context;
             }
 
-            // ÊÇ·ñÒÑ¿ªÆô
+            // æ˜¯å¦å·²å¼€å¯
             bool is_open() const {
                 return  m_atomic_switch.has_started() && m_socket.is_open();
             }
 
-            // »ñÈ¡Á¬½ÓID
+            // è·å–è¿æ¥ID
             SessionID get_session_id() const {
                 return m_session_id;
             }
 
-            // »ñÈ¡Á¬½ÓÕßIP
+            // è·å–è¿æ¥è€…IP
             const std::string& get_ip() const {
                 return m_connect_ip;
             }
 
-            // »ñÈ¡Á¬½ÓÕßport
+            // è·å–è¿æ¥è€…port
             unsigned short get_port() const {
                 return m_connect_port;
             }
 
-            // ¿Í»§¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // å®¢æˆ·ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void connect(const char* ip, unsigned short port) {
                 if (!m_atomic_switch.init())
                     return;
@@ -133,12 +152,12 @@ namespace BTool
                 m_overtime_timer.async_wait(std::bind(&TcpSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
             }
 
-            // ¿Í»§¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // å®¢æˆ·ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void reconnect() {
                 connect(m_connect_ip.c_str(), m_connect_port);
             }
 
-            // ·şÎñ¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // æœåŠ¡ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void start()  {
                 if (!m_atomic_switch.init())
                     return;
@@ -146,7 +165,7 @@ namespace BTool
                 handle_start();
             }
 
-            // Í¬²½¹Ø±Õ
+            // åŒæ­¥å…³é—­
             void shutdown()
             {
                 if (!m_atomic_switch.stop())
@@ -154,7 +173,7 @@ namespace BTool
                 close();
             }
 
-            // Ğ´Èë
+            // å†™å…¥
             bool write(const char* send_msg, size_t size) {
                 if (!m_atomic_switch.has_started()) {
                     return false;
@@ -167,7 +186,7 @@ namespace BTool
                 if (!m_write_buf.append(send_msg, size)) {
                     return false;
                 }
-                // ÊÇ·ñ´¦ÓÚ·¢ËÍ×´Ì¬ÖĞ
+                // æ˜¯å¦å¤„äºå‘é€çŠ¶æ€ä¸­
                 if (m_current_send_msg) {
                     return true;
                 }
@@ -176,8 +195,8 @@ namespace BTool
                 return true;
             }
 
-            // ÔÚµ±Ç°ÏûÏ¢Î²×·¼Ó
-            // max_package_size: µ¥¸öÏûÏ¢×î´ó°ü³¤
+            // åœ¨å½“å‰æ¶ˆæ¯å°¾è¿½åŠ 
+            // max_package_size: å•ä¸ªæ¶ˆæ¯æœ€å¤§åŒ…é•¿
             bool write_tail(const char* send_msg, size_t size, size_t max_package_size = 65535) {
                 if (!m_atomic_switch.has_started()) {
                     return false;
@@ -190,7 +209,7 @@ namespace BTool
                 if (!m_write_buf.append_tail(send_msg, size, max_package_size)) {
                     return false;
                 }
-                // ÊÇ·ñ´¦ÓÚ·¢ËÍ×´Ì¬ÖĞ
+                // æ˜¯å¦å¤„äºå‘é€çŠ¶æ€ä¸­
                 if (m_current_send_msg) {
                     return true;
                 }
@@ -199,7 +218,7 @@ namespace BTool
                 return true;
             }
 
-            // Ïû·ÑµôÖ¸¶¨³¤¶ÈµÄ¶Á»º´æ
+            // æ¶ˆè´¹æ‰æŒ‡å®šé•¿åº¦çš„è¯»ç¼“å­˜
             void consume_read_buf(size_t bytes_transferred) {
                 if (m_atomic_switch.has_stoped()) {
                     return;
@@ -215,7 +234,7 @@ namespace BTool
             }
 
         private:
-            // Òì²½¶Á
+            // å¼‚æ­¥è¯»
             bool read() {
                 try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
@@ -229,7 +248,7 @@ namespace BTool
                 }
             }
 
-            // Òì²½Ğ´
+            // å¼‚æ­¥å†™
             void write() {
                 m_current_send_msg = m_write_buf.pop_front();
                 boost::asio::async_write(m_socket, boost::asio::buffer(m_current_send_msg->data(), m_current_send_msg->size())
@@ -238,7 +257,7 @@ namespace BTool
                         , std::placeholders::_2));
             }
 
-            // ´¦ÀíÁ¬½Ó»Øµ÷
+            // å¤„ç†è¿æ¥å›è°ƒ
             void handle_connect(const boost::system::error_code& error) {
                 m_overtime_timer.cancel();
 
@@ -250,7 +269,7 @@ namespace BTool
                 handle_start();
             }
 
-            // ´¦Àí¿ªÊ¼
+            // å¤„ç†å¼€å§‹
             void handle_start() {
                 boost::system::error_code ec;
                 if (m_connect_ip.empty())
@@ -258,12 +277,12 @@ namespace BTool
                 if(m_connect_port == 0)
                     m_connect_port = m_socket.remote_endpoint(ec).port();
 
-                if (m_atomic_switch.start() && read() && m_handler) {
-                    m_handler->on_open_cbk(m_session_id);
+                if (m_atomic_switch.start() && read() && m_handler.open_cbk_) {
+                    m_handler.open_cbk_(m_session_id);
                 }
             }
 
-            // ´¦Àí¶Á»Øµ÷
+            // å¤„ç†è¯»å›è°ƒ
             void handle_read(const boost::system::error_code& error, size_t bytes_transferred) {
                 if (error) {
                     shutdown();
@@ -272,8 +291,8 @@ namespace BTool
 
                 m_read_buf.commit(bytes_transferred);
 
-                if (m_handler) {
-                    m_handler->on_read_cbk(m_session_id, m_read_buf.peek(), m_read_buf.size());
+                if (m_handler.read_cbk_) {
+                    m_handler.read_cbk_(m_session_id, m_read_buf.peek(), m_read_buf.size());
                 }
                 else {
                     consume_read_buf(bytes_transferred);
@@ -286,7 +305,7 @@ namespace BTool
                 read();
             }
 
-            // ´¦ÀíĞ´»Øµ÷
+            // å¤„ç†å†™å›è°ƒ
             void handle_write(const boost::system::error_code& ec, size_t bytes_transferred)
             {
                 if (ec) {
@@ -297,8 +316,8 @@ namespace BTool
                     return;
                 }
 
-                if (m_handler && m_current_send_msg) {
-                    m_handler->on_write_cbk(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
+                if (m_handler.write_cbk_ && m_current_send_msg) {
+                    m_handler.write_cbk_(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
                 }
                 
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
@@ -329,42 +348,42 @@ namespace BTool
 
                 m_atomic_switch.reset();
 
-                if (m_handler) {
-                    m_handler->on_close_cbk(m_session_id);
+                if (m_handler.close_cbk_) {
+                    m_handler.close_cbk_(m_session_id);
                 }
             }
 
         private:
-            // asioµÄsocket·â×°
+            // asioçš„socketå°è£…
             socket_type             m_socket;
             ioc_type&               m_io_context;
             SessionID               m_session_id;
 
             boost::asio::deadline_timer m_overtime_timer;
 
-            // ¶Á»º³å
+            // è¯»ç¼“å†²
             ReadBufferType          m_read_buf;
-            // ×î´ó¶Á»º³åÇø´óĞ¡
+            // æœ€å¤§è¯»ç¼“å†²åŒºå¤§å°
             size_t                  m_max_rbuffer_size;
 
-            // Ğ´»º´æÊı¾İ±£»¤Ëø
+            // å†™ç¼“å­˜æ•°æ®ä¿æŠ¤é”
             std::recursive_mutex    m_write_mtx;
-            // Ğ´»º³å
+            // å†™ç¼“å†²
             WriteBufferType         m_write_buf;
-            // µ±Ç°ÕıÔÚ·¢ËÍµÄ»º´æ
+            // å½“å‰æ­£åœ¨å‘é€çš„ç¼“å­˜
             WriteMemoryStreamPtr    m_current_send_msg;
-            // ×î´óĞ´»º³åÇø´óĞ¡
+            // æœ€å¤§å†™ç¼“å†²åŒºå¤§å°
             size_t                  m_max_wbuffer_size;
 
-            // »Øµ÷²Ù×÷
-            NetCallBack*            m_handler;
+            // å›è°ƒæ“ä½œ
+            NetCallBack             m_handler;
 
-            // Ô­×ÓÆôÍ£±êÖ¾
+            // åŸå­å¯åœæ ‡å¿—
             AtomicSwitch            m_atomic_switch;
 
-            // Á¬½ÓÕßIP
+            // è¿æ¥è€…IP
             std::string             m_connect_ip;
-            // Á¬½ÓÕßPort
+            // è¿æ¥è€…Port
             unsigned short          m_connect_port;
         };
     }

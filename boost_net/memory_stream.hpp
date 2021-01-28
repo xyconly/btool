@@ -3,8 +3,8 @@ File name:      memory_stream.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: ÊµÏÖ×Ô¹ÜÀíµÄÄÚ´æÁ÷½Ó¿Ú
-Note:    ²»ÔÚÄÚ²¿×öÏß³Ì°²È«¹ÜÀí,ËùÓĞ²Ù×÷ĞèÔÚÍâ½çÈ·±£Ïß³Ì°²È«
+Purpose: å®ç°è‡ªç®¡ç†çš„å†…å­˜æµæ¥å£
+Note:    ä¸åœ¨å†…éƒ¨åšçº¿ç¨‹å®‰å…¨ç®¡ç†,æ‰€æœ‰æ“ä½œéœ€åœ¨å¤–ç•Œç¡®ä¿çº¿ç¨‹å®‰å…¨
 *************************************************/
 #pragma once
 
@@ -31,7 +31,7 @@ namespace BTool {
         MemoryStream& operator=(const MemoryStream& rhs) = delete;
 
     public:
-        // ÄÚ´æ¹ÜÀíÁ÷,´Ëºó½«×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
+        // å†…å­˜ç®¡ç†æµ,æ­¤åå°†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
         MemoryStream()
             : m_buffer_size(0)
             , m_offset(0)
@@ -50,9 +50,9 @@ namespace BTool {
             m_buffer = (char*)malloc(capacity);
         }
 
-        // ÄÚ´æ¹ÜÀíÁ÷,´ËÊ±½«²»ÔÙ×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
-        // buffer: Ö¸ÏòÄÚ´æ
-        // len: ³¤¶È
+        // å†…å­˜ç®¡ç†æµ,æ­¤æ—¶å°†ä¸å†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
+        // buffer: æŒ‡å‘å†…å­˜
+        // len: é•¿åº¦
         MemoryStream(char* buffer, size_t len)
             : m_buffer_size(len)
             , m_offset(0)
@@ -76,7 +76,7 @@ namespace BTool {
         }
 
     public:
-        // »ñÈ¡»º´æÄÚÈİ
+        // è·å–ç¼“å­˜å†…å®¹
         std::string_view string_view() const {
             return { m_buffer, m_buffer_size };
         }
@@ -89,40 +89,40 @@ namespace BTool {
             return m_buffer;
         }
 
-        // »ñÈ¡µ±Ç°»º´æ³¤¶È
+        // è·å–å½“å‰ç¼“å­˜é•¿åº¦
         size_t size() const {
             return m_buffer_size;
         }
 
-        // »ñÈ¡ÄÚ´æ×ÜÈİÁ¿
+        // è·å–å†…å­˜æ€»å®¹é‡
         size_t get_capacity() const {
             return m_capacity;
         }
-        // »ñÈ¡ÄÚ´æÈ¥³ıÆ¯ÒÆºóÊ£Óà³¤¶È
+        // è·å–å†…å­˜å»é™¤æ¼‚ç§»åå‰©ä½™é•¿åº¦
         size_t get_res_length() const {
             return m_buffer_size - m_offset;
         }
-        // »ñÈ¡µ±Ç°Êı¾İ³¤¶È
+        // è·å–å½“å‰æ•°æ®é•¿åº¦
         size_t get_length() const {
             return m_buffer_size;
         }
-        // »ñÈ¡µ±Ç°Æ¯ÒÆÎ»Êı
+        // è·å–å½“å‰æ¼‚ç§»ä½æ•°
         size_t get_offset() const {
             return m_offset;
         }
-        // ÖØÖÃµ±Ç°Æ¯ÒÆÎ»ÖÁÖ¸¶¨Î»ÖÃ
+        // é‡ç½®å½“å‰æ¼‚ç§»ä½è‡³æŒ‡å®šä½ç½®
         void reset_offset(int offset) {
             m_offset = offset;
         }
-        // ÖØÖÃµ±Ç°Æ¯ÒÆÎ»ÖÁ×îĞÂÎ»ÖÃ
+        // é‡ç½®å½“å‰æ¼‚ç§»ä½è‡³æœ€æ–°ä½ç½®
         void reset_offset() {
             m_offset = m_buffer_size;
         }
-        // µ±Ç°Æ¯ÒÆÎ»ÍùºóÆ¯ÒÆ
+        // å½“å‰æ¼‚ç§»ä½å¾€åæ¼‚ç§»
         void add_offset(int offset) {
             m_offset += offset;
         }
-        // ÖØÖÃÄÚ´æÖ¸Ïò,´ËÊ±½«²»ÔÙ×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
+        // é‡ç½®å†…å­˜æŒ‡å‘,æ­¤æ—¶å°†ä¸å†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
         void attach(char* src, size_t len) {
             if (m_buffer && m_auto_delete)
                 free(m_buffer);
@@ -133,7 +133,7 @@ namespace BTool {
             m_offset = 0;
             m_auto_delete = false;
         }
-        // ½â³ıµ±Ç°ÄÚ´æÇøÓòÉúÃüÖÜÆÚµÄ¹ÜÀí,´Ëºó½«×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
+        // è§£é™¤å½“å‰å†…å­˜åŒºåŸŸç”Ÿå‘½å‘¨æœŸçš„ç®¡ç†,æ­¤åå°†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
         char* detach() {
             char* buffer = m_buffer;
             m_buffer_size = 0;
@@ -144,7 +144,7 @@ namespace BTool {
             return buffer;
         }
 
-        // Çå¿ÕÊı¾İ,´Ëºó½«×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
+        // æ¸…ç©ºæ•°æ®,æ­¤åå°†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
         void clear() {
             m_buffer_size = 0;
             m_offset = 0;
@@ -155,8 +155,8 @@ namespace BTool {
             m_auto_delete = true;
         }
 
-        // ¼ÓÔØÊı¾İ,´Ëºó½«×Ô¶¯¹ÜÀíÄÚ´æÊÍ·Å
-        // ¼ÓÔØÊ±»áÇå¿ÕÔ­ÓĞÊı¾İ,ÇÒ¼ÓÔØºó²»»á¶ÔÆ¯ÒÆÎ»ÖÃ½øĞĞÖÃÎ»
+        // åŠ è½½æ•°æ®,æ­¤åå°†è‡ªåŠ¨ç®¡ç†å†…å­˜é‡Šæ”¾
+        // åŠ è½½æ—¶ä¼šæ¸…ç©ºåŸæœ‰æ•°æ®,ä¸”åŠ è½½åä¸ä¼šå¯¹æ¼‚ç§»ä½ç½®è¿›è¡Œç½®ä½
         void load(const char* buffer, size_t len) {
             m_buffer_size = len;
             m_offset = 0;
@@ -169,22 +169,14 @@ namespace BTool {
             m_auto_delete = true;
         }
         void load(std::string_view data) {
-            m_buffer_size = data.size();
-            m_offset = 0;
-            m_capacity = data.size();
-            if (m_buffer && m_auto_delete)
-                free(m_buffer);
-
-            m_buffer = (char*)malloc(m_buffer_size);
-            memcpy(m_buffer, data.data(), m_buffer_size);
-            m_auto_delete = true;
+            load(data.data(), data.size());
         }
-        // ×·¼ÓÊı¾İÖÁÖ¸¶¨Î»ÖÃµÄÄÚ´æ´¦
+        // è¿½åŠ æ•°æ®è‡³æŒ‡å®šä½ç½®çš„å†…å­˜å¤„
         void append(const void* buffer, size_t len, size_t offset) {
             if (!buffer || len == 0)
                 return;
 
-            // ³¬³¤
+            // è¶…é•¿
             size_t new_capacity = offset + len;
             while (new_capacity > m_capacity) {
                 reset_capacity(m_capacity == 0 ? new_capacity : m_capacity * 2);
@@ -195,12 +187,11 @@ namespace BTool {
             if(offset + len > m_buffer_size)
                 m_buffer_size = offset + len;
         }
-        // ×·¼ÓÊı¾İÖÁ×îĞÂÎ»ÖÃµÄÄÚ´æ´¦
         void append(const void* buffer, size_t len) {
             if (!buffer || len == 0)
                 return;
 
-            // ³¬³¤
+            // è¶…é•¿
             size_t new_capacity = m_offset + len;
             while (new_capacity > m_capacity) {
                 reset_capacity(m_capacity == 0 ? new_capacity : m_capacity * 2);
@@ -210,16 +201,17 @@ namespace BTool {
             m_offset += len;
             m_buffer_size += len;
         }
-        // ×·¼ÓÊı¾İÖÁ×îĞÂÎ»ÖÃµÄÄÚ´æ´¦
         void append(std::string_view data) {
             append(data.data(), data.size());
         }
-        // ×·¼ÓÊı¾İÖÁ×îĞÂÎ»ÖÃµÄÄÚ´æ´¦
+        void append(const std::string& data) {
+            append(data.c_str(), data.length());
+        }
         template<typename Type>
         void append(Type&& src) {
             append(&src, sizeof(Type));
         }
-        // ×·¼ÓÊı¾İÖÁ×îĞÂÎ»ÖÃµÄÄÚ´æ´¦
+        // è¿½åŠ æ•°æ®è‡³æœ€æ–°ä½ç½®çš„å†…å­˜å¤„
         void append_args() {}
         template <typename Type, typename...Args>
         typename std::enable_if<!is_tuple<Type>::value, void >::type
@@ -232,8 +224,8 @@ namespace BTool {
             append_args(Type&& tp, Args&&...srcs) {
             append_args_tp(std::forward<Type>(tp), std::forward<Args>(srcs)...);
         }
-        // ¶ÁÈ¡Êı¾İµ±Ç°Æ¯ÒÆÎ»ÏÂ²ÎÊıÊıÖµ
-        // offset_flag : ÊÇ·ñĞèÒªÆ¯ÒÆµ±Ç°Æ¯ÒÆÎ»
+        // è¯»å–æ•°æ®å½“å‰æ¼‚ç§»ä½ä¸‹å‚æ•°æ•°å€¼
+        // offset_flag : æ˜¯å¦éœ€è¦æ¼‚ç§»å½“å‰æ¼‚ç§»ä½
         void read(void* buffer, size_t len, bool offset_flag = true) {
             if (len == 0)
                 return;
@@ -244,18 +236,18 @@ namespace BTool {
                 m_offset += len;
         }
         template<typename Type>
-        // ¶ÁÈ¡µ±Ç°Æ¯ÒÆÎ»ÏÂ²ÎÊıÊıÖµ
-        // offset_flag : ÊÇ·ñĞèÒªÆ¯ÒÆµ±Ç°Æ¯ÒÆÎ»
+        // è¯»å–å½“å‰æ¼‚ç§»ä½ä¸‹å‚æ•°æ•°å€¼
+        // offset_flag : æ˜¯å¦éœ€è¦æ¼‚ç§»å½“å‰æ¼‚ç§»ä½
         void read(Type* pDst, bool offset_flag = true) {
             read(pDst, sizeof(Type), offset_flag);
         }
-        // ¶ÁÈ¡Êı¾İµ±Ç°Æ¯ÒÆÎ»ÏÂ²ÎÊıÊıÖµ
-        // offset_flag : ÊÇ·ñĞèÒªÆ¯ÒÆµ±Ç°Æ¯ÒÆÎ»
+        // è¯»å–æ•°æ®å½“å‰æ¼‚ç§»ä½ä¸‹å‚æ•°æ•°å€¼
+        // offset_flag : æ˜¯å¦éœ€è¦æ¼‚ç§»å½“å‰æ¼‚ç§»ä½
         template <typename Type>
         typename std::enable_if<is_tuple<Type>::value, Type >::type
             read_args(bool offset_flag = true) {
             size_t cur_offset(m_offset);
-            Type rslt = tuple_map_r<Type>();
+            auto rslt = tuple_map_r<std::decay<Type>::type>();
             if (!offset_flag)
                 m_offset = cur_offset;
             return rslt;
@@ -361,7 +353,7 @@ namespace BTool {
         }
         template<class Tuple>
         Tuple tuple_map_r() {
-            //return tuple_map_r<Tuple>(std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{}); // gcc ²»Ö§³Ö
+            //return tuple_map_r<Tuple>(std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{}); // gcc ä¸æ”¯æŒ
             return tuple_map_r<Tuple>(std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
         }
 
@@ -383,7 +375,7 @@ namespace BTool {
             append_args(std::get<Indexes>(std::forward<const std::tuple<Args...>&>(tp))..., std::forward<Types>(srcs)...);
         }
 
-        // À©ÈİÖÁlenµÄ³¤¶È
+        // æ‰©å®¹è‡³lençš„é•¿åº¦
         void reset_capacity(size_t len) {
             if (!m_auto_delete)
             {
@@ -402,10 +394,10 @@ namespace BTool {
         }
 
     private:
-        size_t      m_buffer_size;  // µ±Ç°»º´æ×Ü³¤¶È
-        size_t      m_offset;       // µ±Ç°ÄÚ´æÆ¯ÒÆÎ»
-        size_t      m_capacity;     // µ±Ç°×ÜÈİÁ¿
-        char*       m_buffer;       // µ±Ç°»º´æÖ¸Õë
-        bool        m_auto_delete;  // ÊÇ·ñÔÚÎö¹¹Ê±×Ô¶¯É¾³ıÄÚ´æ
+        size_t      m_buffer_size;  // å½“å‰ç¼“å­˜æ€»é•¿åº¦
+        size_t      m_offset;       // å½“å‰å†…å­˜æ¼‚ç§»ä½
+        size_t      m_capacity;     // å½“å‰æ€»å®¹é‡
+        char*       m_buffer;       // å½“å‰ç¼“å­˜æŒ‡é’ˆ
+        bool        m_auto_delete;  // æ˜¯å¦åœ¨ææ„æ—¶è‡ªåŠ¨åˆ é™¤å†…å­˜
     };
 }

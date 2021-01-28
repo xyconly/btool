@@ -66,7 +66,7 @@ bool HttpClient::post_sync(std::string& read_msg, const std::string& send_msg)
 		req.body() = send_msg;
 		req.content_length(req.body().size());
 
-// 		LOG4CXX_INFO(logger, "HttpClient·¢ËÍÏûÏ¢" LOG_NOVAR(req.body()));
+// 		LOG4CXX_INFO(logger, "HttpClientå‘é€æ¶ˆæ¯" LOG_NOVAR(req.body()));
 
 		// Send the HTTP request to the remote host
 		http::write(socket, req);
@@ -84,7 +84,7 @@ bool HttpClient::post_sync(std::string& read_msg, const std::string& send_msg)
 		std::ostringstream myos;
 		myos << res << std::endl;
 		read_msg = ReadResponse(myos.str());
-// 		LOG4CXX_INFO(logger, "HttpClient·µ»ØÏûÏ¢" LOG_NOVAR(read_msg));
+// 		LOG4CXX_INFO(logger, "HttpClientè¿”å›æ¶ˆæ¯" LOG_NOVAR(read_msg));
 
 		// Gracefully close the socket
 		boost::system::error_code ec;

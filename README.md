@@ -12,7 +12,7 @@ basic tool 基础工具
 
 -   命名方式参考google风格，但是在函数命名时参考标准库形式，因为那样看起来很轻便，静态函数采用大写波峰，便于区分；
 
--   最后，**使用时请标注来源。且拒绝任何996公司和员工,以及公司中任何岗位对学历有隐形或明文限制的公司和员工,对该工具进行任何形式的使用或参考**
+-   最后，**使用时请标注来源。**
 
 主要功能说明
 --------
@@ -57,4 +57,4 @@ basic tool 基础工具
 
 -   结合Protobuf实现的统一消息打包解包pb_message_package,结合协议代码自动生成工具可快速编写协议,使开发者仅关注一次协议制定之后,将精力集中于业务开发
 
--   基于Boost TCP服务的简单RPC通讯: BTool::BoostRpc::RpcServer / BTool::BoostRpc::RpcClient
+-   基于可适配的简单RPC通讯: BTool::BoostRpc::RpcServer / BTool::BoostRpc::RpcClient

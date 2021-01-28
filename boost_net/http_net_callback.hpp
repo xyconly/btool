@@ -1,7 +1,7 @@
 /******************************************************************************
 File name:  http_callback.hpp
 Author:	    AChar
-Purpose:    Http»Øµ÷½Ó¿Ú,Ä¬ÈÏÊ¹ÓÃstringĞÎÊ½,ÈçĞèÆäËûĞÎÊ½×ÔĞĞµ÷Õû
+Purpose:    Httpå›è°ƒæ¥å£,é»˜è®¤ä½¿ç”¨stringå½¢å¼,å¦‚éœ€å…¶ä»–å½¢å¼è‡ªè¡Œè°ƒæ•´
 *****************************************************************************/
 #pragma once
 
@@ -27,27 +27,27 @@ namespace BTool
                 InvalidSessionID = 0,
             };
 
-            // ¿ªÆôÁ¬½Ó»Øµ÷
+            // å¼€å¯è¿æ¥å›è°ƒ
             virtual void on_open_cbk(SessionID session_id) {}
-            // ¹Ø±ÕÁ¬½Ó»Øµ÷
+            // å…³é—­è¿æ¥å›è°ƒ
             virtual void on_close_cbk(SessionID session_id) {}
-            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
+            // è¯»å–æ¶ˆæ¯å›è°ƒ
             virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) {}
-            // Ğ´ÈëÏûÏ¢»Øµ÷
+            // å†™å…¥æ¶ˆæ¯å›è°ƒ
             virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) {}
         };
 
-        // Ä¬ÈÏµÄ¿Í»§¶Ë»Øµ÷, ·¢ËÍÇëÇó,¶ÁÈ¡Ó¦´ğ
-        // send_msg_type: Îªtypedef boost::beast::http::request<boost::beast::http::string_body>
-        // read_msg_type: Îªtypedef boost::beast::http::response<boost::beast::http::string_body>
+        // é»˜è®¤çš„å®¢æˆ·ç«¯å›è°ƒ, å‘é€è¯·æ±‚,è¯»å–åº”ç­”
+        // send_msg_type: ä¸ºtypedef boost::beast::http::request<boost::beast::http::string_body>
+        // read_msg_type: ä¸ºtypedef boost::beast::http::response<boost::beast::http::string_body>
         using HttpClientNetCallBack = HttpNetCallBack<false, boost::beast::http::string_body>;
 
-        // Ä¬ÈÏµÄ·şÎñ¶Ë»Øµ÷, ¶ÁÈ¡ÇëÇó,·¢ËÍÓ¦´ğ
-        // read_msg_type: Îªtypedef boost::beast::http::request<boost::beast::http::string_body>
-        // send_msg_type: Îªtypedef boost::beast::http::response<boost::beast::http::string_body>
+        // é»˜è®¤çš„æœåŠ¡ç«¯å›è°ƒ, è¯»å–è¯·æ±‚,å‘é€åº”ç­”
+        // read_msg_type: ä¸ºtypedef boost::beast::http::request<boost::beast::http::string_body>
+        // send_msg_type: ä¸ºtypedef boost::beast::http::response<boost::beast::http::string_body>
         using HttpServiceNetCallBack = HttpNetCallBack<true, boost::beast::http::string_body>;
 
-        // ÆäËûÀàĞÍ
+        // å…¶ä»–ç±»å‹
 //             typedef boost::beast::http::message<boost::beast::http::basic_dynamic_body>  basic_dynamic_msg_type;
 //             typedef boost::beast::http::message<boost::beast::http::basic_file_body>     basic_file_msg_type;
 //             typedef boost::beast::http::message<boost::beast::http::buffer_body>         buffer_msg_type;

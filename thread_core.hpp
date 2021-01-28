@@ -1,8 +1,8 @@
 /************************************************************************
 File name:  thread_core.hpp
 Author:	    AChar
-Purpose:    ¿É¿ØÖÆÆôÍ£µÄÒì²½Ïß³Ì
-Note:       ²»Ìá¹©Ç¿É±Ïß³ÌµÄ·½·¨,²»ÔÊĞíÔÚ»Øµ÷Ïß³ÌÖĞÖÕÖ¹Ïß³Ì²Ù×÷
+Purpose:    å¯æ§åˆ¶å¯åœçš„å¼‚æ­¥çº¿ç¨‹
+Note:       ä¸æä¾›å¼ºæ€çº¿ç¨‹çš„æ–¹æ³•,ä¸å…è®¸åœ¨å›è°ƒçº¿ç¨‹ä¸­ç»ˆæ­¢çº¿ç¨‹æ“ä½œ
 /************************************************************************/
 #pragma once
 
@@ -36,7 +36,7 @@ namespace BTool
             stop();
         }
 
-        // ÖØĞÂÉèÖÃÏß³Ì»Øµ÷º¯Êı
+        // é‡æ–°è®¾ç½®çº¿ç¨‹å›è°ƒå‡½æ•°
         void set_thread_fun(const Function& func) {
             m_func = func;
         }
@@ -44,7 +44,7 @@ namespace BTool
             m_func = std::move(func);
         }
 
-        // Æô¶¯
+        // å¯åŠ¨
         void start() {
             if (!m_atomic_switch.start())
                 return;
@@ -53,7 +53,7 @@ namespace BTool
             return;
         }
 
-        // ÖÕÖ¹, ²»¿ÉÔÚ»Øµ÷µÄÏß³Ì¶¯Á¦ÖĞÖÕÖ¹Ïß³Ì²Ù×÷
+        // ç»ˆæ­¢, ä¸å¯åœ¨å›è°ƒçš„çº¿ç¨‹åŠ¨åŠ›ä¸­ç»ˆæ­¢çº¿ç¨‹æ“ä½œ
         void stop() {
             if (!m_atomic_switch.stop())
                 return;
@@ -65,12 +65,12 @@ namespace BTool
             return;
         }
 
-        // ÊÇ·ñÒÑÆô¶¯
+        // æ˜¯å¦å·²å¯åŠ¨
         bool is_running() const {
             return m_atomic_switch.has_started();
         }
 
-        // ÊÇ·ñÒÑÖÕÖ¹
+        // æ˜¯å¦å·²ç»ˆæ­¢
         bool is_stoped() const {
             return m_atomic_switch.has_stoped();
         }
@@ -81,8 +81,8 @@ namespace BTool
         }
 
     protected:
-        Function		    m_func;         // »Øµ÷º¯Êı
-        AtomicSwitch        m_atomic_switch;// Ô­×ÓÆôÍ£±êÖ¾
-        SafeThread*         m_thread;       // °²È«Ïß³Ì
+        Function		    m_func;         // å›è°ƒå‡½æ•°
+        AtomicSwitch        m_atomic_switch;// åŸå­å¯åœæ ‡å¿—
+        SafeThread*         m_thread;       // å®‰å…¨çº¿ç¨‹
     };
 }

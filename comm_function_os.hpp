@@ -159,10 +159,10 @@ public:
         IP_ADAPTER_INFO *pIpAdpInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
         unsigned long ulBufLen = sizeof(IP_ADAPTER_INFO);
         int ret;
-        //第一次调用获取需要开辟的内存空间大小
+        //绗竴娆¤皟鐢ㄨ幏鍙栭渶瑕佸紑杈熺殑鍐呭瓨绌洪棿澶у皬
         if ((ret = GetAdaptersInfo(pIpAdpInfo, &ulBufLen)) == ERROR_BUFFER_OVERFLOW) {
             free(pIpAdpInfo);
-            //分配实际所需要的内存空间
+            //鍒嗛厤瀹為檯鎵�闇�瑕佺殑鍐呭瓨绌洪棿
             pIpAdpInfo = (IP_ADAPTER_INFO*)malloc(ulBufLen);
             if (NULL == pIpAdpInfo) {
                 return result;

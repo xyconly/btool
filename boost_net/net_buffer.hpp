@@ -8,10 +8,10 @@ namespace BTool
 {
     namespace BoostNet
     {
-        // ½ÓÊÕ»º´æÊı¾İÁ÷
-        // ×÷ÎªÊı¾İÊäÈë½øĞĞ·¢ËÍ, Ê¹ÓÃdata»ñÈ¡ÊäÈëĞòÁĞ, µ±·¢ËÍÍê³Éºóµ÷ÓÃconsumeÒÆ³ıÒÑ¾­·¢ËÍµÄÄÚÈİ
-        // ×÷ÎªÊı¾İÊä³ö½øĞĞ½ÓÊÕ, Ê¹ÓÃprepare»ñÈ¡Êä³öĞòÁĞ, µ±¶ÁÈ¡Íê³Éºóµ÷ÓÃcommit
-        // Á÷±¾Éí´ø×Ô¶¯À©Èİ¹¦ÄÜ
+        // æ¥æ”¶ç¼“å­˜æ•°æ®æµ
+        // ä½œä¸ºæ•°æ®è¾“å…¥è¿›è¡Œå‘é€, ä½¿ç”¨dataè·å–è¾“å…¥åºåˆ—, å½“å‘é€å®Œæˆåè°ƒç”¨consumeç§»é™¤å·²ç»å‘é€çš„å†…å®¹
+        // ä½œä¸ºæ•°æ®è¾“å‡ºè¿›è¡Œæ¥æ”¶, ä½¿ç”¨prepareè·å–è¾“å‡ºåºåˆ—, å½“è¯»å–å®Œæˆåè°ƒç”¨commit
+        // æµæœ¬èº«å¸¦è‡ªåŠ¨æ‰©å®¹åŠŸèƒ½
         class ReadBuffer
         {
         public:
@@ -22,39 +22,39 @@ namespace BTool
 
         public:
             //
-            // ¶Á¹¦ÄÜ
+            // è¯»åŠŸèƒ½
             //
-            // »ñÈ¡Êä³öĞòÁĞµÄ»º³åÇøÁĞ±í£¬²¢¸ø³ö¸ø¶¨µÄ´óĞ¡
+            // è·å–è¾“å‡ºåºåˆ—çš„ç¼“å†²åŒºåˆ—è¡¨ï¼Œå¹¶ç»™å‡ºç»™å®šçš„å¤§å°
             mutable_buffers_type prepare(size_type output_size) {
                 return m_buf.prepare(output_size);
             }
 
-            // ½«×Ö·û´ÓÊä³öĞòÁĞÒÆ¶¯µ½ÊäÈëĞòÁĞ
+            // å°†å­—ç¬¦ä»è¾“å‡ºåºåˆ—ç§»åŠ¨åˆ°è¾“å…¥åºåˆ—
             void commit(size_type n) {
                 m_buf.commit(n);
             }
 
-            // »ñÈ¡ÊäÈëĞòÁĞµÄ»º´æ×Ö½ÚÊı
+            // è·å–è¾“å…¥åºåˆ—çš„ç¼“å­˜å­—èŠ‚æ•°
             size_type size() const {
                 return m_buf.size();
             }
 
-            // ¼ì²éÊäÈëĞòÁĞµÄ»º´æ
+            // æ£€æŸ¥è¾“å…¥åºåˆ—çš„ç¼“å­˜
             const char* peek() const {
                 return boost::asio::buffer_cast<const char*> (m_buf.data());
             }
 
-            // »ñÈ¡ÊäÈëĞòÁĞµÄ»º´æÁĞ±í
+            // è·å–è¾“å…¥åºåˆ—çš„ç¼“å­˜åˆ—è¡¨
             const_buffers_type data() const {
                 return m_buf.data();
             }
 
-            // ´ÓÊäÈëĞòÁĞÖĞÒÆ³ı×Ö·û
+            // ä»è¾“å…¥åºåˆ—ä¸­ç§»é™¤å­—ç¬¦
             void consume(size_type n) {
                 m_buf.consume(n);
             }
 
-            // ½«Êı¾İĞ´ÈëÊäÈëĞòÁĞÖĞ,×¢Òâ¸Ã²Ù×÷¿ÉÄÜĞŞ¸ÄdataÊı¾İµØÖ·
+            // å°†æ•°æ®å†™å…¥è¾“å…¥åºåˆ—ä¸­,æ³¨æ„è¯¥æ“ä½œå¯èƒ½ä¿®æ”¹dataæ•°æ®åœ°å€
             bool append(const void * data, size_type len) {
                 std::streamsize count = boost::numeric_cast<std::streamsize>(len);
                 return count == m_buf.sputn(static_cast<const char*>(data), count);
@@ -64,7 +64,7 @@ namespace BTool
             streambuf_type m_buf;
         };
 
-        // ·¢ËÍ»º´æ
+        // å‘é€ç¼“å­˜
         class WriteBuffer
         {
         public:
@@ -77,12 +77,12 @@ namespace BTool
             }
 
         public:
-            // »ñÈ¡×ÜÊı¾İ´óĞ¡
+            // è·å–æ€»æ•°æ®å¤§å°
             size_t size() const {
                 return m_all_len;
             }
 
-            // Ğ´¹¦ÄÜ
+            // å†™åŠŸèƒ½
             bool append(const char* const msg, size_t len) {
                 WriteMemoryStreamPtr memory_stream = std::make_shared<WriteMemoryStream>();
                 if (!memory_stream)
@@ -99,8 +99,8 @@ namespace BTool
                 return true;
             }
 
-            // ÔÚµ±Ç°ÏûÏ¢Î²×·¼Ó
-            // max_package_size:×î´ó°ü³¤,0±íÊ¾ÎŞÏŞÖÆ
+            // åœ¨å½“å‰æ¶ˆæ¯å°¾è¿½åŠ 
+            // max_package_size:æœ€å¤§åŒ…é•¿,0è¡¨ç¤ºæ— é™åˆ¶
             bool append_tail(const char* const msg, size_t len, size_t max_package_size = 0) {
                 if (m_send_items.empty())
                     return append(msg, len);
@@ -113,12 +113,12 @@ namespace BTool
                 return true;
             }
 
-            // »ñÈ¡Êı¾İ
+            // è·å–æ•°æ®
             WriteMemoryStreamPtr front() const {
                 return m_send_items.front();
             }
 
-            // »ñÈ¡²¢ÒÆ³ıÊı¾İ
+            // è·å–å¹¶ç§»é™¤æ•°æ®
             WriteMemoryStreamPtr pop_front() {
                 auto msg = m_send_items.front();
                 m_send_items.pop();
@@ -126,14 +126,14 @@ namespace BTool
                 return msg;
             }
 
-            // Çå¿ÕÊı¾İ
+            // æ¸…ç©ºæ•°æ®
             void clear() {
                 if (!m_send_items.empty())
                     m_send_items = std::queue<WriteMemoryStreamPtr>();
                 m_all_len = 0;
             }
 
-            // ÊÇ·ñÎª¿Õ
+            // æ˜¯å¦ä¸ºç©º
             bool empty() const {
                 return m_send_items.empty();
             }

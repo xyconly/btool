@@ -1,6 +1,6 @@
 /************************************************************************/
 /*      
-ÈçĞèÒªÖ§³ÖÖĞÎÄ,ĞèÒªÍâ½ç×ª»»ÎªUnicode;
+å¦‚éœ€è¦æ”¯æŒä¸­æ–‡,éœ€è¦å¤–ç•Œè½¬æ¢ä¸ºUnicode;
 
 std::string toUnicode(const char* message) {
 	int len = MultiByteToWideChar(CP_ACP, 0, message, -1, NULL, 0);
@@ -27,14 +27,14 @@ namespace BTool
 	typedef unsigned char byte;
 	typedef unsigned long ulong;
 
-		//²½º¯Êı  
+		//æ­¥å‡½æ•°  
 #define F(x, y, z) (((x) & (y)) | ((~x) & (z)))  
 #define G(x, y, z) (((x) & (z)) | ((y) & (~z)))  
 #define H(x, y, z) ((x) ^ (y) ^ (z))  
 #define I(x, y, z) ((y) ^ ((x) | (~z)))  
-		//Ñ­»·×óÒÆ   
+		//å¾ªç¯å·¦ç§»   
 #define ROL(x, n) (((x) << (n)) | ((x) >> (32-(n))))  
-		//  ËÄÂÖ²Ù×÷  
+		//  å››è½®æ“ä½œ  
 #define FF(a, b, c, d, mj, s, ti) { (a) += F ((b), (c), (d)) + (mj) + ti; (a) = ROL ((a), (s)); (a) += (b);}  
 #define GG(a, b, c, d, mj, s, ti) { (a) += G ((b), (c), (d)) + (mj) + ti; (a) = ROL ((a), (s)); (a) += (b);}  
 #define HH(a, b, c, d, mj, s, ti) { (a) += H ((b), (c), (d)) + (mj) + ti; (a) = ROL ((a), (s)); (a) += (b);}  
@@ -46,10 +46,10 @@ namespace BTool
 			MD5(const std::string &str_unicode)
 			{
 				end_flag = false;
-				count[0] = count[1] = 0; // ÖØÖÃbits¸öÊı  
-										 // ³õÊ¼»¯Á´½Ó±äÁ¿£¨¸ßÎ»->µÍÎ»£©   
+				count[0] = count[1] = 0; // é‡ç½®bitsä¸ªæ•°  
+										 // åˆå§‹åŒ–é“¾æ¥å˜é‡ï¼ˆé«˜ä½->ä½ä½ï¼‰   
 										 /*
-										 * ´íÎóµÄ¸³Öµ£¬×¢Òâ¸ßµÍÎ»
+										 * é”™è¯¯çš„èµ‹å€¼ï¼Œæ³¨æ„é«˜ä½ä½
 										 reg[0] = 0x01234567;
 										 reg[1] = 0x89abcdef;
 										 reg[2] = 0xfedcba98;
@@ -62,7 +62,7 @@ namespace BTool
 				generate((byte*)str_unicode.c_str(), str_unicode.length());
 			}
 
-			// ·µ»Ø×Ö·û´®
+			// è¿”å›å­—ç¬¦ä¸²
 			std::string outstr(int length = 32)
 			{
 				const byte *input = getDigest();
@@ -93,7 +93,7 @@ namespace BTool
 				partLen = 64 - index;
 				if (length >= partLen) {
 					memcpy(&buffer[index], input, partLen);
-					change(buffer); //·Ö×é´¦Àí£¬ËÄÂÖ²Ù×÷   
+					change(buffer); //åˆ†ç»„å¤„ç†ï¼Œå››è½®æ“ä½œ   
 					for (i = partLen; i + 63 < length; i += 64)
 						change(&input[i]);
 					index = 0;
@@ -101,12 +101,12 @@ namespace BTool
 				else {
 					i = 0;
 				}
-				// ÄÚ´æ¿½±´   
+				// å†…å­˜æ‹·è´   
 				memcpy(&buffer[index], &input[i], length - i);
 
 			}
 
-			// ËÄÂÖ±ä»»²Ù×÷
+			// å››è½®å˜æ¢æ“ä½œ
 			void change(const byte block[64])
 			{
 				ulong a = reg[0],
@@ -191,7 +191,7 @@ namespace BTool
 				reg[3] += d;
 			}
 
-			// ±àÂë,ulong->byte
+			// ç¼–ç ,ulong->byte
 			void encode(const ulong *input, byte* output, int length)
 			{
 				for (int i = 0, j = 0; j < length; i++, j += 4)
@@ -203,7 +203,7 @@ namespace BTool
 				}
 			}
 
-			// ½âÂë,byte->ulong
+			// è§£ç ,byte->ulong
 			void decode(const byte *input, ulong *output, int length)
 			{
 				for (int i = 0, j = 0; j < length; i++, j += 4)
@@ -212,17 +212,17 @@ namespace BTool
 				}
 			}
 
-			// »ñÈ¡Éú³ÉµÄÕªÒª
+			// è·å–ç”Ÿæˆçš„æ‘˜è¦
 			const byte* getDigest()
 			{
 				if (!end_flag) {
 					end_flag = true;
 					byte bits[8];
-					ulong _reg[4];      // ¾Éreg   
-					ulong _count[2];    // ¾Écount  
+					ulong _reg[4];      // æ—§reg   
+					ulong _count[2];    // æ—§count  
 					ulong index, padLen;
-					memcpy(_reg, reg, 16);      // ¸´ÖÆÄÚ´æ£¬½«_regÄÚ´æµØÖ·µÄÆğÊ¼Î»ÖÃ¿ªÊ¼¿½±´16×Ö½Úµ½regÆğÊ¼Î»ÖÃÖĞ  
-					memcpy(_count, count, 8);   // ½«Ô­Ê¼ÏûÏ¢³¤¶ÈÒÔ64±ÈÌØ£¨8×Ö½Ú£©¸´ÖÆµ½countºó   
+					memcpy(_reg, reg, 16);      // å¤åˆ¶å†…å­˜ï¼Œå°†_regå†…å­˜åœ°å€çš„èµ·å§‹ä½ç½®å¼€å§‹æ‹·è´16å­—èŠ‚åˆ°regèµ·å§‹ä½ç½®ä¸­  
+					memcpy(_count, count, 8);   // å°†åŸå§‹æ¶ˆæ¯é•¿åº¦ä»¥64æ¯”ç‰¹ï¼ˆ8å­—èŠ‚ï¼‰å¤åˆ¶åˆ°countå   
 					encode(count, bits, 8);
 					/* Pad out to 56 mod 64. */
 					index = (ulong)((count[0] >> 3) & 0x3f);
@@ -230,7 +230,7 @@ namespace BTool
 					generate(padding, padLen);
 					generate(bits, 8);
 					encode(reg, digest, 16);
-					/* ÖØĞÂ´æ´¢regºÍcount */
+					/* é‡æ–°å­˜å‚¨regå’Œcount */
 					memcpy(reg, _reg, 16);
 					memcpy(count, _count, 8);
 				}
@@ -238,11 +238,11 @@ namespace BTool
 			}
 
 			ulong reg[4];       // ABCD   
-			ulong count[2];     // ³¤¶ÈÀ©³ä   
-			byte buffer[64];   // ÊäÈëbuffer   
-			byte digest[16];   // Éú³ÉµÄÕªÒª   
-			bool end_flag;      // ½áÊø±êÖ¾   
-			const byte padding[64] = { 0x80 };	// ³õÊ¼»¯¸½¼ÓÌî³ä 1000 0000£¬ ÉèÖÃ×î¸ßÎ»Îª1
+			ulong count[2];     // é•¿åº¦æ‰©å……   
+			byte buffer[64];   // è¾“å…¥buffer   
+			byte digest[16];   // ç”Ÿæˆçš„æ‘˜è¦   
+			bool end_flag;      // ç»“æŸæ ‡å¿—   
+			const byte padding[64] = { 0x80 };	// åˆå§‹åŒ–é™„åŠ å¡«å…… 1000 0000ï¼Œ è®¾ç½®æœ€é«˜ä½ä¸º1
 			const char hex[16] = { '0', '1', '2', '3','4', '5', '6', '7','8', '9', 'a', 'b','c', 'd', 'e', 'f' };
 		};
 }

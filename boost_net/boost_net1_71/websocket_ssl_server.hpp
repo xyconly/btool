@@ -3,8 +3,8 @@ File name:      websocket_ssl_server.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: ÀûÓÃboostÊµÏÖ¼àÌı·şÎñ¶Ë¿Ú
-Note:    server±¾Éí´æ´¢session¶ÔÏó,Íâ²¿½öÌá¹©ID½øĞĞ²Ù×÷
+Purpose: åˆ©ç”¨boostå®ç°ç›‘å¬æœåŠ¡ç«¯å£
+Note:    serveræœ¬èº«å­˜å‚¨sessionå¯¹è±¡,å¤–éƒ¨ä»…æä¾›IDè¿›è¡Œæ“ä½œ
 *************************************************/
 
 #pragma once
@@ -19,21 +19,21 @@ namespace BTool
 {
     namespace BoostNet1_71
     {
-        // Websocket·şÎñ
-        class WebsocketSslServer : public BoostNet::NetCallBack, public std::enable_shared_from_this<WebsocketSslServer>
+        // WebsocketæœåŠ¡
+        class WebsocketSslServer : public std::enable_shared_from_this<WebsocketSslServer>
         {
             typedef AsioContextPool::ioc_type                   ioc_type;
             typedef boost::asio::ip::tcp::acceptor              accept_type;
             typedef std::shared_ptr<WebsocketSslSession>        WebsocketSslSessionPtr;
+            typedef BoostNet::NetCallBack::SessionID            SessionID;
             typedef std::map<SessionID, WebsocketSslSessionPtr> WebsocketSslSessionMap;
         
         public:
-            // Websocket·şÎñ
-            // handler: session·µ»Ø»Øµ÷
+            // WebsocketæœåŠ¡
+            // handler: sessionè¿”å›å›è°ƒ
             WebsocketSslServer(AsioContextPool& ioc, boost::asio::ssl::context& ctx, size_t max_wbuffer_size = WebsocketSslSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = WebsocketSslSession::MAX_READSINGLE_BUFFER_SIZE)
                 : m_ioc_pool(ioc)
                 , m_acceptor(ioc.get_io_context())
-                , m_handler(nullptr)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_ctx(ctx)
@@ -41,21 +41,40 @@ namespace BTool
             }
 
             ~WebsocketSslServer() {
-                m_handler = nullptr;
                 stop();
                 boost::system::error_code ec;
                 m_acceptor.close(ec);
             }
 
-            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
-            void register_cbk(BoostNet::NetCallBack* handler) {
+            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
+            void register_cbk(const BoostNet::NetCallBack& handler) {
                 m_handler = handler;
             }
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
+            WebsocketSslServer& register_open_cbk(const BoostNet::NetCallBack::open_cbk& cbk) {
+                m_handler.open_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
+            WebsocketSslServer& register_close_cbk(const BoostNet::NetCallBack::close_cbk& cbk) {
+                m_handler.close_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ
+            WebsocketSslServer& register_read_cbk(const BoostNet::NetCallBack::read_cbk& cbk) {
+                m_handler.read_cbk_ = cbk;
+                return *this;
+            }
+            // è®¾ç½®å·²å‘é€æ¶ˆæ¯å›è°ƒ
+            WebsocketSslServer& register_write_cbk(const BoostNet::NetCallBack::write_cbk& cbk) {
+                m_handler.write_cbk_ = cbk;
+                return *this;
+            }
 
-            // ·Ç×èÈûÊ½Æô¶¯·şÎñ
-            // ip: ¼àÌıIP,Ö§³ÖÓòÃû,Ä¬ÈÏ±¾µØIPV4µØÖ·
-            // port: ¼àÌı¶Ë¿Ú
-            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
+            // éé˜»å¡å¼å¯åŠ¨æœåŠ¡
+            // ip: ç›‘å¬IP,æ”¯æŒåŸŸå,é»˜è®¤æœ¬åœ°IPV4åœ°å€
+            // port: ç›‘å¬ç«¯å£
+            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
             bool start(unsigned short port, bool reuse_address = true) {
                 return start(nullptr, port, reuse_address);
             }
@@ -67,10 +86,10 @@ namespace BTool
                 return true;
             }
 
-            // ×èÈûÊ½Æô¶¯·şÎñ,Ê¹ÓÃjoin_allµÈ´ı
-            // ip: ¼àÌıIP,Ö§³ÖÓòÃû,Ä¬ÈÏ±¾µØIPV4µØÖ·
-            // port: ¼àÌı¶Ë¿Ú
-            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
+            // é˜»å¡å¼å¯åŠ¨æœåŠ¡,ä½¿ç”¨join_allç­‰å¾…
+            // ip: ç›‘å¬IP,æ”¯æŒåŸŸå,é»˜è®¤æœ¬åœ°IPV4åœ°å€
+            // port: ç›‘å¬ç«¯å£
+            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
             void run(unsigned short port, bool reuse_address = true) {
                 run(nullptr, port, reuse_address);
             }
@@ -81,20 +100,20 @@ namespace BTool
                 m_ioc_pool.run();
             }
 
-            // ÖÕÖ¹µ±Ç°·şÎñ
+            // ç»ˆæ­¢å½“å‰æœåŠ¡
             void stop() {
                 clear();
                 m_ioc_pool.stop();
             }
 
-            // Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó
-            // ×¢Òâ,¸Ãº¯Êı²»»áÖÕÖ¹µ±Ç°·şÎñ,½öÖÕÖ¹²¢Çå¿Õµ±Ç°ËùÓĞÁ¬½Ó,·şÎñµÄÖÕÖ¹ÔÚstop()ÖĞ²Ù×÷
+            // æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥
+            // æ³¨æ„,è¯¥å‡½æ•°ä¸ä¼šç»ˆæ­¢å½“å‰æœåŠ¡,ä»…ç»ˆæ­¢å¹¶æ¸…ç©ºå½“å‰æ‰€æœ‰è¿æ¥,æœåŠ¡çš„ç»ˆæ­¢åœ¨stop()ä¸­æ“ä½œ
             void clear() {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_sessions.clear();
             }
 
-            // Òì²½Ğ´Èë
+            // å¼‚æ­¥å†™å…¥
             bool write(SessionID session_id, const char* send_msg, size_t size)
             {
                 auto sess_ptr = find_session(session_id);
@@ -104,8 +123,8 @@ namespace BTool
                 return sess_ptr->write(send_msg, size);
             }
 
-            // ÔÚµ±Ç°ÏûÏ¢Î²×·¼Ó
-            // max_package_size: µ¥¸öÏûÏ¢×î´ó°ü³¤
+            // åœ¨å½“å‰æ¶ˆæ¯å°¾è¿½åŠ 
+            // max_package_size: å•ä¸ªæ¶ˆæ¯æœ€å¤§åŒ…é•¿
             bool write_tail(SessionID session_id, const char* send_msg, size_t size, size_t max_package_size = 65535)
             {
                 auto sess_ptr = find_session(session_id);
@@ -115,7 +134,7 @@ namespace BTool
                 return sess_ptr->write_tail(send_msg, size, max_package_size);
             }
 
-            // Ïû·ÑµôÖ¸¶¨³¤¶ÈµÄ¶Á»º´æ
+            // æ¶ˆè´¹æ‰æŒ‡å®šé•¿åº¦çš„è¯»ç¼“å­˜
             void consume_read_buf(SessionID session_id, size_t bytes_transferred)
             {
                 auto sess_ptr = find_session(session_id);
@@ -124,7 +143,7 @@ namespace BTool
                 }
             }
 
-            // Ïû·ÑµôÖ¸¶¨³¤¶ÈµÄ¶Á»º´æ
+            // æ¶ˆè´¹æ‰æŒ‡å®šé•¿åº¦çš„è¯»ç¼“å­˜
             void close(SessionID session_id)
             {
                 auto sess_ptr = find_session(session_id);
@@ -133,7 +152,7 @@ namespace BTool
                 }
             }
 
-            // »ñÈ¡Á¬½ÓÕßIP
+            // è·å–è¿æ¥è€…IP
             bool get_ip(SessionID session_id, std::string& ip) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -143,7 +162,7 @@ namespace BTool
                 return false;
             }
 
-            // »ñÈ¡Á¬½ÓÕßport
+            // è·å–è¿æ¥è€…port
             bool get_port(SessionID session_id, unsigned short& port) const {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
@@ -154,8 +173,8 @@ namespace BTool
             }
 
         private:
-            // Æô¶¯¼àÌı¶Ë¿Ú
-            // reuse_address: ÊÇ·ñÆôÓÃ¶Ë¿Ú¸´ÓÃ
+            // å¯åŠ¨ç›‘å¬ç«¯å£
+            // reuse_address: æ˜¯å¦å¯ç”¨ç«¯å£å¤ç”¨
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::beast::error_code ec;
@@ -189,7 +208,7 @@ namespace BTool
                 return true;
             }
 
-            // ¿ªÊ¼¼àÌı
+            // å¼€å§‹ç›‘å¬
             void start_accept()
             {
                 try {
@@ -202,7 +221,7 @@ namespace BTool
                 }
             }
 
-            // ´¦Àí½ÓÌı»Øµ÷
+            // å¤„ç†æ¥å¬å›è°ƒ
             void handle_accept(const boost::beast::error_code& ec, boost::asio::ip::tcp::socket socket)
             {
                 start_accept();
@@ -212,7 +231,7 @@ namespace BTool
                 }
 
                 auto session_ptr = std::make_shared<WebsocketSslSession>(std::move(socket), m_ctx, m_max_wbuffer_size, m_max_rbuffer_size);
-                session_ptr->register_cbk(this);
+                session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&WebsocketSslServer::on_close_cbk, shared_from_this(), std::placeholders::_1));
 
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
@@ -224,7 +243,7 @@ namespace BTool
                 session_ptr->start();
             }
 
-            // ²éÕÒÁ¬½Ó¶ÔÏó
+            // æŸ¥æ‰¾è¿æ¥å¯¹è±¡
             WebsocketSslSessionPtr find_session(SessionID session_id) const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -235,7 +254,7 @@ namespace BTool
                 return iter->second;
             }
 
-            // É¾³ıÁ¬½Ó¶ÔÏó
+            // åˆ é™¤è¿æ¥å¯¹è±¡
             void remove_session(SessionID session_id) 
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -243,43 +262,25 @@ namespace BTool
             }
 
         private:
-            // ¿ªÆôÁ¬½Ó»Øµ÷
-            virtual void on_open_cbk(SessionID session_id) override
-            {
-                if(m_handler)
-                    m_handler->on_open_cbk(session_id);
-            }
-            // ¹Ø±ÕÁ¬½Ó»Øµ÷
-            virtual void on_close_cbk(SessionID session_id) override
+            // å…³é—­è¿æ¥å›è°ƒ
+            virtual void on_close_cbk(SessionID session_id)
             {
                 remove_session(session_id);
-                if (m_handler)
-                    m_handler->on_close_cbk(session_id);
-            }
-            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
-            virtual void on_read_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) override
-            {
-                if (m_handler)
-                    m_handler->on_read_cbk(session_id, msg, bytes_transferred);
-            }
-            // ÒÑ·¢ËÍÏûÏ¢»Øµ÷
-            virtual void on_write_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) override
-            {
-                if (m_handler)
-                    m_handler->on_write_cbk(session_id, msg, bytes_transferred);
+                if (m_handler.close_cbk_)
+                    m_handler.close_cbk_(session_id);
             }
 
         private:
             AsioContextPool&        m_ioc_pool;
             accept_type             m_acceptor;
-            BoostNet::NetCallBack*  m_handler;
+            BoostNet::NetCallBack   m_handler;
             size_t                  m_max_wbuffer_size;
             size_t                  m_max_rbuffer_size;
 
             boost::asio::ssl::context& m_ctx;
 
             mutable std::mutex      m_mutex;
-            // ËùÓĞÁ¬½Ó¶ÔÏó£¬ºóÆÚ¸ÄÎªÄÚ´æ¿é£¬½ÚÊ¡¿ª±Ù/ÊÍ·ÅÄÚ´æÊ±¼ä
+            // æ‰€æœ‰è¿æ¥å¯¹è±¡ï¼ŒåæœŸæ”¹ä¸ºå†…å­˜å—ï¼ŒèŠ‚çœå¼€è¾Ÿ/é‡Šæ”¾å†…å­˜æ—¶é—´
             WebsocketSslSessionMap     m_sessions;
         };
     }

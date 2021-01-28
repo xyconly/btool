@@ -95,7 +95,7 @@ LONG __stdcall HxUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionInfo)
 
 void InitMinDump()  
 {  
-	//注册异常处理函数  
+	//娉ㄥ唽寮傚父澶勭悊鍑芥暟  
 	SetUnhandledExceptionFilter(HxUnhandledExceptionFilter);   
 }
 #pragma warning(pop)

@@ -2,16 +2,16 @@
 File name:  aes.hpp
 Author:     
 Date:
-Description:    »ùÓÚopensslÌá¹©µÄaesËã·¨Ö§³Ö½øĞĞ·â×°
-NOTE: ÃÜÂëÉú³É
-    1 ½øÈë¶ÔÓ¦opensslÏÂÔËĞĞÄ¿Â¼(±ÈÈçbin)
-    2 ĞÂ½¨ÎÄ¼ş¼Ğ(±ÈÈçkeygen),ÔÚ¸ÃÎÄ¼ş¼ĞÏÂ´´½¨ÃÜÂë±¾(±ÈÈçpassphrase.txt),ÔÚÃÜÂë±¾ÖĞÊäÈëÔ­Ê¼ÃÜÂë(±ÈÈç128Î»Ê±ÊäÈë:1234567812345678)
-    3 opensslÔËĞĞÄ¿Â¼ÖĞ
-            windowsÏÂ´ò¿ªcmd,Ö´ĞĞopenssl enc -aes-256-ctr -kfile keygen/passphrase.txt -md md5 -P -salt
-            Êä³ösalt=EA11981133F4D757
+Description:    åŸºäºopensslæä¾›çš„aesç®—æ³•æ”¯æŒè¿›è¡Œå°è£…
+NOTE: å¯†ç ç”Ÿæˆ
+    1 è¿›å…¥å¯¹åº”opensslä¸‹è¿è¡Œç›®å½•(æ¯”å¦‚bin)
+    2 æ–°å»ºæ–‡ä»¶å¤¹(æ¯”å¦‚keygen),åœ¨è¯¥æ–‡ä»¶å¤¹ä¸‹åˆ›å»ºå¯†ç æœ¬(æ¯”å¦‚passphrase.txt),åœ¨å¯†ç æœ¬ä¸­è¾“å…¥åŸå§‹å¯†ç (æ¯”å¦‚128ä½æ—¶è¾“å…¥:1234567812345678)
+    3 opensslè¿è¡Œç›®å½•ä¸­
+            windowsä¸‹æ‰“å¼€cmd,æ‰§è¡Œopenssl enc -aes-256-ctr -kfile keygen/passphrase.txt -md md5 -P -salt
+            è¾“å‡ºsalt=EA11981133F4D757
                 key=824210E90E71933AB0D31F41B4FBF50B57286D155F7A455F4DFD8C4E7CBDEA67
                 iv =B70A4392545F7E293685C4B3A54BA58F
-            saltÃ¿´Î¾ùÎªËæ»úÉú³É,keyÓëivÉú³É¹æÔò²Î¿¼https://superuser.com/questions/455463/openssl-hash-function-for-generating-aes-key
+            saltæ¯æ¬¡å‡ä¸ºéšæœºç”Ÿæˆ,keyä¸ivç”Ÿæˆè§„åˆ™å‚è€ƒhttps://superuser.com/questions/455463/openssl-hash-function-for-generating-aes-key
 *************************************************/
 #pragma once
 
@@ -22,40 +22,40 @@ namespace BTool {
     class AES : public EncryptBase
     {
     public:
-        // Êı¾İ¿éÎ»Êı
+        // æ•°æ®å—ä½æ•°
         enum AESBit : int {
-            AESNULL = 0,    // ÎŞĞ§
+            AESNULL = 0,    // æ— æ•ˆ
             AES128 = 128,
             AES192 = 192,
             AES256 = 256,
         };
 
-        // ¼ÓÃÜ·½Ê½
+        // åŠ å¯†æ–¹å¼
         enum class Mode : int {
-            ECB = 0,// Electronic Code Book, µç×ÓÃÜÂë±¾Ä£Ê½
-            CBC,    // Cipher Block Chaining, ÃÜÂë¿éÁ´Ä£Ê½
-            CFB,    // Cipher FeedBack, ÃÜÎÄ·´À¡Ä£Ê½
-            OFB,    // Output-Feedback, Êä³ö·´À¡Ä£Ê½
-            CTR,    // CounTeR, ¼ÆÊıÆ÷Ä£Ê½
+            ECB = 0,// Electronic Code Book, ç”µå­å¯†ç æœ¬æ¨¡å¼
+            CBC,    // Cipher Block Chaining, å¯†ç å—é“¾æ¨¡å¼
+            CFB,    // Cipher FeedBack, å¯†æ–‡åé¦ˆæ¨¡å¼
+            OFB,    // Output-Feedback, è¾“å‡ºåé¦ˆæ¨¡å¼
+            CTR,    // CounTeR, è®¡æ•°å™¨æ¨¡å¼
         };
 
-        // Ìî³ä·½Ê½
+        // å¡«å……æ–¹å¼
         enum class Padding : int {
-            ZeroPadding = 0,    // Electronic Code Book, µç×ÓÃÜÂë±¾Ä£Ê½
-            PKCS5Padding,       // Cipher Block Chaining, ÃÜÂë¿éÁ´Ä£Ê½
-            PKCS7Padding,       // Cipher FeedBack, ÃÜÎÄ·´À¡Ä£Ê½
+            ZeroPadding = 0,    // Electronic Code Book, ç”µå­å¯†ç æœ¬æ¨¡å¼
+            PKCS5Padding,       // Cipher Block Chaining, å¯†ç å—é“¾æ¨¡å¼
+            PKCS7Padding,       // Cipher FeedBack, å¯†æ–‡åé¦ˆæ¨¡å¼
         };
 
         /************************************************************************
-         *¹¦ÄÜ: AES¼ÓÃÜ
-         *²ÎÊı: key: ÃÜÔ¿,³¤¶ÈÎª 128/192/256 bit(²¿·Öjava²»Ö§³Ö256)
-                src_buff: ÊäÈë´ı¼ÓÃÜ²ÎÊıÄÚÈİ
-                src_len:  ÊäÈë´ı¼ÓÃÜ²ÎÊı³¤¶È
-                out_buff: Êä³ö¼ÓÃÜºóÊı¾İÖ¸Õë
-                out_len:  Êä³ö½âÃÜºóÊı¾İ³¤¶È
-                mode:     ¼ÓÃÜ·½Ê½, ECBºÍCBCĞèÒª0Î»²¹ÆëÖÁ16µÄÕûÊı±¶,Íâ²¿ĞèÒªÈ·±£src_buffµÄ³¤¶È×îÉÙÎª src_len + AES_BLOCK_SIZE - src_len % AES_BLOCK_SIZE
-                iv:       ECBÄ£Ê½ÎŞĞè´ËÖµ
-          ·µ»ØÊÇ·ñÕıÈ·¼ÓÃÜ
+         *åŠŸèƒ½: AESåŠ å¯†
+         *å‚æ•°: key: å¯†é’¥,é•¿åº¦ä¸º 128/192/256 bit(éƒ¨åˆ†javaä¸æ”¯æŒ256)
+                src_buff: è¾“å…¥å¾…åŠ å¯†å‚æ•°å†…å®¹
+                src_len:  è¾“å…¥å¾…åŠ å¯†å‚æ•°é•¿åº¦
+                out_buff: è¾“å‡ºåŠ å¯†åæ•°æ®æŒ‡é’ˆ
+                out_len:  è¾“å‡ºè§£å¯†åæ•°æ®é•¿åº¦
+                mode:     åŠ å¯†æ–¹å¼, ECBå’ŒCBCéœ€è¦0ä½è¡¥é½è‡³16çš„æ•´æ•°å€,å¤–éƒ¨éœ€è¦ç¡®ä¿src_buffçš„é•¿åº¦æœ€å°‘ä¸º src_len + AES_BLOCK_SIZE - src_len % AES_BLOCK_SIZE
+                iv:       ECBæ¨¡å¼æ— éœ€æ­¤å€¼
+          è¿”å›æ˜¯å¦æ­£ç¡®åŠ å¯†
          ************************************************************************/
         static bool encrypt(const unsigned char* key
             , const unsigned char* src_buff, size_t src_len
@@ -66,13 +66,13 @@ namespace BTool {
         }
         
         /************************************************************************
-         *¹¦ÄÜ: AES¼ÓÃÜ + base64¼ÓÃÜ
-         *Ä¿µÄ: ÎªÊµÏÖ×Ö·û´®´«Êä,¶ÔAES¼ÓÃÜºóµÄÄÚ´æÊı¾İ½øĞĞbase64¼ÓÃÜ,¸ÄÎª¿ÉÊ¶±ğ×Ö·û´®½øĞĞ´«Êä
-         *²ÎÊı: key:  ÃÜÔ¿,³¤¶ÈÎª 128/192/256 bit(²¿·Öjava²»Ö§³Ö256)
-                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
-                mode: ¼ÓÃÜ·½Ê½
-                iv:   ECBÄ£Ê½ÎŞĞè´ËÖµ
-          ·µ»Ø¼ÓÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
+         *åŠŸèƒ½: AESåŠ å¯† + base64åŠ å¯†
+         *ç›®çš„: ä¸ºå®ç°å­—ç¬¦ä¸²ä¼ è¾“,å¯¹AESåŠ å¯†åçš„å†…å­˜æ•°æ®è¿›è¡Œbase64åŠ å¯†,æ”¹ä¸ºå¯è¯†åˆ«å­—ç¬¦ä¸²è¿›è¡Œä¼ è¾“
+         *å‚æ•°: key:  å¯†é’¥,é•¿åº¦ä¸º 128/192/256 bit(éƒ¨åˆ†javaä¸æ”¯æŒ256)
+                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
+                mode: åŠ å¯†æ–¹å¼
+                iv:   ECBæ¨¡å¼æ— éœ€æ­¤å€¼
+          è¿”å›åŠ å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
          ************************************************************************/
         static std::string encrypt_base64(const unsigned char* key
             , const std::string& data, Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
@@ -98,15 +98,15 @@ namespace BTool {
             return rslt;
         }
         /************************************************************************
-         *¹¦ÄÜ: AES½âÃÜ
-         *²ÎÊı: key:      ÃÜÔ¿,³¤¶ÈÎª 128/192/256 bit(²¿·Öjava²»Ö§³Ö256)
-                src_buff: ÊäÈë´ı½âÃÜ²ÎÊıÄÚÈİ
-                src_len:  ÊäÈë´ı½âÃÜ²ÎÊı³¤¶È
-                out_buff: Êä³ö½âÃÜºóÊı¾İÖ¸Õë
-                out_len:  Êä³ö½âÃÜºóÊı¾İ³¤¶È
-                mode:     ½âÃÜ·½Ê½
-                iv:       ECBÄ£Ê½ÎŞĞè´ËÖµ
-          ·µ»ØÊÇ·ñÕıÈ·½âÃÜ
+         *åŠŸèƒ½: AESè§£å¯†
+         *å‚æ•°: key:      å¯†é’¥,é•¿åº¦ä¸º 128/192/256 bit(éƒ¨åˆ†javaä¸æ”¯æŒ256)
+                src_buff: è¾“å…¥å¾…è§£å¯†å‚æ•°å†…å®¹
+                src_len:  è¾“å…¥å¾…è§£å¯†å‚æ•°é•¿åº¦
+                out_buff: è¾“å‡ºè§£å¯†åæ•°æ®æŒ‡é’ˆ
+                out_len:  è¾“å‡ºè§£å¯†åæ•°æ®é•¿åº¦
+                mode:     è§£å¯†æ–¹å¼
+                iv:       ECBæ¨¡å¼æ— éœ€æ­¤å€¼
+          è¿”å›æ˜¯å¦æ­£ç¡®è§£å¯†
          ************************************************************************/
         static bool decrypt(const unsigned char* key
             , const unsigned char* src_buff, size_t src_len
@@ -116,13 +116,13 @@ namespace BTool {
             return encrypt_and_decrypt(key, src_buff, src_len, out_buff, out_len, mode, pad, bits, iv, AES_DECRYPT);
         }
         /************************************************************************
-         *¹¦ÄÜ: base64½âÃÜ + AES½âÃÜ
-         *Ä¿µÄ: ÏÈ¶ÔÊı¾İ½øĞĞbase64½âÃÜ,ÔÙ²ÉÓÃAES½âÃÜ
-         *²ÎÊı: key:  ÃÜÔ¿,³¤¶ÈÎª 128/192/256 bit(²¿·Öjava²»Ö§³Ö256)
-                data: ÊäÈë´ı¼ÓÃÜ×Ö·û´®ÄÚÈİ
-                mode: ¼ÓÃÜ·½Ê½
-                iv:   ECBÄ£Ê½ÎŞĞè´ËÖµ
-          ·µ»Ø½âÃÜÊı¾İ,Ê§°ÜÔò·µ»Ø¿ÕÊı¾İ
+         *åŠŸèƒ½: base64è§£å¯† + AESè§£å¯†
+         *ç›®çš„: å…ˆå¯¹æ•°æ®è¿›è¡Œbase64è§£å¯†,å†é‡‡ç”¨AESè§£å¯†
+         *å‚æ•°: key:  å¯†é’¥,é•¿åº¦ä¸º 128/192/256 bit(éƒ¨åˆ†javaä¸æ”¯æŒ256)
+                data: è¾“å…¥å¾…åŠ å¯†å­—ç¬¦ä¸²å†…å®¹
+                mode: åŠ å¯†æ–¹å¼
+                iv:   ECBæ¨¡å¼æ— éœ€æ­¤å€¼
+          è¿”å›è§£å¯†æ•°æ®,å¤±è´¥åˆ™è¿”å›ç©ºæ•°æ®
          ************************************************************************/
         static std::string decrypt_base64(const unsigned char* key
             , const std::string& data, Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
@@ -147,7 +147,7 @@ namespace BTool {
         }
 
     private:
-        // Ğ£ÑéÃÜÔ¿³¤¶È
+        // æ ¡éªŒå¯†é’¥é•¿åº¦
         static inline bool check_len_valid(const unsigned char* key, Mode mode, AESBit bits, const unsigned char* iv, unsigned char*& tmp_iv) {
             if (!check_len(strlen((const char*)key), bits))
                 return false;
@@ -289,7 +289,7 @@ namespace BTool {
                 break;
             }
 
-            // ½âÃÜĞèÒªÈ¥³ıºóÃæÈßÓà
+            // è§£å¯†éœ€è¦å»é™¤åé¢å†—ä½™
             if (enc == AES_DECRYPT && mode != Mode::ECB) {
                 unsigned char padding_value = out_buff[out_len - 1];
                 out_len -= padding_value;

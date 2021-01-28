@@ -3,7 +3,7 @@ File name:  task_item.hpp
 Author:     AChar
 Version:
 Date:
-Description:    Ìá¹©¸÷ÀàÈÎÎñ»ùÀà,±ÜÃâÍâ½çÖØ¸´´´½¨
+Description:    æä¾›å„ç±»ä»»åŠ¡åŸºç±»,é¿å…å¤–ç•Œé‡å¤åˆ›å»º
 *************************************************/
 #pragma once
 #include <type_traits>
@@ -12,16 +12,16 @@ Description:    Ìá¹©¸÷ÀàÈÎÎñ»ùÀà,±ÜÃâÍâ½çÖØ¸´´´½¨
 namespace BTool
 {
     //////////////////////////////////////////////////////////////////////////
-    // ÈÎÎñ»ùÀà
+    // ä»»åŠ¡åŸºç±»
     class TaskVirtual {
     public:
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         virtual void invoke() = 0;
     };
     typedef std::shared_ptr<TaskVirtual>  TaskPtr;
 
     //////////////////////////////////////////////////////////////////////////
-    // ´øÊôĞÔÈÎÎñ»ùÀà
+    // å¸¦å±æ€§ä»»åŠ¡åŸºç±»
     template<typename TPropType>
     class PropTaskVirtual : public TaskVirtual
     {
@@ -30,7 +30,7 @@ namespace BTool
         PropTaskVirtual(AsTPropType&& prop) : m_prop(std::forward<AsTPropType>(prop)) {}
         virtual ~PropTaskVirtual() {}
 
-        // »ñÈ¡ÈÎÎñÊôĞÔ
+        // è·å–ä»»åŠ¡å±æ€§
         const TPropType& get_prop_type() const {
             return m_prop;
         }
@@ -40,7 +40,7 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // Ôª×æÖ´ĞĞÀà
+    // å…ƒç¥–æ‰§è¡Œç±»
     template<typename TFunction, typename TTuple>
     class TupleInvoke
     {
@@ -51,8 +51,8 @@ namespace BTool
         {}
         ~TupleInvoke() {}
 
-#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17°æ±¾²Å¿ªÊ¼Ö§³Östd::apply
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17ç‰ˆæœ¬æ‰å¼€å§‹æ”¯æŒstd::apply
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         void invoke() {
             constexpr auto size = std::tuple_size<typename std::decay<TTuple>::type>::value;
             invoke_impl(std::make_index_sequence<size>{});
@@ -63,7 +63,7 @@ namespace BTool
             return m_fun_cbk(std::get<Index>(std::forward<TTuple>(*m_tuple.get()))...);
         }
 #  else
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         void invoke() {
             std::apply(std::forward<TFunction>(m_fun_cbk), std::forward<TTuple>(*m_tuple.get()));
         }
@@ -75,7 +75,7 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // ´ò°üÖ´ĞĞÀà
+    // æ‰“åŒ…æ‰§è¡Œç±»
 //     class PackagedInvoke : public TaskVirtual
 //     {
 //     public:
@@ -100,7 +100,7 @@ namespace BTool
 //     };
 
     //////////////////////////////////////////////////////////////////////////
-    // Ôª×æÈÎÎñÀà
+    // å…ƒç¥–ä»»åŠ¡ç±»
     template<typename TFunction, typename TTuple>
     class TupleTask : public TaskVirtual
     {
@@ -116,7 +116,7 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // ´ò°üÈÎÎñÀà
+    // æ‰“åŒ…ä»»åŠ¡ç±»
 //     class PackagedTask : public TaskVirtual
 //     {
 //     public:
@@ -132,7 +132,7 @@ namespace BTool
 //     };
 
     //////////////////////////////////////////////////////////////////////////
-    // ´øÊôĞÔÔª×æÈÎÎñÀà
+    // å¸¦å±æ€§å…ƒç¥–ä»»åŠ¡ç±»
     template<typename TPropType, typename TFunction, typename TTuple>
     class PropTupleTask : public PropTaskVirtual<TPropType>
     {
@@ -151,7 +151,7 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // ´øÊôĞÔ´ò°üÈÎÎñÀà
+    // å¸¦å±æ€§æ‰“åŒ…ä»»åŠ¡ç±»
 //     template<typename TPropType>
 //     class PropPackagedTask : public PropTaskVirtual<TPropType>
 //     {
@@ -173,11 +173,11 @@ namespace BTool
 
 
     //////////////////////////////////////////////////////////////////////////
-    // ¶¨Ê±Æ÷ÈÎÎñ»ùÀà
+    // å®šæ—¶å™¨ä»»åŠ¡åŸºç±»
     class TimerTaskVirtual
     {
     public:
-#pragma region ID¶¨Òå
+#pragma region IDå®šä¹‰
 
 #if defined(_MSC_VER)
         typedef unsigned __int64			        TimerId;
@@ -192,7 +192,7 @@ namespace BTool
 #endif
 
         enum {
-            INVALID_TID = 0, // ÎŞĞ§¶¨Ê±Æ÷ID
+            INVALID_TID = 0, // æ— æ•ˆå®šæ—¶å™¨ID
         };
 #pragma endregion
 
@@ -227,7 +227,7 @@ namespace BTool
             m_loop_count = -1;
         }
 
-        // Ö´ĞĞÒ»´Î¼ÆÊıÑ­»·
+        // æ‰§è¡Œä¸€æ¬¡è®¡æ•°å¾ªç¯
         void loop_once_count() {
             if (!need_next()) {
                 return;
@@ -237,7 +237,7 @@ namespace BTool
             }
         }
 
-        // Ö´ĞĞÒ»´Î¶¨Ê±Ñ­»·
+        // æ‰§è¡Œä¸€æ¬¡å®šæ—¶å¾ªç¯
         void loop_once_time() {
             m_time_point = m_time_point + std::chrono::milliseconds(m_interval);
         }
@@ -246,19 +246,19 @@ namespace BTool
             return m_loop_count == 0 || m_loop_index.load() < m_loop_count;
         }
 
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         virtual void invoke(const system_time_point& time_point) = 0;
 
     private:
-        TimerId                 m_id;            // ¶¨Ê±Æ÷¶ÔÓ¦ID
-        int                     m_loop_count;    // ×ÜÑ­»·´ÎÊı£¬Ä¬ÈÏÎª1, ±íÊ¾Ò»´ÎÑ­»·£¬0±íÊ¾ÎŞÏŞÑ­»·
-        std::atomic<int>        m_loop_index;    // µ±Ç°Ñ­»·¼ÆÊıÆ÷¼ÆÊıÖµ
-        unsigned int            m_interval;      // Ñ­»·¼ä¸ôÊ±¼ä,µ¥Î»ºÁÃë
-        system_time_point       m_time_point;    // ¶¨Ê±Æ÷ÖÕÖ¹Ê±¼ä
+        TimerId                 m_id;            // å®šæ—¶å™¨å¯¹åº”ID
+        int                     m_loop_count;    // æ€»å¾ªç¯æ¬¡æ•°ï¼Œé»˜è®¤ä¸º1, è¡¨ç¤ºä¸€æ¬¡å¾ªç¯ï¼Œ0è¡¨ç¤ºæ— é™å¾ªç¯
+        std::atomic<int>        m_loop_index;    // å½“å‰å¾ªç¯è®¡æ•°å™¨è®¡æ•°å€¼
+        unsigned int            m_interval;      // å¾ªç¯é—´éš”æ—¶é—´,å•ä½æ¯«ç§’
+        system_time_point       m_time_point;    // å®šæ—¶å™¨ç»ˆæ­¢æ—¶é—´
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // º¯ÊıÊ½¶¨Ê±Æ÷ÈÎÎñÀà
+    // å‡½æ•°å¼å®šæ—¶å™¨ä»»åŠ¡ç±»
     class TimerTask : public TimerTaskVirtual
     {
         typedef std::function<void(TimerId id, const system_time_point& time_point)> Function;
@@ -271,7 +271,7 @@ namespace BTool
 
         ~TimerTask() {}
 
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         void invoke(const system_time_point& time_point) {
             m_fun_cbk(get_id(), time_point);
         }
@@ -282,7 +282,7 @@ namespace BTool
 
 
     //////////////////////////////////////////////////////////////////////////
-    // Ôª×æ¶¨Ê±Æ÷ÈÎÎñÀà
+    // å…ƒç¥–å®šæ—¶å™¨ä»»åŠ¡ç±»
     template<typename TFunction, typename TTuple>
     class TupleTimerTask : public TimerTaskVirtual
     {
@@ -297,8 +297,8 @@ namespace BTool
 
         ~TupleTimerTask() {}
 
-#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17°æ±¾²Å¿ªÊ¼Ö§³Östd::apply
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17ç‰ˆæœ¬æ‰å¼€å§‹æ”¯æŒstd::apply
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         void invoke(const system_time_point& time_point) {
             constexpr auto size = std::tuple_size<typename std::decay<TTuple>::type>::value;
             invoke_impl(time_point, std::make_index_sequence<size>{});
@@ -309,7 +309,7 @@ namespace BTool
             return m_fun_cbk(get_id(), time_point, std::get<Index>(std::forward<TTuple>(*m_tuple.get()))...);
         }
 #  else
-        // Ö´ĞĞµ÷ÓÃº¯Êı
+        // æ‰§è¡Œè°ƒç”¨å‡½æ•°
         void invoke(const system_time_point& time_point) {
             std::apply(std::forward<TFunction>(m_fun_cbk), get_id(), time_point, std::forward<TTuple>(*m_tuple.get()));
         }
@@ -321,10 +321,10 @@ namespace BTool
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // ´ò°ü¶¨Ê±Æ÷ÈÎÎñÀà, ÓÉÓÚstd::future½öÄÜÖ´ĞĞµ¥´Î,shared_future²»±ã´æ´¢,¹Ê¶øÔİÊ±²»ÓÃ
+    // æ‰“åŒ…å®šæ—¶å™¨ä»»åŠ¡ç±», ç”±äºstd::futureä»…èƒ½æ‰§è¡Œå•æ¬¡,shared_futureä¸ä¾¿å­˜å‚¨,æ•…è€Œæš‚æ—¶ä¸ç”¨
 //     class PackagedTimerTask : public TimerTaskVirtual
 //     {
-//         // ´ò°üÖ´ĞĞÀà
+//         // æ‰“åŒ…æ‰§è¡Œç±»
 //         class PackagedTimerInvoke
 //         {
 //         public:
@@ -362,7 +362,7 @@ namespace BTool
 // 
 //         ~PackagedTimerTask() {}
 // 
-//         // Ö´ĞĞµ÷ÓÃº¯Êı
+//         // æ‰§è¡Œè°ƒç”¨å‡½æ•°
 //         void invoke(const system_time_point& time_point) override {
 //             m_invoke.invoke(get_id(), time_point);
 //         }

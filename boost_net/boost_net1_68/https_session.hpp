@@ -1,10 +1,10 @@
 /******************************************************************************
 File name:  https_session.hpp
 Author:	    AChar
-Purpose:    httpsÁ¬½ÓÀà, httpµÄsslÊµÏÖ
-Note:       ¿Í»§¶Ë¿ÉÖ±½ÓÊ¹ÓÃHttpsClientSession,µ÷ÓÃHttpClientNetCallBack»Øµ÷
+Purpose:    httpsè¿æ¥ç±», httpçš„sslå®ç°
+Note:       å®¢æˆ·ç«¯å¯ç›´æ¥ä½¿ç”¨HttpsClientSession,è°ƒç”¨HttpClientNetCallBackå›è°ƒ
 
-Ê¾Àı´úÂë:
+ç¤ºä¾‹ä»£ç :
         class TestHttpClient : public BTool::BoostNet::HttpClientNetCallBack
         {
             BTool::BoostNet::HttpsClientSession     session_type;
@@ -21,16 +21,16 @@ Note:       ¿Í»§¶Ë¿ÉÖ±½ÓÊ¹ÓÃHttpsClientSession,µ÷ÓÃHttpClientNetCallBack»Øµ÷
             }
 
         protected:
-            // ¿ªÆôÁ¬½Ó»Øµ÷
+            // å¼€å¯è¿æ¥å›è°ƒ
             virtual void on_open_cbk(SessionID session_id) override;
 
-            // ¹Ø±ÕÁ¬½Ó»Øµ÷
+            // å…³é—­è¿æ¥å›è°ƒ
             virtual void on_close_cbk(SessionID session_id) override;
 
-            // ¶ÁÈ¡ÏûÏ¢»Øµ÷,´ËÊ±read_msg_typeÎªboost::beast::http::response<boost::beast::http::string_body>
+            // è¯»å–æ¶ˆæ¯å›è°ƒ,æ­¤æ—¶read_msg_typeä¸ºboost::beast::http::response<boost::beast::http::string_body>
             virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) override;
 
-            // Ğ´ÈëÏûÏ¢»Øµ÷,´ËÊ±send_msg_typeÎªboost::beast::http::request<boost::beast::http::string_body>
+            // å†™å…¥æ¶ˆæ¯å›è°ƒ,æ­¤æ—¶send_msg_typeä¸ºboost::beast::http::request<boost::beast::http::string_body>
             virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) override;
 
         private:
@@ -38,8 +38,8 @@ Note:       ¿Í»§¶Ë¿ÉÖ±½ÓÊ¹ÓÃHttpsClientSession,µ÷ÓÃHttpClientNetCallBack»Øµ÷
             session_ptr_type            m_session;
         }
 
-±¸×¢:
-        Ò²¿ÉÖ±½Ó×Ô¶¨Òå·¢ËÍ¼°·µ»ØÏûÏ¢ÀàĞÍ, Èç
+å¤‡æ³¨:
+        ä¹Ÿå¯ç›´æ¥è‡ªå®šä¹‰å‘é€åŠè¿”å›æ¶ˆæ¯ç±»å‹, å¦‚
             using SelfHttpClientNetCallBack = HttpNetCallBack<false, boost::beast::http::file_body, boost::beast::http::string_body>;
             using SelfHttpsClientSession = HttpsSession<false, boost::beast::http::file_body, boost::beast::http::string_body>
 *****************************************************************************/
@@ -60,7 +60,7 @@ namespace BTool
 {
     namespace BoostNet
     {
-        // HttpsÁ¬½Ó¶ÔÏó
+        // Httpsè¿æ¥å¯¹è±¡
         template<bool isRequest, typename ReadType, typename WriteType = ReadType, typename Fields = boost::beast::http::fields>
         class HttpsSession : public std::enable_shared_from_this<HttpsSession<isRequest, ReadType, WriteType, Fields>>
         {
@@ -79,9 +79,9 @@ namespace BTool
             typedef typename callback_type::SessionID                                   SessionID;
 
         public:
-            // HttpÁ¬½Ó¶ÔÏó
-            // ios: io¶ÁĞ´¶¯Á¦·şÎñ
-            // max_rbuffer_size:µ¥´Î¶ÁÈ¡×î´ó»º³åÇø´óĞ¡
+            // Httpè¿æ¥å¯¹è±¡
+            // ios: ioè¯»å†™åŠ¨åŠ›æœåŠ¡
+            // max_rbuffer_size:å•æ¬¡è¯»å–æœ€å¤§ç¼“å†²åŒºå¤§å°
             HttpsSession(ios_type& ios, boost::asio::ssl::context& context, ssl_handshake_type hand_shake_type = ssl_handshake_type::client)
                 : m_resolver(ios)
                 , m_ssl_socket(ios, context)
@@ -100,42 +100,42 @@ namespace BTool
                 close();
             }
 
-            // ÉèÖÃ»Øµ÷,²ÉÓÃ¸ÃĞÎÊ½¿É»Øµ÷ÖÁ²»Í¬ÀàÖĞ·Ö¿ª´¦Àí
+            // è®¾ç½®å›è°ƒ,é‡‡ç”¨è¯¥å½¢å¼å¯å›è°ƒè‡³ä¸åŒç±»ä¸­åˆ†å¼€å¤„ç†
             void register_cbk(callback_type* handler) {
                 m_handler = handler;
             }
 
-            // »ñµÃsocket
+            // è·å¾—socket
             socket_type::lowest_layer_type& get_socket() {
                 return m_ssl_socket.lowest_layer();
             }
 
-            // »ñµÃio_service
+            // è·å¾—io_service
             ios_type& get_io_service() {
                 return m_ssl_socket.get_io_service();
             }
 
-            // ÊÇ·ñÒÑ¿ªÆô
+            // æ˜¯å¦å·²å¼€å¯
             bool is_open() const {
                 return  m_started_flag.load();
             }
 
-            // »ñÈ¡Á¬½ÓID
+            // è·å–è¿æ¥ID
             SessionID get_session_id() const {
                 return m_session_id;
             }
 
-            // »ñÈ¡Á¬½ÓÕßIP
+            // è·å–è¿æ¥è€…IP
             const std::string& get_ip() const {
                 return m_connect_ip;
             }
 
-            // »ñÈ¡Á¬½ÓÕßport
+            // è·å–è¿æ¥è€…port
             unsigned short get_port() const {
                 return m_connect_port;
             }
 
-            // ¿Í»§¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // å®¢æˆ·ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void async_connect(const char* ip, unsigned short port)
             {
                 if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
@@ -153,13 +153,13 @@ namespace BTool
                         , std::placeholders::_1, std::placeholders::_2));
             }
 
-            // ¿Í»§¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // å®¢æˆ·ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void async_reconnect()
             {
                 async_connect(m_connect_ip.c_str(), m_connect_port);
             }
 
-            // ·şÎñ¶Ë¿ªÆôÁ¬½Ó,Í¬Ê±¿ªÆô¶ÁÈ¡
+            // æœåŠ¡ç«¯å¼€å¯è¿æ¥,åŒæ—¶å¼€å¯è¯»å–
             void start()
             {
                 bool expected = false;
@@ -180,7 +180,7 @@ namespace BTool
                 }
             }
 
-            // Í¬²½¹Ø±Õ
+            // åŒæ­¥å…³é—­
             void shutdown()
             {
                 bool expected = false;
@@ -193,20 +193,20 @@ namespace BTool
                 m_started_flag.exchange(false);
             }
 
-            // »ñÈ¡´ı·¢ËÍpostÇëÇóĞÅÏ¢
-            // target: Â·¾¶,°üº¬Query
-            // version: httpsĞ­Òé°æ±¾
+            // è·å–å¾…å‘é€postè¯·æ±‚ä¿¡æ¯
+            // target: è·¯å¾„,åŒ…å«Query
+            // version: httpsåè®®ç‰ˆæœ¬
             send_msg_type get_send_post_request(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
                 return get_send_request(boost::beast::http::verb::post, target, content_type, version);
             }
-            // »ñÈ¡´ı·¢ËÍgetÇëÇóĞÅÏ¢
-            // target: Â·¾¶,°üº¬Query
-            // version: httpsĞ­Òé°æ±¾
+            // è·å–å¾…å‘é€getè¯·æ±‚ä¿¡æ¯
+            // target: è·¯å¾„,åŒ…å«Query
+            // version: httpsåè®®ç‰ˆæœ¬
             send_msg_type get_send_get_request(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
                 return get_send_request(boost::beast::http::verb::get, target, content_type, version);
             }
 
-            // Òì²½Ğ´,¿ªÆôÒì²½Ğ´Ö®Ç°ÏÈÈ·±£¿ªÆôÒì²½Á¬½Ó
+            // å¼‚æ­¥å†™,å¼€å¯å¼‚æ­¥å†™ä¹‹å‰å…ˆç¡®ä¿å¼€å¯å¼‚æ­¥è¿æ¥
             bool async_write(send_msg_type&& msg)
             {
                 m_send_msg = std::forward<send_msg_type>(msg);
@@ -223,14 +223,14 @@ namespace BTool
                 return true;
             }
 
-            // Ê¹ÓÃip+portÍ¬²½·¢ËÍ,½öÓÃÓÚ¿Í»§¶Ë,·ÇÏß³Ì°²È«
+            // ä½¿ç”¨ip+portåŒæ­¥å‘é€,ä»…ç”¨äºå®¢æˆ·ç«¯,éçº¿ç¨‹å®‰å…¨
             std::tuple<bool, read_msg_type> sync_write(const char* ip, unsigned short port, send_msg_type&& send_msg)
             {
                 read_msg_type read_msg = {};
                 try
                 {
                     read_msg.body() = "set tlsext host name error";
-                    // Ö¤Êé
+                    // è¯ä¹¦
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
                     {
                         boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
@@ -239,21 +239,21 @@ namespace BTool
                     }
 
                     read_msg.body() = "connect error";
-                    // Á¬½Ó
+                    // è¿æ¥
                     auto const results = m_resolver.resolve(ip, std::to_string(port));
                     boost::asio::connect(m_ssl_socket.next_layer(), results.begin(), results.end());
 
-                    // ÎÕÊÖ
+                    // æ¡æ‰‹
                     read_msg.body() = "handshake error";
                     m_ssl_socket.handshake(m_hand_shake_type);
 
                     read_msg.body() = "write error";
-                    // ·¢ËÍÏûÏ¢
+                    // å‘é€æ¶ˆæ¯
                     send_msg.set(boost::beast::http::field::host, ip);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
                     read_msg.body() = "";
-                    // ¶ÁÈ¡Ó¦´ğ
+                    // è¯»å–åº”ç­”
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_ssl_socket, read_buf, read_msg);
                 }
@@ -265,13 +265,13 @@ namespace BTool
 
                 return std::forward_as_tuple(true, std::move(read_msg));
             }
-            // Ê¹ÓÃip+portÍ¬²½·¢ËÍ,½öÓÃÓÚ¿Í»§¶Ë,·ÇÏß³Ì°²È«
+            // ä½¿ç”¨ip+portåŒæ­¥å‘é€,ä»…ç”¨äºå®¢æˆ·ç«¯,éçº¿ç¨‹å®‰å…¨
             std::tuple<bool, std::vector<read_msg_type>> sync_write_end_of_stream(const char* ip, unsigned short port, send_msg_type&& send_msg)
             {
                 std::vector<read_msg_type> rslt;
                 try
                 {
-                    // Ö¤Êé
+                    // è¯ä¹¦
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), ip))
                     {
                         boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
@@ -279,16 +279,16 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(rslt));
                     }
 
-                    // Á¬½Ó
+                    // è¿æ¥
                     auto const results = m_resolver.resolve(ip, std::to_string(port));
                     boost::asio::connect(m_ssl_socket.next_layer(), results.begin(), results.end());
                     m_ssl_socket.handshake(m_hand_shake_type);
 
-                    // ·¢ËÍÏûÏ¢
+                    // å‘é€æ¶ˆæ¯
                     send_msg.set(boost::beast::http::field::host, ip);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
-                    // ¶ÁÈ¡Ó¦´ğ
+                    // è¯»å–åº”ç­”
                     boost::system::error_code ec;
                     for (;;)
                     {
@@ -310,14 +310,14 @@ namespace BTool
 
                 return std::forward_as_tuple(true, std::move(rslt));
             }
-            // Ê¹ÓÃÓòÃûÍ¬²½·¢ËÍ,½öÓÃÓÚ¿Í»§¶Ë,·ÇÏß³Ì°²È«
+            // ä½¿ç”¨åŸŸååŒæ­¥å‘é€,ä»…ç”¨äºå®¢æˆ·ç«¯,éçº¿ç¨‹å®‰å…¨
             std::tuple<bool, read_msg_type> sync_write(const char* host, send_msg_type&& send_msg)
             {
                 read_msg_type read_msg = {};
                 try
                 {
                     read_msg.body() = "set tlsext host name error";
-                    // ÉèÖÃserver_nameÀ©Õ¹
+                    // è®¾ç½®server_nameæ‰©å±•
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), host))
                     {
                         boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
@@ -326,19 +326,19 @@ namespace BTool
                     }
 
                     read_msg.body() = "connect error";
-                    // Á¬½Ó
+                    // è¿æ¥
                     boost::asio::ip::tcp::resolver::query query(host, "https");
                     boost::asio::connect(m_ssl_socket.next_layer(), m_resolver.resolve(query));
                     read_msg.body() = "handshake error";
                     m_ssl_socket.handshake(m_hand_shake_type);
 
                     read_msg.body() = "write error";
-                    // ·¢ËÍÏûÏ¢
+                    // å‘é€æ¶ˆæ¯
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
                     read_msg.body() = "";
-                    // ¶ÁÈ¡Ó¦´ğ
+                    // è¯»å–åº”ç­”
                     read_buffer_type read_buf;
                     auto read_len = boost::beast::http::read(m_ssl_socket, read_buf, read_msg);
                 }
@@ -350,13 +350,13 @@ namespace BTool
 
                 return std::forward_as_tuple(true, std::move(read_msg));
             }
-            // Ê¹ÓÃÓòÃûÍ¬²½·¢ËÍ,½öÓÃÓÚ¿Í»§¶Ë,·ÇÏß³Ì°²È«
+            // ä½¿ç”¨åŸŸååŒæ­¥å‘é€,ä»…ç”¨äºå®¢æˆ·ç«¯,éçº¿ç¨‹å®‰å…¨
             std::tuple<bool, std::vector<read_msg_type>> sync_write_end_of_stream(const char* host, send_msg_type&& send_msg)
             {
                 std::vector<read_msg_type> rslt;
                 try
                 {
-                    // ÉèÖÃserver_nameÀ©Õ¹
+                    // è®¾ç½®server_nameæ‰©å±•
                     if (!::SSL_set_tlsext_host_name(m_ssl_socket.native_handle(), host))
                     {
                         boost::system::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
@@ -364,16 +364,16 @@ namespace BTool
                         return std::forward_as_tuple(false, std::move(rslt));
                     }
 
-                    // Á¬½Ó
+                    // è¿æ¥
                     boost::asio::ip::tcp::resolver::query query(host, "https");
                     boost::asio::connect(m_ssl_socket.next_layer(), m_resolver.resolve(query));
                     m_ssl_socket.handshake(m_hand_shake_type);
 
-                    // ·¢ËÍÏûÏ¢
+                    // å‘é€æ¶ˆæ¯
                     send_msg.set(boost::beast::http::field::host, host);
                     boost::beast::http::write(m_ssl_socket, std::forward<send_msg_type>(send_msg));
 
-                    // ¶ÁÈ¡Ó¦´ğ
+                    // è¯»å–åº”ç­”
                     boost::system::error_code ec;
                     for (;;)
                     {
@@ -427,7 +427,7 @@ namespace BTool
                 }
             }
 
-            // Òì²½¶Á
+            // å¼‚æ­¥è¯»
             void read()
             {
                 try {
@@ -445,7 +445,7 @@ namespace BTool
                 }
             }
 
-            // ½âÎöIP»Øµ÷
+            // è§£æIPå›è°ƒ
             void handle_resolve(const boost::system::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
             {
                 if (ec)
@@ -455,7 +455,7 @@ namespace BTool
                     , std::bind(&SessionType::handle_connect, SessionType::shared_from_this(), std::placeholders::_1));
             }
 
-            // ´¦ÀíÁ¬½Ó»Øµ÷
+            // å¤„ç†è¿æ¥å›è°ƒ
             void handle_connect(const boost::system::error_code& ec)
             {
                 if (ec)
@@ -465,7 +465,7 @@ namespace BTool
                     , std::bind(&SessionType::handle_handshake, SessionType::shared_from_this(), std::placeholders::_1));
             }
 
-            // ´¦ÀíÁ¬½Ó»Øµ÷
+            // å¤„ç†è¿æ¥å›è°ƒ
             void handle_handshake(boost::system::error_code ec)
             {
                 if (ec)
@@ -486,7 +486,7 @@ namespace BTool
                 }
             }
 
-            // ´¦Àí¶Á»Øµ÷
+            // å¤„ç†è¯»å›è°ƒ
             void handle_read(const boost::system::error_code& ec, size_t bytes_transferred)
             {
                 if (ec) {
@@ -498,7 +498,7 @@ namespace BTool
                     m_handler->on_read_cbk(m_session_id, m_read_msg);
             }
 
-            // ´¦ÀíĞ´»Øµ÷
+            // å¤„ç†å†™å›è°ƒ
             void handle_write(const boost::system::error_code& ec, size_t /*bytes_transferred*/, bool close)
             {
                 if (ec || close) {
@@ -515,33 +515,33 @@ namespace BTool
         private:
             ssl_handshake_type      m_hand_shake_type;
             
-            // asioµÄsocket·â×°
+            // asioçš„socketå°è£…
             ssl_socket_type         m_ssl_socket;
             SessionID               m_session_id;
 
             boost::asio::ip::tcp::resolver m_resolver;
 
-            // ¶Á»º³å
+            // è¯»ç¼“å†²
             read_buffer_type        m_read_buf;
 
-            // »Øµ÷²Ù×÷
+            // å›è°ƒæ“ä½œ
             callback_type*          m_handler;
 
-            // ÊÇ·ñÒÑÆô¶¯
+            // æ˜¯å¦å·²å¯åŠ¨
             std::atomic<bool>	    m_started_flag;
-            // ÊÇ·ñÖÕÖ¹×´Ì¬
+            // æ˜¯å¦ç»ˆæ­¢çŠ¶æ€
             std::atomic<bool>	    m_stop_flag;
 
-            // Á¬½ÓÕßIP
+            // è¿æ¥è€…IP
             std::string             m_connect_ip;
-            // Á¬½ÓÕßPort
+            // è¿æ¥è€…Port
             unsigned short          m_connect_port;
 
             read_msg_type           m_read_msg;
             send_msg_type           m_send_msg;
         };
 
-        // Ä¬ÈÏµÄ¿Í»§¶Ë, ·¢ËÍÇëÇó,¶ÁÈ¡Ó¦´ğ
+        // é»˜è®¤çš„å®¢æˆ·ç«¯, å‘é€è¯·æ±‚,è¯»å–åº”ç­”
         using HttpsClientSession = HttpsSession<false, boost::beast::http::string_body>;
 
     }

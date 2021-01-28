@@ -1,7 +1,7 @@
 /*
-* purpose: 实现平台无关的读写锁
+* purpose: 瀹炵幇骞冲彴鏃犲叧鐨勮鍐欓攣
   Note:
-  确定 C++17 的情况下可以使用标准库自带读写锁
+  纭畾 C++17 鐨勬儏鍐典笅鍙互浣跨敤鏍囧噯搴撹嚜甯﹁鍐欓攣
 #include <shared_mutex>
     typedef std::shared_timed_mutex                     rwMutex;
     typedef std::shared_lock<std::shared_timed_mutex>   readLock;

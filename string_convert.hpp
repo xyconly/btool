@@ -1,7 +1,7 @@
 /******************************************************************************
 File name:  string_convert.hpp
 Author:     AChar
-Purpose: ×Ö·ûÀà,ÓÃÓÚ¸÷Àà×Ö·û×ª»»
+Purpose: å­—ç¬¦ç±»,ç”¨äºå„ç±»å­—ç¬¦è½¬æ¢
 *****************************************************************************/
 #pragma once
 
@@ -12,6 +12,7 @@ Purpose: ×Ö·ûÀà,ÓÃÓÚ¸÷Àà×Ö·û×ª»»
 # ifndef WIN32_LEAN_AND_MEAN
 #  define WIN32_LEAN_AND_MEAN
 # endif
+# include <string>
 # include <windows.h>
 #endif
 
@@ -24,7 +25,7 @@ namespace BTool
 {
     class StringConvert
     {
-#pragma region ÄÚ²¿ÀàĞÍ¶¨Òå
+#pragma region å†…éƒ¨ç±»å‹å®šä¹‰
         class AsciiToWideChar {
             AsciiToWideChar(void) = delete;
             AsciiToWideChar(AsciiToWideChar&) = delete;
@@ -317,7 +318,7 @@ namespace BTool
 #pragma endregion
 
 
-#pragma region ×Ö·ûĞ£Ñé
+#pragma region å­—ç¬¦æ ¡éªŒ
 //         static bool isNumber(const std::string& value) {
 //             return 
 //         }
@@ -327,10 +328,10 @@ namespace BTool
 
 #pragma endregion
 
-#pragma region ×Ö·û±È¶Ô
+#pragma region å­—ç¬¦æ¯”å¯¹
     public:
-        // ¼ì²â´óĞ¡Ğ´
-        // lvalue < rvalue:·µ»Ø-1; lvalue = rvalue:·µ»Ø0; lvalue > rvalue:·µ»Ø1
+        // æ£€æµ‹å¤§å°å†™
+        // lvalue < rvalue:è¿”å›-1; lvalue = rvalue:è¿”å›0; lvalue > rvalue:è¿”å›1
         static int compare(const std::string& lvalue, const std::string& rvalue) {
             return lvalue.compare(rvalue);
         }
@@ -338,8 +339,8 @@ namespace BTool
             return strcmp(lvalue, rvalue);
         }
 
-        // ²»¼ì²â´óĞ¡Ğ´,ºöÂÔ´óĞ¡Ğ´²îÒì
-        // lvalue < rvalue:·µ»Ø-1; lvalue = rvalue:·µ»Ø0; lvalue > rvalue:·µ»Ø1
+        // ä¸æ£€æµ‹å¤§å°å†™,å¿½ç•¥å¤§å°å†™å·®å¼‚
+        // lvalue < rvalue:è¿”å›-1; lvalue = rvalue:è¿”å›0; lvalue > rvalue:è¿”å›1
         static int compareNonCase(const std::string& lvalue, const std::string& rvalue) {
             std::string ltmp = lvalue;
             std::transform(lvalue.begin(), lvalue.end(), ltmp.begin(), ::tolower);
@@ -372,7 +373,7 @@ namespace BTool
 
 #pragma endregion
 
-#pragma region ×Ö·û×ª»»
+#pragma region å­—ç¬¦è½¬æ¢
     public:
         static std::string AnsiiToUtf8(const char* chr) {
             if (!chr || strlen(chr) == 0)
@@ -423,7 +424,7 @@ namespace BTool
         }
 #pragma endregion
 
-#pragma region ×Ö·û×ª»»°²È«Ä£Ê½
+#pragma region å­—ç¬¦è½¬æ¢å®‰å…¨æ¨¡å¼
     public:
         static std::string AnsiiToUtf8_Safe(const char* chr) try {
             return AnsiiToUtf8(chr);

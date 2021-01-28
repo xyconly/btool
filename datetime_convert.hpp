@@ -1,8 +1,8 @@
 /******************************************************************************
 File name:  datetime_convert.hpp
 Author:     AChar
-Purpose: Ê±¼ä×ª»»Àà,ÓÃÓÚ¸÷ÀàÊ±¼ä×ª»»,±È¶Ô
-Note:    Ä¿Ç°ÎÄ±¾ÀàĞÍ½öÖ§³Ö±ê×¼±±¾©Ê±¼ä(DTK_Local)
+Purpose: æ—¶é—´è½¬æ¢ç±»,ç”¨äºå„ç±»æ—¶é—´è½¬æ¢,æ¯”å¯¹
+Note:    ç›®å‰æ–‡æœ¬ç±»å‹ä»…æ”¯æŒæ ‡å‡†åŒ—äº¬æ—¶é—´(DTK_Local)
 *****************************************************************************/
 #pragma once
 
@@ -18,7 +18,7 @@ namespace BTool
 {
     class DateTimeConvert
     {
-        // ºóÆÚ·ÂJAVAÀ©Õ¹Ê±Ê¹ÓÃ
+        // åæœŸä»¿JAVAæ‰©å±•æ—¶ä½¿ç”¨
 //         static std::string DateTimeConvert::wtb[32] = {
 //         "am", "pm",
 //         "monday", "tuesday", "wednesday", "thursday", "friday",
@@ -41,44 +41,44 @@ namespace BTool
 
     public:
 
-        // ĞÇÆÚ
+        // æ˜ŸæœŸ
         enum DayOfWeek : short {
             UNDEFINE = -1,
-            SUNDAY = 0, //ĞÇÆÚÈÕ
-            MONDAY,     //ĞÇÆÚÒ»
-            TUESDAY,    //ĞÇÆÚ¶ş
-            WEDNESDAY,  //ĞÇÆÚÈı
-            THURSDAY,   //ĞÇÆÚËÄ
-            FRIDAY,     //ĞÇÆÚÎå
-            SATURDAY,   //ĞÇÆÚÁù
+            SUNDAY = 0, //æ˜ŸæœŸæ—¥
+            MONDAY,     //æ˜ŸæœŸä¸€
+            TUESDAY,    //æ˜ŸæœŸäºŒ
+            WEDNESDAY,  //æ˜ŸæœŸä¸‰
+            THURSDAY,   //æ˜ŸæœŸå››
+            FRIDAY,     //æ˜ŸæœŸäº”
+            SATURDAY,   //æ˜ŸæœŸå…­
         };
 
-        // Ê±¼äÀàĞÍ
+        // æ—¶é—´ç±»å‹
         enum DateTimeKind : unsigned char {
-            DTK_Local = 0,  // ±±¾©Ê±¼ä,Èç:2018-07-07 15:20:00.000.000
-            DTK_KLine,      // KÏß±±¾©Ê±¼ä,Èç:20180707 152000 000
-            DTK_CST,        // UTC+8 , Èç:Thu Jul 22 23:58:32 CST 2018
-            DTK_UTC,        // ÊÀ½ç±ê×¼Ê±¼ä, Èç:20180707T152000Z/20180707T152000+08(ÆäÖĞZ±íÊ¾ÊÇ±ê×¼Ê±¼ä,"+08"±íÊ¾¶«°ËÇø)
-            DTK_GMT,        // ¸ñÁÖÍşÖÎÊ±¼ä, Èç:Thu Jul 22 23:58:32 'GMT' 2018
-            DKT_UnixStamp,  // unixÊ±¼ä´Á,×Ô1970-01-01ÒÔÀ´µÄÃëÊı
+            DTK_Local = 0,  // åŒ—äº¬æ—¶é—´,å¦‚:2018-07-07 15:20:00.000.000
+            DTK_KLine,      // Kçº¿åŒ—äº¬æ—¶é—´,å¦‚:20180707 152000 000
+            DTK_CST,        // UTC+8 , å¦‚:Thu Jul 22 23:58:32 CST 2018
+            DTK_UTC,        // ä¸–ç•Œæ ‡å‡†æ—¶é—´, å¦‚:20180707T152000Z/20180707T152000+08(å…¶ä¸­Zè¡¨ç¤ºæ˜¯æ ‡å‡†æ—¶é—´,"+08"è¡¨ç¤ºä¸œå…«åŒº)
+            DTK_GMT,        // æ ¼æ—å¨æ²»æ—¶é—´, å¦‚:Thu Jul 22 23:58:32 'GMT' 2018
+            DKT_UnixStamp,  // unixæ—¶é—´æˆ³,è‡ª1970-01-01ä»¥æ¥çš„ç§’æ•°
         };
 
-        // °üº¬Ê±¼ä×Ö¶Î
+        // åŒ…å«æ—¶é—´å­—æ®µ
         enum DateTimeStyle : unsigned char {
             DTS_Invlid = 0x00,
-            DTS_Year = 0x80,		// Äê	1000 0000
-            DTS_Month = 0x40,		// ÔÂ	0100 0000
-            DTS_Day = 0x20,			// ÈÕ	0010 0000
-            DTS_Hour = 0x10,		// Ê±	0001 0000
-            DTS_Min = 0x08,			// ·Ö	0000 1000
-            DTS_Sec = 0x04,			// Ãë	0000 0100
-            DTS_mSec = 0x02,		// ºÁÃë	0000 0010
-            DTS_uSec = 0x01,		// Î¢Ãë	0000 0001
+            DTS_Year = 0x80,		// å¹´	1000 0000
+            DTS_Month = 0x40,		// æœˆ	0100 0000
+            DTS_Day = 0x20,			// æ—¥	0010 0000
+            DTS_Hour = 0x10,		// æ—¶	0001 0000
+            DTS_Min = 0x08,			// åˆ†	0000 1000
+            DTS_Sec = 0x04,			// ç§’	0000 0100
+            DTS_mSec = 0x02,		// æ¯«ç§’	0000 0010
+            DTS_uSec = 0x01,		// å¾®ç§’	0000 0001
 
-            DTS_YMD = DTS_Year | DTS_Month | DTS_Day,		// ÄêÔÂÈÕ
-            DTS_HMS = DTS_Hour | DTS_Min | DTS_Sec,			// Ê±·ÖÃë
-            DTS_YMDHMS = DTS_YMD | DTS_HMS,					// ÄêÔÂÈÕÊ±·ÖÃë
-            DTS_YMDHMS_M = DTS_YMD | DTS_HMS | DTS_mSec,	// ÄêÔÂÈÕÊ±·ÖÃëºÁÃë
+            DTS_YMD = DTS_Year | DTS_Month | DTS_Day,		// å¹´æœˆæ—¥
+            DTS_HMS = DTS_Hour | DTS_Min | DTS_Sec,			// æ—¶åˆ†ç§’
+            DTS_YMDHMS = DTS_YMD | DTS_HMS,					// å¹´æœˆæ—¥æ—¶åˆ†ç§’
+            DTS_YMDHMS_M = DTS_YMD | DTS_HMS | DTS_mSec,	// å¹´æœˆæ—¥æ—¶åˆ†ç§’æ¯«ç§’
             DTS_ALL = 0xFF,
         };
 
@@ -97,8 +97,8 @@ namespace BTool
         {
         }
 
-        // °´×Ö·ûĞÎÊ½×ª»»,¸ñÊ½²Î¿¼DateTimeKind
-        // Ä¿Ç°½öÖ§³ÖDTK_LocalÒÔ¼°DTK_KLine
+        // æŒ‰å­—ç¬¦å½¢å¼è½¬æ¢,æ ¼å¼å‚è€ƒDateTimeKind
+        // ç›®å‰ä»…æ”¯æŒDTK_Localä»¥åŠDTK_KLine
         explicit DateTimeConvert(const char* dt, DateTimeStyle style = DTS_YMDHMS, DateTimeKind kind = DTK_Local)
             : m_isvalid(style != DTS_Invlid)
             , m_style(style)
@@ -192,7 +192,7 @@ namespace BTool
             }
         }
 
-        // °´ÄêÔÂÈÕÊ±·ÖÃëµÄË³Ğò,ÒÀ¾İDateTimeStyle½øĞĞ¸³Öµ,²ÎÊıÎªintĞÍ
+        // æŒ‰å¹´æœˆæ—¥æ—¶åˆ†ç§’çš„é¡ºåº,ä¾æ®DateTimeStyleè¿›è¡Œèµ‹å€¼,å‚æ•°ä¸ºintå‹
         explicit DateTimeConvert(DateTimeStyle style, int date_time, ...)
             : m_isvalid(style != DTS_Invlid)
             , m_style(style)
@@ -556,7 +556,7 @@ namespace BTool
         }
 
     public:
-        // »ñÈ¡µ±Ç°Ê±¼ä
+        // è·å–å½“å‰æ—¶é—´
         static DateTimeConvert GetCurrentSystemTime(DateTimeStyle style = DTS_YMDHMS)
         {
             if (style & (DTS_mSec | DTS_uSec))
@@ -570,9 +570,9 @@ namespace BTool
             return DateTimeConvert(time(NULL), style);
         }
 
-        // »ñÈ¡Á½¸öÖ¸¶¨ÈÕÆÚ¼ä¸ôµÄÌìÊı
-        // ÎŞĞ§·µ»Ø-1
-        // leftDtµÄstyle±ØĞërightDtÒ»ÖÂ,ÇÒ°üº¬DTS_YMD,·ñÔòÎŞĞ§
+        // è·å–ä¸¤ä¸ªæŒ‡å®šæ—¥æœŸé—´éš”çš„å¤©æ•°
+        // æ— æ•ˆè¿”å›-1
+        // leftDtçš„styleå¿…é¡»rightDtä¸€è‡´,ä¸”åŒ…å«DTS_YMD,å¦åˆ™æ— æ•ˆ
         static int GetDateSpace(const DateTimeConvert& leftDt, const DateTimeConvert& rightDt)
         {
             if (!leftDt.isvalid()
@@ -590,9 +590,9 @@ namespace BTool
             return day;
         }
 
-        // »ñÈ¡Á½¸öÖ¸¶¨Ê±¼ä¼ä¸ôµÄÃëÊı
-        // ÎŞĞ§·µ»Ø-1
-        // leftDtµÄstyle±ØĞërightDtÒ»ÖÂ,ÇÒ°üº¬DTS_HMS,·ñÔòÎŞĞ§
+        // è·å–ä¸¤ä¸ªæŒ‡å®šæ—¶é—´é—´éš”çš„ç§’æ•°
+        // æ— æ•ˆè¿”å›-1
+        // leftDtçš„styleå¿…é¡»rightDtä¸€è‡´,ä¸”åŒ…å«DTS_HMS,å¦åˆ™æ— æ•ˆ
         static long long GetSecondSpace(const DateTimeConvert& leftDt, const DateTimeConvert& rightDt)
         {
             long long rslt = GetMillSecondSpace(leftDt, rightDt);
@@ -602,9 +602,9 @@ namespace BTool
             return rslt / 1000;
         }
 
-        // »ñÈ¡Á½¸öÖ¸¶¨Ê±¼ä¼ä¸ôµÄºÁÃëÊı
-        // ÎŞĞ§·µ»Ø-1
-        // leftDtµÄstyle±ØĞërightDtÒ»ÖÂ,ÇÒ°üº¬DTS_HMS,·ñÔòÎŞĞ§
+        // è·å–ä¸¤ä¸ªæŒ‡å®šæ—¶é—´é—´éš”çš„æ¯«ç§’æ•°
+        // æ— æ•ˆè¿”å›-1
+        // leftDtçš„styleå¿…é¡»rightDtä¸€è‡´,ä¸”åŒ…å«DTS_HMS,å¦åˆ™æ— æ•ˆ
         static long long GetMillSecondSpace(const DateTimeConvert& leftDt, const DateTimeConvert& rightDt)
         {
             if (!leftDt.isvalid()
@@ -629,35 +629,35 @@ namespace BTool
             return -1;
         }
 
-        // »ñÈ¡ÈÕÆÚ+ÏòºóÆ¯ÒÆÌìÊı
-        // dt±ØĞë°üº¬DTS_YMD,·ñÔòÎŞĞ§
+        // è·å–æ—¥æœŸ+å‘åæ¼‚ç§»å¤©æ•°
+        // dtå¿…é¡»åŒ…å«DTS_YMD,å¦åˆ™æ— æ•ˆ
         static DateTimeConvert GetAddDate(const DateTimeConvert& dt, int days)
         {
             return dt.get_add_date(days);
         }
 
-        // »ñÈ¡ÈÕÆÚ+ÏòºóÆ¯ÒÆÃëÊı
-        // dt±ØĞë°üº¬DTS_YMDHMS,·ñÔòÎŞĞ§
+        // è·å–æ—¥æœŸ+å‘åæ¼‚ç§»ç§’æ•°
+        // dtå¿…é¡»åŒ…å«DTS_YMDHMS,å¦åˆ™æ— æ•ˆ
         static DateTimeConvert GetAddSecond(const DateTimeConvert& dt, long long secs)
         {
             return dt.get_add_second(secs);
         }
 
     public:
-        // »ñÈ¡°üº¬Ê±¼ä×Ö¶Î
+        // è·å–åŒ…å«æ—¶é—´å­—æ®µ
         DateTimeStyle get_style() const {
             return m_style;
         }
 
-        // ÉèÖÃÊ±·ÖÃë
+        // è®¾ç½®æ—¶åˆ†ç§’
         void set_time(int hour, int minute, int second) {
             m_hour = hour;
             m_minute = minute;
             m_second = second;
         }
 
-        // Ôö¼ÓÌìÊı
-        // ÎŞĞ§»ò²»°üº¬DTS_YMDÊ±,ÎŞ±ä»¯
+        // å¢åŠ å¤©æ•°
+        // æ— æ•ˆæˆ–ä¸åŒ…å«DTS_YMDæ—¶,æ— å˜åŒ–
         void add_date(int days)
         {
             if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
@@ -667,8 +667,8 @@ namespace BTool
             m_day_of_week = UNDEFINE;
         }
 
-        // Ôö¼ÓÃëÊı
-        // ÎŞĞ§»ò²»°üº¬DTS_YMDHMSÊ±,ÎŞ±ä»¯
+        // å¢åŠ ç§’æ•°
+        // æ— æ•ˆæˆ–ä¸åŒ…å«DTS_YMDHMSæ—¶,æ— å˜åŒ–
         void add_second(long long secs)
         {
             if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
@@ -677,8 +677,8 @@ namespace BTool
             m_day_of_week = UNDEFINE;
         }
 
-        // ·µ»ØÆ¯ÒÆÌìÊıºóÊ±¼ä
-        // style±ØĞë°üº¬DTS_YMD,·ñÔòÎŞĞ§
+        // è¿”å›æ¼‚ç§»å¤©æ•°åæ—¶é—´
+        // styleå¿…é¡»åŒ…å«DTS_YMD,å¦åˆ™æ— æ•ˆ
         DateTimeConvert get_add_date(int days) const
         {
             if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
@@ -690,8 +690,8 @@ namespace BTool
             return DateTimeConvert(DTS_YMDHMS, year(), month(), day(), 0, 0, 0).get_add_second(days * 24 * 60 * 60);
         }
 
-        // ·µ»ØÆ¯ÒÆÃëÊıºóÊ±¼ä
-        // style±ØĞë°üº¬DTS_YMDHMS,·ñÔòÎŞĞ§
+        // è¿”å›æ¼‚ç§»ç§’æ•°åæ—¶é—´
+        // styleå¿…é¡»åŒ…å«DTS_YMDHMS,å¦åˆ™æ— æ•ˆ
         DateTimeConvert get_add_second(long long secs) const
         {
             if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
@@ -722,8 +722,8 @@ namespace BTool
             return rslt;
         }
 
-        // ·µ»ØÆ¯ÒÆºÁÃëÊıºóÊ±¼ä
-        // style±ØĞë°üº¬DTS_YMDHMS,·ñÔòÎŞĞ§
+        // è¿”å›æ¼‚ç§»æ¯«ç§’æ•°åæ—¶é—´
+        // styleå¿…é¡»åŒ…å«DTS_YMDHMS,å¦åˆ™æ— æ•ˆ
         DateTimeConvert get_add_millsecond(long long millsecs) const
         {
             if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
@@ -866,7 +866,7 @@ namespace BTool
             return rslt;
         }
 
-        // ·µ»Øµ±Ç°Ê±¼ä
+        // è¿”å›å½“å‰æ—¶é—´
         std::tm to_tm() const
         {
             struct tm tmcur;
@@ -882,9 +882,9 @@ namespace BTool
             return tmcur;
         }
 
-        // ·µ»Øµ±Ç°Ê±¼ä
-        // ÎŞĞ§·µ»Ø-1
-        // style±ØĞë°üº¬DTS_YMDHMS,·ñÔòÎŞĞ§
+        // è¿”å›å½“å‰æ—¶é—´
+        // æ— æ•ˆè¿”å›-1
+        // styleå¿…é¡»åŒ…å«DTS_YMDHMS,å¦åˆ™æ— æ•ˆ
         std::time_t to_time_t() const
         {
             if (!isvalid() && (m_style & DTS_YMDHMS) != DTS_YMDHMS)
@@ -893,10 +893,10 @@ namespace BTool
             return std::mktime(&tp);
         }
 
-        // ·µ»Øµ±Ç°ÈÕÆÚ
-        // ¸ñÊ½:yyyyMMdd
-        // ÎŞĞ§·µ»Ø-1
-        // style±ØĞë°üº¬DTS_YMD,·ñÔòÎŞĞ§
+        // è¿”å›å½“å‰æ—¥æœŸ
+        // æ ¼å¼:yyyyMMdd
+        // æ— æ•ˆè¿”å›-1
+        // styleå¿…é¡»åŒ…å«DTS_YMD,å¦åˆ™æ— æ•ˆ
         int to_int_date() const
         {
             if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
@@ -904,10 +904,10 @@ namespace BTool
             return m_year * 10000 + m_month * 100 + m_day;
         }
 
-        // ·µ»Øµ±Ç°Ê±¼ä
-        // ¸ñÊ½:hhmmss
-        // ÎŞĞ§·µ»Ø-1
-        // style±ØĞë°üº¬DTS_HMS,·ñÔòÎŞĞ§
+        // è¿”å›å½“å‰æ—¶é—´
+        // æ ¼å¼:hhmmss
+        // æ— æ•ˆè¿”å›-1
+        // styleå¿…é¡»åŒ…å«DTS_HMS,å¦åˆ™æ— æ•ˆ
         int to_int_time() const
         {
             if (!isvalid() || (m_style & DTS_HMS) != DTS_HMS)
@@ -915,9 +915,9 @@ namespace BTool
             return m_hour * 10000 + m_minute * 100 + m_second;
         }
 
-        // ·µ»Øµ±Ç°Ê±¼ä
-        // ÎŞĞ§Å×³öÒì³£
-        // style±ØĞë°üº¬DTS_YMDHMS,·ñÔòÎŞĞ§
+        // è¿”å›å½“å‰æ—¶é—´
+        // æ— æ•ˆæŠ›å‡ºå¼‚å¸¸
+        // styleå¿…é¡»åŒ…å«DTS_YMDHMS,å¦åˆ™æ— æ•ˆ
         std::chrono::system_clock::time_point to_system_time_point() const
         {
             if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
@@ -938,22 +938,22 @@ namespace BTool
             return rslt;
         }
 
-        /********* Ä¿Ç°½öÊµÏÖ±¾µØÊ±¼ä *****
-        // ·µ»ØUTCÊ±¼ä
-        // ÎŞĞ§·µ»Ø-1
+        /********* ç›®å‰ä»…å®ç°æœ¬åœ°æ—¶é—´ *****
+        // è¿”å›UTCæ—¶é—´
+        // æ— æ•ˆè¿”å›-1
         std::string to_utc_string() const;
 
-        // ·µ»ØGMTÊ±¼ä
-        // ¸ñÊ½:d MMM yyyy HH:mm:ss 'GMT'
-        // ÎŞĞ§·µ»Ø¿Õ
+        // è¿”å›GMTæ—¶é—´
+        // æ ¼å¼:d MMM yyyy HH:mm:ss 'GMT'
+        // æ— æ•ˆè¿”å›ç©º
         std::string to_gmt_string() const;
    
-        // ·µ»ØunixÊ±¼ä´Á
-        // ÎŞĞ§·µ»Ø-1
+        // è¿”å›unixæ—¶é—´æˆ³
+        // æ— æ•ˆè¿”å›-1
         long to_unix_stamp() const;
         /***********************************/
 
-        // »ñÈ¡ĞÇÆÚ¼¸×Ö¶Î
+        // è·å–æ˜ŸæœŸå‡ å­—æ®µ
         DayOfWeek day_of_week() const
         {
             if (!isvalid())
@@ -965,13 +965,13 @@ namespace BTool
             return m_day_of_week;
         }
 
-        // ÅĞ¶ÏÊÇ·ñÓĞĞ§
+        // åˆ¤æ–­æ˜¯å¦æœ‰æ•ˆ
         bool isvalid() const
         {
             return m_isvalid;
         }
 
-        // ÅĞ¶ÏÊÇ·ñÊÇË«ĞİÈÕ
+        // åˆ¤æ–­æ˜¯å¦æ˜¯åŒä¼‘æ—¥
         bool isweekday() const
         {
             if (!isvalid())
@@ -983,21 +983,21 @@ namespace BTool
             return m_day_of_week == SUNDAY || m_day_of_week == SATURDAY;
         }
 
-        // ÊÇ·ñÊÇÈòÄê
+        // æ˜¯å¦æ˜¯é—°å¹´
         bool isleapyear() const
         {
             return (m_year % 4) == 0 && ((m_year % 100) != 0 || (m_year % 400) == 0);
         }
 
-        // µ±ÄêµÄÌìÊı
-        // ÎŞĞ§·µ»Ø-1
+        // å½“å¹´çš„å¤©æ•°
+        // æ— æ•ˆè¿”å›-1
         int days_of_year() const
         {
             return isleapyear() ? 366 : 365;
         }
 
-        // µ±ÔÂµÄÌìÊı
-        // ÎŞĞ§·µ»Ø-1
+        // å½“æœˆçš„å¤©æ•°
+        // æ— æ•ˆè¿”å›-1
         int days_of_month() const
         {
             if (m_month < 1)
@@ -1011,8 +1011,8 @@ namespace BTool
                 return daysOfMonthTable[m_month - 1];
         }
 
-        // »ñÈ¡Äê·İ
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–å¹´ä»½
+        // æ— æ•ˆè¿”å›-1
         int year() const
         {
             if (!isvalid())
@@ -1020,8 +1020,8 @@ namespace BTool
             return m_year;
         }
 
-        // »ñÈ¡ÔÂ·İ
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–æœˆä»½
+        // æ— æ•ˆè¿”å›-1
         int month() const
         {
             if (!isvalid())
@@ -1029,8 +1029,8 @@ namespace BTool
             return m_month;
         }
 
-        // »ñÈ¡ÈÕ·İ,um....
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–æ—¥ä»½,um....
+        // æ— æ•ˆè¿”å›-1
         int day() const
         {
             if (!isvalid())
@@ -1038,8 +1038,8 @@ namespace BTool
             return m_day;
         }
 
-        // »ñÈ¡Ğ¡Ê±
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–å°æ—¶
+        // æ— æ•ˆè¿”å›-1
         int hour() const
         {
             if (!isvalid())
@@ -1047,8 +1047,8 @@ namespace BTool
             return m_hour;
         }
 
-        // »ñÈ¡·ÖÖÓ
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–åˆ†é’Ÿ
+        // æ— æ•ˆè¿”å›-1
         int minute() const
         {
             if (!isvalid())
@@ -1056,8 +1056,8 @@ namespace BTool
             return m_minute;
         }
 
-        // »ñÈ¡ÃëÊı
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–ç§’æ•°
+        // æ— æ•ˆè¿”å›-1
         int second() const
         {
             if (!isvalid())
@@ -1065,8 +1065,8 @@ namespace BTool
             return m_second;
         }
 
-        // »ñÈ¡ºÁÃëÊı
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–æ¯«ç§’æ•°
+        // æ— æ•ˆè¿”å›-1
         int millsecond() const
         {
             if (!isvalid())
@@ -1074,8 +1074,8 @@ namespace BTool
             return m_millsecond;
         }
 
-        // »ñÈ¡Î¢ÃëÊı
-        // ÎŞĞ§·µ»Ø-1
+        // è·å–å¾®ç§’æ•°
+        // æ— æ•ˆè¿”å›-1
         int microsecond() const
         {
             if (!isvalid())
@@ -1084,10 +1084,10 @@ namespace BTool
         }
 
     private:
-        // »ùÄ·À­¶ûÉ­¼ÆËã¹«Ê½
+        // åŸºå§†æ‹‰å°”æ£®è®¡ç®—å…¬å¼
         static DayOfWeek caculate_weekday(int y, int m, int d)
         {
-            if (m == 1 || m == 2) //°ÑÒ»ÔÂºÍ¶şÔÂ»»Ëã³ÉÉÏÒ»ÄêµÄÊ®ÈıÔÂºÍÊÇËÄÔÂ
+            if (m == 1 || m == 2) //æŠŠä¸€æœˆå’ŒäºŒæœˆæ¢ç®—æˆä¸Šä¸€å¹´çš„åä¸‰æœˆå’Œæ˜¯å››æœˆ
             {
                 m += 12;
                 y--;
@@ -1108,7 +1108,7 @@ namespace BTool
         }
 
     private:
-        // °üº¬Ê±¼ä×Ö¶Î
+        // åŒ…å«æ—¶é—´å­—æ®µ
         DateTimeStyle       m_style;
 
         mutable DayOfWeek   m_day_of_week;

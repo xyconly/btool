@@ -1,1083 +1,1280 @@
 /************************************************************************
 * Copyright (C), 2020, AChar
-* Purpose:  ÊÜĞÅ»·¾³ÏÂµÄrpcÍ¨Ñ¶
+* Purpose:  å—ä¿¡ç¯å¢ƒä¸‹çš„rpcé€šè®¯
 * Date:     2020-10-27 15:18:11
-* Ê¹ÓÃ·½·¨:
+* ä½¿ç”¨æ–¹æ³•:
 
-    void foo_1() {}
+    void foo_1(NetCallBack::SessionID session_id) {}
     struct st_1 {
-        void foo_1(int rsp_info, int rsp_info2) {}
+        void foo_1(NetCallBack::SessionID session_id, int rsp_info, int rsp_info2) {}
     };
-    void set(int a) {
+    void set(NetCallBack::SessionID session_id, int a) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    int add(int a, int b) {
+    int add(NetCallBack::SessionID session_id, int a, int b) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return a + b;
     }
-    void add_void(int a, int b) {
+    void add_void(NetCallBack::SessionID session_id, int a, int b) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return;
     }
-    std::tuple<int, int> get_tuple(int a, int b) {
+    std::tuple<int, int> get_tuple(NetCallBack::SessionID session_id, int a, int b) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return std::forward_as_tuple(a, b);
     }
 
-
- ·şÎñ¶Ë:
-    class TestService {
-        typedef BTool::BoostRpc::RpcServer<30000>   rpc_server;
-        rpc_server                                  send_package;
+ æœåŠ¡ç«¯:
+     class TestService {
+        typedef RpcService<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 30000> rpc_server;
+        rpc_server                                  m_rpc_server;
     public:
         TestService() {
-            send_package.set_connect_cbk([&](rpc_server::SessionID session_id) { std::cout << "connect" << std::endl; });
-            send_package.set_close_cbk([&](rpc_server::SessionID session_id) { std::cout << "close" << std::endl; });
+            m_rpc_server.register_open_cbk([&](rpc_server::SessionID session_id) { std::cout << "connect" << std::endl; });
+            m_rpc_server.register_close_cbk([&](rpc_server::SessionID session_id) { std::cout << "close" << std::endl; });
         }
         ~TestService() {}
     public:
         void init(){
-            send_package.listen("127.0.0.1", 61239);
+            m_rpc_server.listen("127.0.0.1", 61239);
             BTool::ParallelTaskPool pool;
             pool.start();
-            // Í¬²½°ó¶¨²»Ö±½Ó·µ»Ø,ĞèÖ÷¶¯·µ»Ø
-            send_package.bind("bind lambda", [this, &pool](rpc_server::SessionID session, const rpc_server::message_head& head, const std::string& rpc_name, int rslt, int rsp_info) {
+            // åŒæ­¥ç»‘å®šä¸ç›´æ¥è¿”å›,éœ€ä¸»åŠ¨è¿”å›
+            m_rpc_server.bind("bind lambda", [this, &pool](rpc_server::SessionID session_id, const rpc_server::message_head& head, int rslt, int rsp_info) {
                 pool.add_task([=] {
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                    bool rsltbb = send_package.rsp_bind(session, head, rpc_name, rpc_server::msg_status::ok, rslt + rsp_info);
+                    bool rsltbb = m_rpc_server.rsp_bind("bind lambda", session_id, head.req_id_, head.rpc_model_, rpc_server::msg_status::ok, rslt + rsp_info);
                 });
             });
 
-            // Í¬²½°ó¶¨Ö±½Ó·µ»Ø
-            send_package.bind_auto("foo_1", &foo_1);
-            send_package.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
-            send_package.bind_auto("set", &set);
-            send_package.bind_auto("add", &add);
-            send_package.bind_auto("add_void", &add_void);
-            send_package.bind_auto("get_tuple", &get_tuple);
-            send_package.bind_auto("lambda", [] {});
-            std::function<void(rpc_server::SessionID, const rpc_server::message_head&, const std::string&, std::future_status, int)> func = [&](rpc_server::SessionID, const rpc_server::message_head&, const std::string&, std::future_status rslt, int rsp_info) {};
-            send_package.bind_auto_functional("functional", func);
+            // åŒæ­¥ç»‘å®šç›´æ¥è¿”å›
+            m_rpc_server.bind_auto("foo_1", &foo_1);
+            m_rpc_server.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
+            m_rpc_server.bind_auto("set", &set);
+            m_rpc_server.bind_auto("add", &add);
+            m_rpc_server.bind_auto("add_void", &add_void);
+            m_rpc_server.bind_auto("get_tuple", &get_tuple);
+            m_rpc_server.bind_auto("lambda", [](NetCallBack::SessionID session_id) {});
+            std::function<int(rpc_server::SessionID, int)> func = [&](rpc_server::SessionID, int rsp_info)->int {};
+            m_rpc_server.bind_auto_functional("functional", func);
 
-            // Ö÷¶¯ÍÆËÍ, Í¬²½µÈ´ı
-            auto [rsp_status, rsp_rslt] = send_package.push<int>(session_id, "push", req_params...);
-            auto [rsp_status3, rsp_rslt3] = send_package.push<200, int>(session_id, "push", req_params...);
-            auto rsp_status2 = send_package.push(session_id, "push2");
-            // Ö÷¶¯ÍÆËÍ, Òì²½µÈ´ı
-            send_package.push_back(session_id, "push_back", req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
-            send_package.push_back<200>(session_id, "push_back", req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
+            // ä¸»åŠ¨æ¨é€, åŒæ­¥ç­‰å¾…
+            auto [rsp_status, rsp_rslt] = m_rpc_server.push<int>("push", session_id, req_params...);
+            auto [rsp_status3, rsp_rslt3] = m_rpc_server.push<200, int>("push", session_id, req_params...);
+            auto rsp_status2 = m_rpc_server.push("push2", session_id);
+            // ä¸»åŠ¨æ¨é€, å¼‚æ­¥ç­‰å¾…
+            m_rpc_server.push_back("push_back", session_id, req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
+            m_rpc_server.push_back<200>("push_back", session_id, req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
+
+            system("pause");
         }
     };
 
-¿Í»§¶Ë:
+å®¢æˆ·ç«¯:
     class TestClient {
-        typedef BTool::BoostRpc::RpcClient<2000>    rpc_client;
-        rpc_client                                  send_package;
+        typedef RpcClient<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 30000>    rpc_client;
+        rpc_client                                  m_rpc_client;
     public:
         TestClient() {
-            send_package.set_connect_cbk([&](rpc_client::SessionID session_id) { std::cout << "connect" << std::endl; });
-            send_package.set_close_cbk([&](rpc_client::SessionID session_id) { std::cout << "close" << std::endl; });
+            m_rpc_client.register_open_cbk([&](rpc_client::SessionID session_id) { std::cout << "connect" << std::endl; });
+            m_rpc_client.register_close_cbk([&](rpc_client::SessionID session_id) { std::cout << "close" << std::endl; });
         }
         ~TestClient() {}
     public:
         void init(){
-            send_package.connect("127.0.0.1", 61239);
+            m_rpc_client.connect("127.0.0.1", 61239);
 
             BTool::ParallelTaskPool pool;
             pool.start();
-            // Í¬²½°ó¶¨²»Ö±½Ó·µ»Ø,ĞèÖ÷¶¯·µ»Ø
-            send_package.bind("bind lambda", [this, &pool](rpc_client::SessionID session, const rpc_client::message_head& head, const std::string& rpc_name, int rslt, int rsp_info) {
+            // åŒæ­¥ç»‘å®šä¸ç›´æ¥è¿”å›,éœ€ä¸»åŠ¨è¿”å›
+            m_rpc_client.bind("bind lambda", [this, &pool](m_rpc_client::SessionID session_id, const m_rpc_client::message_head& head, int rslt, int rsp_info) {
                 pool.add_task([=] {
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                    bool rsltbb = send_package.rsp_bind(session, head, rpc_name, rpc_client::msg_status::ok, rslt + rsp_info);
+                    bool rsltbb = m_rpc_client.rsp_bind("bind lambda", session_id, head.req_id_, head.rpc_model_, m_rpc_client::msg_status::ok, rslt + rsp_info);
                 });
             });
 
-            // Í¬²½°ó¶¨Ö±½Ó·µ»Ø
-            send_package.bind_auto("foo_1", &foo_1);
-            send_package.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
-            send_package.bind_auto("set", &set);
-            send_package.bind_auto("add", &add);
-            send_package.bind_auto("add_void", &add_void);
-            send_package.bind_auto("get_tuple", &get_tuple);
-            send_package.bind_auto("lambda", [] {});
-            std::function<void(rpc_client::SessionID, const rpc_client::message_head&, const std::string&, std::future_status, int)> func = [&](rpc_client::SessionID, const rpc_client::message_head&, const std::string&, std::future_status rslt, int rsp_info) {};
-            send_package.bind_auto_functional("functional", func);
+            // åŒæ­¥ç»‘å®šç›´æ¥è¿”å›
+            m_rpc_client.bind_auto("foo_1", &foo_1);
+            m_rpc_client.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
+            m_rpc_client.bind_auto("set", &set);
+            m_rpc_client.bind_auto("add", &add);
+            m_rpc_client.bind_auto("add_void", &add_void);
+            m_rpc_client.bind_auto("get_tuple", &get_tuple);
+            m_rpc_client.bind_auto("lambda", [](NetCallBack::SessionID session_id) {});
+            std::function<int(m_rpc_client::SessionID, int)> func = [&](m_rpc_client::SessionID, int rsp_info)->int {};
+            m_rpc_client.bind_auto_functional("functional", func);
 
-            std::this_thread::sleep_for(std::chrono::seconds(2));
+            // ä¸»åŠ¨æ¨é€, åŒæ­¥ç­‰å¾…
+            auto [rsp_status, rsp_rslt] = m_rpc_client.call<int>("call", session_id, req_params...);
+            auto [rsp_status3, rsp_rslt3] = m_rpc_client.call<200, int>("call", session_id, req_params...);
+            auto rsp_status2 = m_rpc_client.call("push2", session_id);
+            // ä¸»åŠ¨æ¨é€, å¼‚æ­¥ç­‰å¾…
+            m_rpc_client.call_back("push_back", session_id, req_params...)([&](m_rpc_client::SessionID, m_rpc_client::msg_status, rsp_args...) {});
+            m_rpc_client.call_back<200>("push_back", session_id, req_params...)([&](m_rpc_client::SessionID, m_rpc_client::msg_status, rsp_args...) {});
 
-            // Í¬²½µÈ´ı·µ»Ø
-            clock_t start, ends;
-            start = clock();
-            auto [status01, rsp_rslt01] = send_package.call<int>("add", 10, 20);
-            ends = clock();
-            std::cout << "call add int ºÄÊ±:" << ends - start << "; Í¨Ñ¶½á¹û:" << status01 << ";»Øµ÷Ö´ĞĞ½á¹û:" << rsp_rslt01 << std::endl;
-            auto status02 = send_package.call("add_void", 22, 30);
-            start = clock();
-            std::cout << "call add void ºÄÊ±:" << start - ends << "; Í¨Ñ¶½á¹û:" << status02 << std::endl;
-            auto status03 = send_package.call<200>("add_void", 33, 40);
-            ends = clock();
-            std::cout << "call add void ºÄÊ±:" << ends - start << "; Í¨Ñ¶½á¹û:" << status03 << std::endl;
-
-            // Òì²½µÈ´ı·µ»Ø
-            send_package.call_back("call_back", req_params...)([&](rpc_client::SessionID, rpc_client::msg_status, rsp_args...) {});
-            send_package.call_back<200>("call_back", req_params...)([&](rpc_client::SessionID, rpc_client::msg_status, rsp_args...) {});
+            system("pause");
         }
     };
 
-/************************************************************************/
+#include <iostream>
+#include "utility/boost_net/rpc_base.hpp"
+
+using namespace BTool;
+using namespace BTool::BoostNet;
+int main() {
+    int msg = 88;
+    RpcService<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 100000> service;
+    service.listen("192.168.50.31", 41207);
+    NetCallBack::SessionID session_id = 1;
+    auto status3 = service.push("ReqHeartBeat", session_id, msg);
+    auto [status4, rsp_msg4] = service.push<int>("ReqHeartBeat", session_id, msg);
+    service.push_back("ReqHeartBeat", session_id, msg)([](NetCallBack::SessionID session_id, msg_status status, int rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << "; status:" << (int)status
+            << std::endl;
+        });
+
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+
+
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+
+    system("pause");
+
+    RpcClient<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 100000> client;
+    client.connect("192.168.50.31", 41207);
+
+    auto status = client.call("req", msg);
+    auto [status2, rsp_msg] = client.call<int>("req", msg);
+
+    client.call_back("ReqHeartBeat", msg)([](NetCallBack::SessionID session_id, msg_status status, int rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << "; status:" << (int)status
+            << std::endl;
+        });
+
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee)->bool {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return false;
+        });
+
+
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee) {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        });
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee)->int {
+        std::cout << "session_id:" << session_id
+            << std::endl;
+        return int();
+        });
+}
+
+*/
 
 #pragma once
 #include <memory>
-#include <deque>
-#include <future>
 #include <string>
+#include <vector>
+#include <tuple>
+#include <functional>
+#include <future>
+#include "tcp_server.hpp"
+#include "../timer_manager.hpp"
 
-#include "utility/timer_manager.hpp"
-#include "utility/boost_net/tcp_server.hpp"
-
-namespace BTool::BoostRpc {
-
-#pragma region ´ò°ü·¢ËÍ¼°½âÎö¹¤¾ß
-    class pkg_helper_base {
-    public:
+namespace BTool
+{
+    namespace BoostNet
+    {
         enum class msg_status : uint8_t {
-            ok,             // ·şÎñ¶ËÖ´ĞĞÕıÈ·
-            fail,           // ·şÎñ¶ËÖ´ĞĞÊ§°Ü
-            timeout,        // µÈ´ıÓ¦´ğ³¬Ê±
-            unpack_error,   // ½âÎöÊı¾İÊ§°Ü
-            send_error      // ·¢ËÍÊ§°Ü
+            ok,             // æœåŠ¡ç«¯æ‰§è¡Œæ­£ç¡®
+            fail,           // æœåŠ¡ç«¯æ‰§è¡Œå¤±è´¥
+            timeout,        // ç­‰å¾…åº”ç­”è¶…æ—¶
+            unpack_error,   // è§£ææ•°æ®å¤±è´¥
+            send_error,     // å‘é€å¤±è´¥
+            wait_error      // ç­‰å¾…å¤±è´¥
         };
 
-        // ·â×°ÏûÏ¢Ä£Ê½
-        enum class PkgModel : uint8_t {
-            Msg,            // ²ÉÓÃmsgÄÚ´æĞÎÊ½·â×°
-            Protobuf,       // ²ÉÓÃprotobufĞÎÊ½·â×°
+        // è°ƒç”¨è¿œç¨‹æœåŠ¡æ¨¡å¼
+        enum class rpc_model : uint8_t {
+            future,         // è¯·æ±‚ç«¯åŒæ­¥ç­‰å¾…è¯·æ±‚ç»“æœ, åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œå¹¶è‡ªåŠ¨è¿”å›å‡½æ•°è¿”å›å€¼
+            callback,       // è¯·æ±‚ç«¯å¼‚æ­¥è¿”å›è¯·æ±‚ç»“æœ, åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œå¹¶è‡ªåŠ¨è¿”å›å‡½æ•°è¿”å›å€¼
+            bind            // bind_auto:åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œè®¢é˜…, è‡ªåŠ¨è¿”å›å‡½æ•° / bind:åº”ç­”ç«¯å¼‚æ­¥æ‰§è¡Œè®¢é˜…, éœ€ä¸»åŠ¨æ˜¾å¼è¿”å›
         };
 
-    protected:
-        pkg_helper_base() = default;
-        virtual ~pkg_helper_base() {}
-    };
-
-    template<pkg_helper_base::PkgModel>
-    class pkg_helper : public pkg_helper_base {};
-
-#pragma region ÄÚ²¿¶¨Òå´ò°ü·½Ê½ÌØ»¯ÊµÏÖ
-    template<>
-    class pkg_helper<pkg_helper_base::PkgModel::Msg> : public pkg_helper_base {
-    public:
-        pkg_helper(std::string_view data) { 
-            data_.load(data); 
-        }
-        // »ñÈ¡ÇëÇó
-        template<typename Type = void>
-        typename std::enable_if<std::is_void<Type>::value, Type>::type
-            get_req_params(msg_status& status) {
-            status = msg_status::ok;
-        }
-        template<typename Type>
-        typename std::enable_if<!std::is_void<Type>::value, Type>::type
-            get_req_params(msg_status& status) {
-            if (data_.size() < sizeof(Type)) {
-                status = msg_status::unpack_error;
-                return Type();
-            }
-            status = msg_status::ok;
-            return data_.read_args<Type>();
-        }
-        template<typename Type1, typename Type2, typename... TParams>
-        decltype(auto) get_req_params(msg_status& status) {
-            status = msg_status::ok;
-            return data_.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
-        }
-
-        // »ñÈ¡Ó¦´ğ
-        template<typename Type>
-        typename std::enable_if<std::is_void<Type>::value, Type>::type
-            get_rsp_params(msg_status& status) {
-            data_.read(&status);
-        }
-        template<typename Type>
-        typename std::enable_if<!std::is_void<Type>::value, Type>::type
-            get_rsp_params(msg_status& status) {
-            if (data_.size() < sizeof(msg_status)) {
-                status = msg_status::unpack_error;
-                return Type();
-            }
-            data_.read(&status);
-
-            if (status > msg_status::send_error) {
-                status = msg_status::unpack_error;
-                return Type();
-            }
-
-            if (status == msg_status::fail || data_.size() < sizeof(msg_status) + sizeof(Type)) {
-                return Type();
-            }
-
-            return data_.read_args<Type>();
-        }
-    private:
-        BTool::MemoryStream data_;
-    };
-#pragma endregion
-
-#pragma region protobuf·â×°µÄÍ¬²½µ÷ÓÃÇëÇó½á¹û
-    //template<>
-    //class pkg_helper<pkg_helper_base::PkgModel::Protobuf> : public pkg_helper_base {
-    //public:
-    //    pkg_helper(std::string_view data) : data_(data) {}
-    //    void get_req_params(msg_status& status) { assert(0); }
-    //    template<typename Type>
-    //    typename std::enable_if<!std::is_void<Type>::value, Type>::type
-    //        get_req_params(msg_status& status) {
-    //        assert(0);
-    //        return Type();
-    //    }
-    //    template<typename ...TParams>
-    //    auto get_req_params(msg_status& status) {
-    //        assert(0);
-    //        return std::tuple<typename std::decay<TParams>::type...>{};
-    //    }
-
-    //    void get_rsp_params(msg_status& status) { assert(0); }
-    //    template<typename Type>
-    //    Type get_rsp_params(msg_status& status) {
-    //        assert(0);
-    //        return Type();
-    //    }
-    //private:
-    //    std::string_view data_;
-
-    //};
-    //typedef std::shared_ptr<pkg_helper<PkgModel::Protobuf>> pb_pkg_helper_ptr;
-#pragma endregion
-
-#pragma endregion
-
-    template<size_t DEFAULT_TIMEOUT, pkg_helper_base::PkgModel pkg_model>
-    class RpcBase : public BTool::BoostNet::NetCallBack {
-    protected:
-
-        typedef pkg_helper_base::PkgModel           PkgModel;
-        typedef pkg_helper_base::msg_status         msg_status;
-        typedef typename pkg_helper<pkg_model>      pkg_helper_handler;
-        typedef std::shared_ptr<pkg_helper_handler> pkg_helper_ptr;
-
-        RpcBase(int async_thread_num) : m_async_timer(200, async_thread_num){}
-        virtual ~RpcBase() {
-            m_async_timer.stop();
-            m_future_map.clear();
-            m_callback_map.clear();
-            m_bind_map.clear();
-        }
-
-    public:
-#pragma region Í¨Ñ¶¶¨Òå
-        // µ÷ÓÃÔ¶³Ì·şÎñÄ£Ê½
-        enum class RpcModel : uint8_t {
-            Future,         // ÇëÇó¶ËÍ¬²½µÈ´ıÇëÇó½á¹û, Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ²¢×Ô¶¯·µ»Øº¯Êı·µ»ØÖµ
-            Callback,       // ÇëÇó¶ËÒì²½·µ»ØÇëÇó½á¹û, Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ²¢×Ô¶¯·µ»Øº¯Êı·µ»ØÖµ
-            Bind            // bind_auto:Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ¶©ÔÄ, ×Ô¶¯·µ»Øº¯Êı / bind:Ó¦´ğ¶ËÒì²½Ö´ĞĞ¶©ÔÄ, ĞèÖ÷¶¯ÏÔÊ½·µ»Ø
+        // è¯·æ±‚åº”ç­”æ¨¡å¼
+        enum class comm_model : uint8_t {
+            request,
+            rsponse,
         };
-        // ÇëÇóÓ¦´ğÄ£Ê½
-        enum class CommModel : uint8_t {
-            Request,
-            Rsponse,
+
+        struct error {
+            error() : status_(msg_status::ok), msg_("") {}
+            error(msg_status status, std::string_view msg)
+                : status_(status), msg_(msg) {}
+
+            msg_status          status_;
+            std::string_view    msg_;
         };
+
 #pragma pack (1)
         struct message_head {
-            CommModel       comm_model_;
-            PkgModel        pkg_model_;
-            RpcModel        rpc_model_;
+            comm_model      comm_model_;
+            rpc_model       rpc_model_;
             uint32_t        req_id_;
-            uint8_t         title_size_;   // ×î¶à255
-            uint32_t        content_size_; // ×î¶à4,294,967,295
+            uint8_t         title_size_;   // æœ€å¤š255
+            uint32_t        content_size_; // æœ€å¤š4,294,967,295
         };
 #pragma pack ()
 
-#pragma endregion
+        template<typename TProxyMsgHandle>
+        struct ProxyMsg {
+            template<typename ...Args>
+            ProxyMsg(const std::string& rpc_name, const message_head& head, Args&& ...args)
+                : rpc_name_(rpc_name)
+                , head_(head)
+            {
+                msg_.append_args(std::forward<Args>(args)...);
+                msg_.reset_offset(0);
+            }
+            template<typename ...Args>
+            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, Args&& ...args)
+                : rpc_name_(rpc_name)
+                , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), 0 })
+            {
+                msg_.append_args(std::forward<Args>(args)...);
+                msg_.reset_offset(0);
+                head_.content_size_ = msg_.size();
+            }
+            ProxyMsg(const std::string& rpc_name, const message_head& head, std::string_view msg)
+                : rpc_name_(rpc_name)
+                , head_(head)
+            {
+                msg_.load(msg);
+            }
+            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, std::string_view msg)
+                : rpc_name_(rpc_name)
+                , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), uint32_t(msg.length()) })
+            {
+                msg_.load(msg);
+            }
+            virtual ~ProxyMsg() {}
 
-    public:
-        // ÉèÖÃÁ¬½Ó×´Ì¬»Øµ÷
-        template<typename TFunction = std::function<void(SessionID)>>
-        void set_connect_cbk(TFunction&& func) {
-            m_connect_cbk = std::forward<TFunction>(func);
-        }
-        // ÉèÖÃ¹Ø±Õ»Øµ÷
-        template<typename TFunction = std::function<void(SessionID)>>
-        void set_close_cbk(TFunction&& func) {
-            m_close_cbk = std::forward<TFunction>(func);
-        }
-        // Ö÷¶¯·µ»ØbindÇëÇó
-        template<typename... Args>
-        bool rsp_bind(SessionID session_id, const message_head& head, const std::string& rpc_name, msg_status status, Args&&... args) {
-            return write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name, status, std::forward<Args>(args)...);
-        }
+            inline uint32_t get_req_id() const {
+                return head_.req_id_;
+            }
+            inline comm_model get_comm_model() const {
+                return head_.comm_model_;
+            }
+            inline rpc_model get_rpc_model() const {
+                return head_.rpc_model_;
+            }
+            inline const std::string& get_rpc_name()const {
+                return rpc_name_;
+            }
+            inline const message_head& get_message_head() const {
+                return head_;
+            }
+            inline const char* get_package() const {
+                return msg_.data();
+            }
+            inline size_t get_length() const {
+                return msg_.get_length();
+            }
 
-#pragma region call_back ÇëÇó²Ù×÷¶¨Òå
-        // »Øµ÷¸¨Öú²Ù×÷Àà
-        template<size_t TIMEOUT, typename TTuple>
-        struct call_back_req_op {
-            call_back_req_op(RpcBase* parent, SessionID session_id, const std::string& rpc_name, TTuple&& tp)
-                : parent_(parent)
-                , session_id_(session_id)
-                , rpc_name_(rpc_name)
-                , tp_(std::forward<TTuple>(tp)) {}
+            template<typename... TParams>
+            decltype(auto) get_req_params(msg_status& status) {
+                return handle_.get_req_params<TParams...>(msg_, status);
+            }
+
+            template<typename Type = void>
+            decltype(auto) get_rsp_params(msg_status& status) {
+                return handle_.get_rsp_params<Type>(msg_, status);
+            }
+
+        protected:
+            std::string     rpc_name_;
+            message_head    head_;
+            MemoryStream    msg_;
+            TProxyMsgHandle handle_;
+        };
+
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle>
+        struct ProxyPkg {
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>> TProxyMsgPtr;
+
+            template<typename... TParams>
+            TProxyMsgPtr package_msg(const std::string& rpc_name, comm_model comm_model, rpc_model model, uint32_t req_id, msg_status status, TParams&&... args) {
+                return handle_.package_msg(rpc_name, comm_model, model, req_id, status, std::forward<TParams>(args)...);
+            }
+            // è¿”å›: æ¶ˆæ¯é›†åˆ, å¤„ç†é•¿åº¦, é”™è¯¯ä¿¡æ¯
+            std::tuple<std::vector<TProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
+                return handle_.unpackage_msg(msg, bytes_transferred);
+            }
+        protected:
+            TProxyPkgHandle<TProxyMsgHandle>  handle_;
+        };
+
+        struct DefaultProxyMsgHandle {
+            // è·å–è¯·æ±‚
+            template<typename Type = void>
+            typename std::enable_if<std::is_void<Type>::value, Type>::type
+                get_req_params(MemoryStream& msg, msg_status& status) {
+                if (msg.size() < sizeof(msg_status)) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+                msg.read(&status);
+            }
+            template<typename Type>
+            typename std::enable_if<!std::is_void<Type>::value, Type>::type
+                get_req_params(MemoryStream& msg, msg_status& status) {
+                if (msg.size() < sizeof(Type) + sizeof(msg_status)) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+                msg.read(&status);
+                return msg.read_args<Type>();
+            }
+            template<typename Type1, typename Type2, typename... TParams>
+            decltype(auto) get_req_params(MemoryStream& msg, msg_status& status) {
+                msg.read(&status);
+                return msg.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
+            }
+
+            template<typename Type = void>
+            typename std::enable_if<std::is_void<Type>::value, Type>::type
+                get_rsp_params(MemoryStream& msg, msg_status& status) {
+                if (msg.size() < sizeof(msg_status)) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+                msg.read(&status);
+            }
+            template<typename Type>
+            typename std::enable_if<!std::is_void<Type>::value, Type>::type
+                get_rsp_params(MemoryStream& msg, msg_status& status) {
+                if (msg.size() < sizeof(msg_status) + sizeof(Type)) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+
+                msg.read(&status);
+                if (status > msg_status::send_error) {
+                    status = msg_status::unpack_error;
+                    return Type();
+                }
+                return msg.read_args<Type>();
+            }
+        };
+
+        template<typename TProxyMsgHandle>
+        class DefaultProxyPkgHandle {
         public:
-            // lambda
-            template<typename TCallbackFunc>
-            void operator()(TCallbackFunc&& callback) {
-                functional(parent_->from_lambad(std::forward<TCallbackFunc>(callback)));
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>> TProxyMsgPtr;
+
+            template<typename... Args>
+            TProxyMsgPtr package_msg(const std::string& rpc_name, comm_model comm_model, rpc_model model, uint32_t req_id, msg_status status, Args&&... args) {
+                BTool::MemoryStream content_buffer;
+                content_buffer.append(status);
+                content_buffer.append_args(std::forward<Args>(args)...);
+
+                uint8_t title_size = (uint8_t)rpc_name.length();
+                message_head head{ comm_model, model, req_id, title_size, (uint32_t)content_buffer.size() };
+
+                BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_buffer.size());
+
+                // head
+                write_buffer.append(head);
+
+                // rpc_name
+                write_buffer.append(rpc_name.c_str(), title_size);
+
+                // content
+                write_buffer.append(content_buffer.data(), content_buffer.size());
+
+                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), write_buffer.string_view());
             }
-            // std::functional
+            std::tuple<std::vector<TProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
+                std::vector<TProxyMsgPtr>  resault;
+                BTool::MemoryStream read_buffer(const_cast<char*>(msg), bytes_transferred);
+                while (read_buffer.get_res_length() >= sizeof(struct message_head)) {
+                    // è¯»å–,è‡ªå¸¦æ¼‚ç§»
+                    message_head cur_head;
+                    // head
+                    read_buffer.read(&cur_head);
+
+                    // å¼‚å¸¸åŒ…
+                    if (cur_head.title_size_ == 0 || cur_head.content_size_ > (uint32_t)(-1) / 2) {
+                        return { std::vector<TProxyMsgPtr>(), 0, error(msg_status::send_error, "å¼‚å¸¸åŒ…") };
+                    }
+
+                    // æ–­åŒ…åˆ¤æ–­
+                    if (read_buffer.get_res_length() < cur_head.title_size_ + cur_head.content_size_) {
+                        return { resault, read_buffer.get_length() - sizeof(struct message_head), error() };
+                    }
+
+                    // rpc_name
+                    std::string rpc_name(msg + read_buffer.get_offset(), cur_head.title_size_);
+                    read_buffer.add_offset(cur_head.title_size_);
+
+                    // content
+                    std::string_view content(msg + read_buffer.get_offset(), cur_head.content_size_);
+                    read_buffer.add_offset(cur_head.content_size_);
+
+                    auto item = std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, cur_head, content);
+                    resault.push_back(item);
+                }
+                return { resault, read_buffer.get_length(), error() };
+            }
+        };
+
+        template<typename TProxyMsgHandle>
+        class SyncProxy {
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>          TProxyMsgPtr;
+            typedef std::shared_ptr<std::promise<TProxyMsgPtr>>         PromisePtr;
+
+        public:
+            void invoke(const TProxyMsgPtr& item) {
+                uint32_t req_id = item->get_req_id();
+                auto promise = get_promise(req_id);
+                if (promise)
+                    promise->set_value(item);
+            }
+
+            uint32_t get_next_promise() {
+                PromisePtr p = std::make_shared<std::promise<TProxyMsgPtr>>();
+                writeLock lock(m_mtx);
+                m_future_map.emplace(++m_cur_req_id, p);
+                return m_cur_req_id;
+            }
+
+            std::tuple<msg_status, TProxyMsgPtr> wait_for(uint32_t req_id, size_t milliseconds) {
+                PromisePtr promise = get_promise(req_id);
+                auto future = std::move(promise->get_future());
+                auto future_status = future.wait_for(std::chrono::milliseconds(milliseconds));
+                remove(req_id);
+                if (future_status != std::future_status::ready) {
+                    return std::forward_as_tuple(msg_status::timeout, nullptr);
+                }
+                return std::forward_as_tuple(msg_status::ok, future.get());
+            }
+            void remove(uint32_t req_id) {
+                writeLock lock(m_mtx);
+                m_future_map.erase(req_id);
+            }
+        private:
+            PromisePtr get_promise(uint32_t req_id) {
+                readLock lock(m_mtx);
+                auto iter = m_future_map.find(req_id);
+                if (iter == m_future_map.end()) {
+                    return nullptr;
+                }
+                return iter->second;
+            }
+        private:
+            rwMutex                                         m_mtx;
+            uint32_t                                        m_cur_req_id = 0;
+            std::unordered_map<uint32_t, PromisePtr>        m_future_map;
+        };
+
+        template<typename TProxyMsgHandle>
+        class CallbackProxy {
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>  TProxyMsgPtr;
+            typedef NetCallBack::SessionID                      SessionID;
+            // å›è°ƒæ¨¡å¼å†…éƒ¨è§£æå‡½æ•°
+            typedef std::function<void(SessionID, msg_status, TProxyMsgPtr)>       rsp_callback_function_type;
+
+            struct session_timer_st {
+                SessionID               session_id_;
+                TimerManager::TimerId   timer_id_;
+            };
+
+        public:
+            CallbackProxy() : m_deadline_timer(1000, 0) { m_deadline_timer.start(); }
+
+            void invoke(const TProxyMsgPtr& msg) {
+                std::unique_lock<std::mutex> lock(m_mtx);
+                auto sesson_timer = remove_timer(msg->get_req_id());
+
+                auto iter = m_callback_map.find(msg->get_req_id());
+                if (iter == m_callback_map.end())
+                    return;
+                iter->second(sesson_timer.session_id_, msg_status::ok, msg);
+                m_callback_map.erase(iter);
+            }
+
             template<typename TReturn, typename... TParams>
-            void functional(const std::function<TReturn(SessionID, msg_status, TParams...)>& callback) {
-                write_msg(parent_->insert_callback(callback));
+            inline uint32_t insert(size_t overtime, const std::function<TReturn(SessionID, msg_status, TParams...)>& callback) {
+                std::unique_lock<std::mutex> lock(m_mtx);
+                ++m_cur_req_id;
+                m_callback_map.emplace(m_cur_req_id, std::bind(&CallbackProxy::proxy<TParams...>, this, callback, m_cur_req_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                return m_cur_req_id;
             }
             template<typename TReturn, typename... TParams>
-            void functional(std::function<TReturn(SessionID, msg_status, TParams...)>&& callback) {
-                write_msg(parent_->insert_callback(std::move(callback)));
+            inline uint32_t insert(std::function<TReturn(SessionID, msg_status, TParams...)>&& callback) {
+                std::unique_lock<std::mutex> lock(m_mtx);
+                ++m_cur_req_id;
+                m_callback_map.emplace(m_cur_req_id, std::bind(&CallbackProxy::proxy<TParams...>, this, std::move(callback), m_cur_req_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+                return m_cur_req_id;
             }
-            // &functional
-            template<typename TReturn, typename... TParams>
-            void operator()(TReturn(*callback)(SessionID, msg_status, TParams...)) {
-                functional(std::function<TReturn(SessionID, msg_status, TParams...)>(callback));
+
+            void insert_timer(size_t overtime, SessionID session_id, uint32_t req_id) {
+                session_timer_st session_timer = { session_id, 0 };
+                session_timer.timer_id_ = m_deadline_timer.insert_duration_once(overtime, [this, req_id](TimerManager::TimerId, const TimerManager::system_time_point&) {
+                    remove(req_id, msg_status::timeout);
+                });
+                std::unique_lock<std::mutex> lock(m_mtx);
+                m_overtime_reqs.emplace(req_id, std::move(session_timer));
             }
-            // &object::functional, object
-            template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
-            void operator()(TReturn(TObjClass::* callback)(SessionID, msg_status, TParams...), TObject* obj) {
-                operator()([=](SessionID session_id, msg_status status, TParams... ps)->TReturn { return (obj->*callback)(session_id, status, ps...); });
+
+            void remove(uint32_t req_id, msg_status status) {
+                std::unique_lock<std::mutex> lock(m_mtx);
+                auto sesson_timer = remove_timer(req_id);
+
+                auto iter = m_callback_map.find(req_id);
+                if (iter == m_callback_map.end())
+                    return;
+                iter->second(sesson_timer.session_id_, status, nullptr);
+                m_callback_map.erase(iter);
             }
 
         private:
-            void write_msg(uint32_t req_id) {
-                if (!parent_->write_msg(session_id_, CommModel::Request, RpcModel::Callback, req_id, rpc_name_, std::move(tp_))) {
-                    parent_->m_async_timer.insert_now_once([parent = parent_, req_id, session_id = session_id_](BTool::TimerManager::TimerId, const BTool::TimerManager::system_time_point&) {
-                        parent->remove_callback(session_id, req_id, msg_status::send_error);
-                    });
+            session_timer_st remove_timer(uint32_t req_id) {
+                session_timer_st sesson_timer = { 0 };
+                auto timer_iter = m_overtime_reqs.find(req_id);
+                if (timer_iter != m_overtime_reqs.end()) {
+                    sesson_timer = std::move(timer_iter->second);
+                    m_deadline_timer.erase(sesson_timer.timer_id_);
+                    m_overtime_reqs.erase(timer_iter);
+                }
+                return sesson_timer;
+            }
+
+            template<typename... TParams>
+            void proxy(std::function<void(SessionID, msg_status, TParams...)>& func, uint32_t req_id,  SessionID session_id, msg_status status, TProxyMsgPtr msg) {
+                using args_type = std::tuple<typename std::decay<TParams>::type...>;
+                // æœ¬èº«å‘é€å¤±è´¥
+                if (status != msg_status::ok || !msg) {
+                    std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
+                    return;
+                }
+                if constexpr (sizeof...(TParams) == 0) {
+                    msg->get_rsp_params(status);
+                    std::apply(func, std::forward_as_tuple(session_id, status));
                 }
                 else {
-                    auto timer_id = parent_->m_async_timer.insert_duration_once(TIMEOUT, [parent = parent_, req_id, session_id = session_id_](BTool::TimerManager::TimerId, const BTool::TimerManager::system_time_point&) {
-                       parent->remove_callback(session_id, req_id, msg_status::timeout);
-                    });
-                    parent_->emplace_timer_id(req_id, timer_id);
+                    auto comm_rslt = msg->get_rsp_params<args_type>(status);
+                    std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), std::move(comm_rslt)));
                 }
             }
 
         private:
-            RpcBase*        parent_;
-            std::string     rpc_name_;
-            SessionID       session_id_;
-            TTuple          tp_;
+            // å®šæ—¶åˆ é™¤ä»»åŠ¡
+            TimerManager                                                    m_deadline_timer;
+            // æ•°æ®å®‰å…¨é”
+            std::mutex                                                      m_mtx;
+            // å½“å‰è¯·æ±‚id
+            uint32_t                                                        m_cur_req_id = 0;
+            // req_id, timer_id
+            std::unordered_map<uint32_t, session_timer_st>                  m_overtime_reqs;
+            // callbackå‡½æ•°ç»‘å®šé›†åˆ
+            std::unordered_map<uint32_t, rsp_callback_function_type>        m_callback_map;
         };
+
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        class RpcBase {
+        protected:
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>  TProxyMsgPtr;
+            typedef std::shared_ptr<std::promise<TProxyMsgPtr>> PromisePtr;
+            typedef NetCallBack::SessionID                      SessionID;
+
+        public:
+#pragma region call_back è¯·æ±‚æ“ä½œå®šä¹‰
+            // å›è°ƒè¾…åŠ©æ“ä½œç±»
+            template<size_t TIMEOUT, typename TTuple>
+            struct callback_req_op {
+                callback_req_op(RpcBase* parent, const std::string& rpc_name, SessionID session_id, TTuple&& tp)
+                    : parent_(parent)
+                    , rpc_name_(rpc_name)
+                    , session_id_(session_id)
+                    , tp_(std::forward<TTuple>(tp)) {}
+            public:
+                // lambda
+                template<typename TCallbackFunc>
+                void operator()(TCallbackFunc&& callback) {
+                    functional(parent_->from_lambad(std::forward<TCallbackFunc>(callback)));
+                }
+                // std::functional
+                template<typename TReturn, typename... TParams>
+                void functional(const std::function<TReturn(SessionID, msg_status, TParams...)>& callback) {
+                    write_msg(parent_->m_callback_proxy.insert(callback), std::move(tp_));
+                }
+                template<typename TReturn, typename... TParams>
+                void functional(std::function<TReturn(SessionID, msg_status, TParams...)>&& callback) {
+                    write_msg(parent_->m_callback_proxy.insert(std::move(callback)), std::move(tp_));
+                }
+                // &functional
+                template<typename TReturn, typename... TParams>
+                void operator()(TReturn(*callback)(SessionID, msg_status, TParams...)) {
+                    functional(std::function<TReturn(SessionID, msg_status, TParams...)>(callback));
+                }
+                // &object::functional, object
+                template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
+                void operator()(TReturn(TObjClass::* callback)(SessionID, msg_status, TParams...), TObject* obj) {
+                    operator()([=](SessionID session_id, msg_status status, TParams... ps)->TReturn { return (obj->*callback)(session_id, status, ps...); });
+                }
+
+            private:
+                template<typename... Args>
+                void write_msg(uint32_t req_id, std::tuple<Args...>&& tp) {
+                    write_msg_impl(req_id, typename std::make_index_sequence<sizeof...(Args)>{}, std::move(tp));
+                }
+                template<size_t... Indexes, typename... Args>
+                void write_msg_impl(uint32_t req_id, const std::index_sequence<Indexes...>&, std::tuple<Args...>&& tp) {
+                    parent_->callback_send(TIMEOUT, rpc_name_, session_id_, req_id, std::move(std::get<Indexes>(tp))...);
+                }
+            private:
+                RpcBase*        parent_;
+                std::string     rpc_name_;
+                SessionID       session_id_;
+                TTuple          tp_;
+            };
 #pragma endregion
 
-#pragma region bind_auto ÇëÇó, º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
-        // lambda
-        // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
-        template<typename TBindFunc>
-        inline void bind_auto(const std::string& rpc_name, TBindFunc&& bindfunc) {
-            bind_auto_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
-        }
-        // std::functional
-        // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
-        template<typename TReturn, typename... TParams>
-        inline void bind_auto_functional(const std::string& rpc_name, std::function<TReturn(TParams...)> bindfunc) {
-            m_bind_map[rpc_name] = std::bind(&RpcBase::bindautoproxy<TReturn, TParams...>, this, bindfunc, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-        }
-        // &functional
-        // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
-        template<typename TReturn, typename... TParams>
-        inline void bind_auto(const std::string& rpc_name, TReturn(*bindfunc)(TParams...)) {
-            bind_auto_functional(rpc_name, std::function<TReturn(TParams...)>(bindfunc));
-        }
-        // &object::functional, object
-        // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
-        template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
-        inline void bind_auto(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(TParams...), TObject* obj) {
-            bind_auto(rpc_name, [=](TParams... ps)->TReturn { return (obj->*bindfunc)(ps...); });
-        }
+        public:
+#pragma region bind && bind_auto
+            // lambda
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
+            template<typename TBindFunc>
+            inline void bind(const std::string& rpc_name, TBindFunc&& bindfunc) {
+                bind_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
+            }
+            // std::functional
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
+            template<typename TReturn, typename... TParams>
+            inline void bind_functional(const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, TParams...)> bindfunc) {
+                m_bind_map[rpc_name] = std::bind(&RpcBase::bind_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+            }
+            // &functional
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
+            template<typename TReturn, typename... TParams>
+            inline void bind(const std::string& rpc_name, TReturn(*bindfunc)(SessionID, const message_head&, TParams...)) {
+                bind_functional(rpc_name, std::function<TReturn(SessionID, const message_head&, TParams...)>(bindfunc));
+            }
+            // &object::functional, object
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
+            template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
+            inline void bind(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(SessionID, const message_head&, TParams...), TObject* obj) {
+                bind(rpc_name, [=](SessionID session_id, const message_head& head, TParams... ps)->TReturn { return (obj->*bindfunc)(session_id, head, ps...); });
+            }
+
+            // lambda
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
+            template<typename TBindFunc>
+            inline void bind_auto(const std::string& rpc_name, TBindFunc&& bindfunc) {
+                bind_auto_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
+            }
+            // std::functional
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
+            template<typename TReturn, typename... TParams>
+            inline void bind_auto_functional(const std::string& rpc_name, std::function<TReturn(SessionID, TParams...)> bindfunc) {
+                m_bind_map[rpc_name] = std::bind(&RpcBase::bind_auto_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+            }
+            // &functional
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
+            template<typename TReturn, typename... TParams>
+            inline void bind_auto(const std::string& rpc_name, TReturn(*bindfunc)(SessionID, TParams...)) {
+                bind_auto_functional(rpc_name, std::function<TReturn(SessionID, TParams...)>(bindfunc));
+            }
+            // &object::functional, object
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
+            template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
+            inline void bind_auto(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(SessionID, TParams...), TObject* obj) {
+                bind_auto(rpc_name, [=](SessionID session_id, TParams... ps)->TReturn { return (obj->*bindfunc)(session_id, ps...); });
+            }
+
+            template<typename... Args>
+            bool rsp_bind(const std::string& rpc_name, SessionID session_id, uint32_t req_id, rpc_model model, msg_status status, Args&&... args) {
+                auto unit = m_proxy_deal.package_msg(rpc_name, comm_model::rsponse, model, req_id, status, std::forward<Args>(args)...);
+                return write_impl(session_id, unit->get_package(), unit->get_length());
+            }
+
 #pragma endregion
 
-#pragma region bind ÇëÇó, Ğè¶îÍâÖ÷¶¯ÏÔÊ½·µ»Ø½á¹û
-        // lambda
-        // Ğè¶îÍâÖ÷¶¯ÏÔÊ½·µ»Ø½á¹û
-        // º¯Êı±ØĞë²ÎÊı(SessionID, const message_head&, const std::string& /*rpc_name*/, ...)
-        template<typename TBindFunc>
-        inline void bind(const std::string& rpc_name, TBindFunc&& bindfunc) {
-            bind_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
-        }
-        // std::functional
-        // Ğè¶îÍâÖ÷¶¯ÏÔÊ½·µ»Ø½á¹û
-        // º¯Êı±ØĞë²ÎÊı(SessionID, const message_head&, const std::string& /*rpc_name*/, ...)
-        template<typename TReturn, typename... TParams>
-        inline void bind_functional(const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, const std::string&, TParams...)> bindfunc) {
-            m_bind_map[rpc_name] = std::bind(&RpcBase::bindproxy<TReturn, TParams...>, this, bindfunc, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-        }
-        // &functional
-        // Ğè¶îÍâÖ÷¶¯ÏÔÊ½·µ»Ø½á¹û
-        // º¯Êı±ØĞë²ÎÊı(SessionID, const message_head&, const std::string& /*rpc_name*/, ...)
-        template<typename TReturn, typename... TParams>
-        inline void bind(const std::string& rpc_name, TReturn(*bindfunc)(SessionID, const message_head&, const std::string&, TParams...)) {
-            bind_functional(rpc_name, std::function<TReturn(SessionID, const message_head&, const std::string&, TParams...)>(bindfunc));
-        }
-        // &object::functional, object
-        // Ğè¶îÍâÖ÷¶¯ÏÔÊ½·µ»Ø½á¹û
-        // º¯Êı±ØĞë²ÎÊı(SessionID, const message_head&, const std::string& /*rpc_name*/, ...)
-        template<typename TReturn, typename TObjClass, typename TObject, typename... TParams>
-        inline void bind(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(SessionID, const message_head&, const std::string&, TParams...), TObject* obj) {
-            bind(rpc_name, [=](SessionID session_id, const message_head& head, const std::string& rpc_name, TParams... ps)->TReturn { return (obj->*bindfunc)(session_id, head, rpc_name, ps...); });
-        }
+        protected:
+#pragma region å¼‚æ­¥è°ƒç”¨å‘é€ä¿¡æ¯
+            template<typename... Args>
+            void callback_send(size_t overtime, const std::string& rpc_name, SessionID session_id, uint32_t req_id, Args&&... args) {
+                m_callback_proxy.insert_timer(overtime, session_id, req_id);
+                // todo... åæœŸè€ƒè™‘å°†è¯¥æ–¹æ³•ç§»åŠ¨è‡³å…¶ç»§æ‰¿ç±»è‡ªèº«å®ç°, å…å»TProxyPkgHandleçš„å¼•å…¥
+                auto unit = m_proxy_deal.package_msg(rpc_name, comm_model::request, rpc_model::callback, req_id, msg_status::ok, std::forward<Args>(args)...);
+                if (!write_impl(session_id, unit->get_package(), unit->get_length())) {
+                    m_callback_proxy.remove(req_id, msg_status::send_error);
+                }
+            }
 #pragma endregion
 
-    protected:
-#pragma region tcp»Øµ÷
-        // ¿ªÆôÁ¬½Ó»Øµ÷
-        void on_open_cbk(SessionID session_id) override {
-            if (m_connect_cbk)
-                m_connect_cbk(session_id);
-        }
-        // ¹Ø±ÕÁ¬½Ó»Øµ÷
-        void on_close_cbk(SessionID session_id) override {
-            if (m_close_cbk)
-                m_close_cbk(session_id);
-        }
-#pragma endregion
-
-#pragma region º¯Êı×ª»»
-        template <typename T> struct function_traits_base {
-            typedef T type;
-        };
-        template <typename TObjClass, typename TReturn, typename... TParams>
-        struct function_traits_base<TReturn(TObjClass::*)(TParams...) const> {
-            typedef std::function<TReturn(TParams...)> type;
-        };
-        template <typename TFunction>
-        struct lambda_traits : public function_traits_base<decltype(&TFunction::operator())> {};
-        template<typename TFunction >
-        struct functional_traits : public function_traits_base<TFunction> {};
-        template<typename TFunction>
-        typename lambda_traits<TFunction>::type from_lambad(TFunction&& func) {
-            return func;
-        }
-        template<typename TFunction>
-        typename functional_traits<TFunction>::type from_functional(TFunction&& func) {
-            return func;
-        }
-#pragma endregion
-
-    protected:
-#pragma region Í¬²½µ÷ÓÃ, ´æÔÚ×èÈû
-        // ÎŞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
-        template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
-        typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
-            sync_send(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            auto [status, id, future] = this->sync_msg_req<TIMEOUT, RpcModel::Future>(session_id, rpc_name, std::forward<Args>(args)...);
-            if (status == msg_status::ok)
-                future->get_rsp_params<TReturn>(status);
-            return status;
-        }
-        // ÓĞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
-        template<size_t TIMEOUT, typename TReturn, typename ...Args>
-        std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
-            sync_send(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            auto [status, id, future] = this->sync_msg_req<TIMEOUT, RpcModel::Future>(session_id, rpc_name, std::forward<Args>(args)...);
-            if (status == msg_status::ok) {
-                auto comm_rslt = future->get_rsp_params<TReturn>(status);
+#pragma region åŒæ­¥è°ƒç”¨å‘é€ä¿¡æ¯, å­˜åœ¨é˜»å¡
+            // æ— è¿”å›å‚æ•° åŒæ­¥è°ƒç”¨,å­˜åœ¨é˜»å¡
+            // è¿”å›å‚æ•°ç±»å‹: msg_status,  è¡¨ç¤ºæœ€ç»ˆçŠ¶æ€
+            template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
+            typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
+                sync_send(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                auto [status, item] = sync_send_impl<TIMEOUT>(rpc_name, session_id, std::forward<Args>(args)...);
+                if (status == msg_status::ok) {
+                    item->get_rsp_params(status);
+                }
+                return status;
+            }
+            // æœ‰è¿”å›å‚æ•° åŒæ­¥è°ƒç”¨,å­˜åœ¨é˜»å¡
+            // è¿”å›å‚æ•°ç±»å‹: std::tuple<msg_status, TReturn>,  è¡¨ç¤º<æœ€ç»ˆçŠ¶æ€, è¿”å›ç»“æœ>
+            template<size_t TIMEOUT, typename TReturn, typename ...Args>
+            std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
+                sync_send(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                auto [status, item] = sync_send_impl<TIMEOUT>(rpc_name, session_id, std::forward<Args>(args)...);
+                if (status != msg_status::ok) {
+                    return std::forward_as_tuple(status, TReturn());
+                }
+                auto comm_rslt = item->get_rsp_params<TReturn>(status);
                 return std::forward_as_tuple(status, comm_rslt);
             }
-            return std::forward_as_tuple(status, TReturn());
-        }
-        // Òì²½·¢ËÍ,·µ»ØfutureÓÃÓÚµÈ´ı
-        // »áĞÂÔöÍ¬²½ÇëÇóÖÁ¶ÓÁĞ
-        template<size_t TIMEOUT, RpcModel model, typename... Args>
-        std::tuple<msg_status, uint32_t, pkg_helper_ptr> sync_msg_req(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            auto p = std::make_shared<std::promise<pkg_helper_ptr>>();
-            auto id = insert_future(p);
-            bool write_rslt = write_msg(session_id, CommModel::Request, model, id, rpc_name, std::forward<Args>(args)...);
-            auto future = std::move(p->get_future());
-            msg_status status = msg_status::ok;
-            if (write_rslt) {
-                auto future_status = future.wait_for(std::chrono::milliseconds(TIMEOUT));
-                if (future_status != std::future_status::ready)
-                    status = msg_status::timeout;
-            }
-            else {
-                status = msg_status::send_error;
-            }
 
-            if (status != msg_status::ok) {
-                remove_future(id);
-                return std::forward_as_tuple(status, id, nullptr);
+        private:
+            template<size_t TIMEOUT, typename ...Args>
+            std::tuple<msg_status, TProxyMsgPtr> sync_send_impl(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                auto req_id = m_sync_proxy.get_next_promise();
+                // todo... åæœŸè€ƒè™‘å°†è¯¥æ–¹æ³•ç§»åŠ¨è‡³å…¶ç»§æ‰¿ç±»è‡ªèº«å®ç°, å…å»TProxyPkgHandleçš„å¼•å…¥
+                auto unit = m_proxy_deal.package_msg(rpc_name, comm_model::request, rpc_model::future, req_id, msg_status::ok, std::forward<Args>(args)...);
+                if (!write_impl(session_id, unit->get_package(), unit->get_length())) {
+                    return std::forward_as_tuple(msg_status::send_error, nullptr);
+                }
+                return m_sync_proxy.wait_for(req_id, TIMEOUT);
             }
-            return std::forward_as_tuple(status, id, future.get());
-        }
-        // ĞÂÔöÍ¬²½µ÷ÓÃÇëÇó
-        inline uint32_t insert_future(const std::shared_ptr<std::promise<pkg_helper_ptr>>& p) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_future_map.emplace(++m_req_id, p);
-            return m_req_id;
-        }
-        // É¾³ıÍ¬²½µ÷ÓÃÇëÇó
-        inline void remove_future(uint32_t id) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_future_map.erase(id);
-        }
 #pragma endregion
 
-#pragma region Òì²½»Øµ÷, ½öµ±´ÎÓĞĞ§
-        template<typename TReturn, typename... TParams>
-        inline uint32_t insert_callback(const std::function<TReturn(SessionID, msg_status, TParams...)>& callback) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_callback_map.emplace(++m_req_id, std::bind(&RpcBase::callbackproxy<TReturn, TParams...>, this, callback, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-            return m_req_id;
-        }
-        template<typename TReturn, typename... TParams>
-        inline uint32_t insert_callback(std::function<TReturn(SessionID, msg_status, TParams...)>&& callback) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_callback_map.emplace(++m_req_id, std::bind(&RpcBase::callbackproxy<TReturn, TParams...>, this, std::move(callback), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-            return m_req_id;
-        }
-        // É¾³ıÒì²½µ÷ÓÃÇëÇó
-        // ×¢Òâ: Òì²½µ÷ÓÃÉ¾³ı¼´ÈÏÎªÊ§°Ü×´Ì¬,»¹ÊÇĞèÒª×ßÔ­Â·¾¶Ö÷¶¯´¥·¢
-        inline void remove_callback(SessionID session_id, uint32_t req_id, msg_status status) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_async_overtimes.erase(req_id);
+        protected:
+            virtual bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) = 0;
 
-            auto iter = m_callback_map.find(req_id);
-            if (iter == m_callback_map.end())
-                return;
-            iter->second(session_id, status, {});
-            m_callback_map.erase(iter);
-        }
-        template<typename TReturn, typename... TParams>
-        void callbackproxy(std::function<TReturn(SessionID, msg_status, TParams...)>& func, SessionID session_id, msg_status status, std::string_view data) {
-            using args_type = std::tuple<typename std::decay<TParams>::type...>;
-            if constexpr (sizeof...(TParams) == 0) {
-                // ±¾Éí·¢ËÍÊ§°Ü
-                if (status != msg_status::ok) {
-                    std::apply(func, std::forward_as_tuple(session_id, status));
-                    return;
-                }
-                // ·şÎñÖ´ĞĞÊ§°Ü
-                BTool::MemoryStream req(data);
-                req.read(&status);
-                if (status != msg_status::ok) {
-                    std::apply(func, std::forward_as_tuple(session_id, status));
-                    return;
-                }
-                // ·µ»Ø·şÎñ½á¹û
-                std::apply(func, std::forward_as_tuple(session_id, status));
+        private:
+#pragma region å‡½æ•°è½¬æ¢
+            template <typename T> struct function_traits_base {
+                typedef T type;
+            };
+            template <typename TObjClass, typename TReturn, typename... TParams>
+            struct function_traits_base<TReturn(TObjClass::*)(TParams...) const> {
+                typedef std::function<TReturn(TParams...)> type;
+            };
+            template <typename TFunction>
+            struct lambda_traits : public function_traits_base<decltype(&TFunction::operator())> {};
+            template<typename TFunction >
+            struct functional_traits : public function_traits_base<TFunction> {};
+            template<typename TFunction>
+            typename lambda_traits<TFunction>::type from_lambad(TFunction&& func) {
+                return func;
             }
-            else {
-                // ±¾Éí·¢ËÍÊ§°Ü
-                if (status != msg_status::ok) {
-                    std::apply(func, BTool::MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
-                    return;
-                }
-                // ·şÎñÖ´ĞĞÊ§°Ü
-                BTool::MemoryStream req(data);
-                req.read(&status);
-                if (status != msg_status::ok) {
-                    std::apply(func, BTool::MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
-                    return;
-                }
-                // ·µ»Ø·şÎñ½á¹û
-                auto comm_rslt = req.read_args<typename std::decay<TParams>::type...>(status);
-                std::apply(func, BTool::MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), std::move(comm_rslt)));
+            template<typename TFunction>
+            typename functional_traits<TFunction>::type from_functional(TFunction&& func) {
+                return func;
             }
-        }
-        // ĞÂÔöcallback³¬Ê±¶¨Ê±¶ÓÁĞ
-        void emplace_timer_id(uint32_t req_id, TimerManager::TimerId timer_id) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            m_async_overtimes.emplace(req_id, timer_id);
-        }
-
 #pragma endregion
 
-#pragma region °ó¶¨, ÖØ¸´°ó¶¨»á¸²¸Ç
-        // °ó¶¨´úÀí
-        template<typename TReturn, typename... TParams>
-        typename std::enable_if<std::is_void<TReturn>::value, void>::type
-            bindautoproxy(std::function<TReturn(TParams...)> bindfunc, std::string_view data, const message_head& head, SessionID session_id, const std::string& rpc_name) {
-            msg_status status = msg_status::ok;
-            if constexpr (sizeof...(TParams) == 0) {
-                bindsync_invoke(bindfunc);
-                write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name, status);
-            }
-            else {
-                bindsync_invoke(bindfunc, pkg_helper_handler(data).get_req_params<typename std::decay<TParams>::type...>(status));
-                write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name, status);
-            }
-        }
-        template<typename TReturn, typename... TParams>
-        typename std::enable_if<!std::is_void<TReturn>::value, void>::type
-            bindautoproxy(std::function<TReturn(TParams...)> bindfunc, std::string_view data, const message_head& head, SessionID session_id, const std::string& rpc_name) {
-            msg_status status = msg_status::ok;
-            if constexpr (sizeof...(TParams) == 0) {
-                auto function_rslt = bindsync_invoke(bindfunc);
-                write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name, status, std::move(function_rslt));
-            }
-            else {
-                auto function_rslt = bindsync_invoke(bindfunc, pkg_helper_handler(data).get_req_params<typename std::decay<TParams>::type...>(status));
-                write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name, status, std::move(function_rslt));
-            }
-        }
-        // ·µ»ØÎªvoid
-        template<typename TReturn, typename... TParams>
-        typename std::enable_if<std::is_void<TReturn>::value, TReturn>::type
-            bindsync_invoke(std::function<TReturn(TParams...)> bindfunc) {
-            bindfunc();
-        }
-        template<typename ArgsTuple, typename TReturn, typename... TParams>
-        typename std::enable_if<std::is_void<TReturn>::value, TReturn>::type
-            bindsync_invoke(std::function<TReturn(TParams...)> bindfunc, ArgsTuple&& args) {
-            std::apply(bindfunc, BTool::MemoryStream::tuple_merge(std::forward<ArgsTuple>(args)));
-        }
-        // ·µ»Ø²»Îªvoid
-        template<typename TReturn, typename... TParams>
-        typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type
-            bindsync_invoke(std::function<TReturn(TParams...)> bindfunc) {
-            return bindfunc();
-        }
-        template<typename ArgsTuple, typename TReturn, typename... TParams>
-        typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type
-            bindsync_invoke(std::function<TReturn(TParams...)> bindfunc, ArgsTuple&& args) {
-            return std::apply(bindfunc, BTool::MemoryStream::tuple_merge(std::forward<ArgsTuple>(args)));
-        }
+        protected:
+            ProxyPkg<TProxyPkgHandle, TProxyMsgHandle>  m_proxy_deal;
+            SyncProxy<TProxyMsgHandle>                  m_sync_proxy;
+            CallbackProxy<TProxyMsgHandle>              m_callback_proxy;
 
-        // °ó¶¨´úÀí
-        template<typename TReturn, typename... TParams>
-        void bindproxy(std::function<TReturn(SessionID, const message_head&, const std::string&, TParams...)> bindfunc, std::string_view data, const message_head& head, SessionID session_id, const std::string& rpc_name) {
-            msg_status status = msg_status::ok;
-            if constexpr (sizeof...(TParams) == 0) {
-                bind_invoke(session_id, head, rpc_name, bindfunc);
-            }
-            else {
-                bind_invoke(session_id, head, rpc_name, bindfunc, pkg_helper_handler(data).get_req_params<typename std::decay<TParams>::type...>(status));
-            }
-        }
-        template<typename TReturn, typename... TParams>
-        void bind_invoke(SessionID session_id, const message_head& head, const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, const std::string&, TParams...)> bindfunc) {
-            std::apply(bindfunc, std::forward_as_tuple(session_id, head, rpc_name));
-        }
-        template<typename ArgsTuple, typename TReturn, typename... TParams>
-        void bind_invoke(SessionID session_id, const message_head& head, const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, const std::string&, TParams...)> bindfunc, ArgsTuple&& args) {
-            std::apply(bindfunc, BTool::MemoryStream::tuple_merge(std::forward_as_tuple(session_id, head, rpc_name), std::forward<ArgsTuple>(args)));
-        }
-#pragma endregion
-
-#pragma region ÏûÏ¢¶ÁĞ´´¦Àí
-        // ·¢ËÍmsg·â×°µÄÏûÏ¢
-        template<typename... Args>
-        bool write_msg(SessionID session_id, CommModel comm_model, RpcModel rpc_model, uint32_t id, const std::string& rpc_name, Args&&... args) {
-            BTool::MemoryStream content_buffer;
-            content_buffer.append_args(std::forward<Args>(args)...);
-
-            uint8_t title_size = (uint8_t)rpc_name.length();
-            message_head head{ comm_model, pkg_model, rpc_model, id, title_size, (uint32_t)content_buffer.size() };
-
-            BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_buffer.size());
-
-            // head
-            write_buffer.append(std::move(head));
-
-            // rpc_name
-            write_buffer.append(rpc_name.c_str(), title_size);
-
-            // content
-            write_buffer.append(content_buffer.data(), content_buffer.size());
-
-            return write_impl(session_id, write_buffer.data(), write_buffer.size());
-        }
-
-        template<typename... Args>
-        bool write_msg(SessionID session_id, CommModel comm_model, RpcModel rpc_model, uint32_t id, const std::string& rpc_name, std::tuple<Args...>&& tp) {
-            return write_tp_msg_impl(session_id, comm_model, rpc_model, id, rpc_name, typename std::make_index_sequence<sizeof...(Args)>{}, std::move(tp));
-        }
-        template<size_t... Indexes, typename... Args>
-        bool write_tp_msg_impl(SessionID session_id, CommModel comm_model, RpcModel rpc_model, uint32_t id, const std::string& rpc_name, const std::index_sequence<Indexes...>&, std::tuple<Args...>&& tp) {
-            return write_msg(session_id, comm_model, rpc_model, id, rpc_name, std::move(std::get<Indexes>(tp))...);
-        }
-        // ´¦Àí¶ÁÈ¡ÏûÏ¢
-        bool deal_read_msg(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            switch (head.comm_model_) {
-            case CommModel::Request: // ËùÓĞÇëÇó¾ùÎª°ó¶¨
-                return deal_rpc_req(session_id, head, rpc_name, data);
-                break;
-            case CommModel::Rsponse:
-                return deal_rpc_rsp(session_id, head, rpc_name, data);
-                break;
-            default:
-                break;
-            }
-            return false;
-        }
-        // ´¦Àírpc_req
-        bool deal_rpc_req(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            std::string rpc_name_str{ rpc_name.data(), rpc_name.size() };
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            auto iter = m_bind_map.find(rpc_name_str);
-            if (iter == m_bind_map.end()) {
-                return write_msg(session_id, CommModel::Rsponse, head.rpc_model_, head.req_id_, rpc_name_str, msg_status::fail);
-            }
-            iter->second(data, head, session_id, rpc_name_str);
-            return true;
-        }
-        // ´¦Àírpc_rsp
-        bool deal_rpc_rsp(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            switch (head.rpc_model_) {
-            case RpcModel::Future:
-                return deal_rpc_rsp<RpcModel::Future>(session_id, head, rpc_name, data);
-                break;
-            case RpcModel::Callback:
-                return deal_rpc_rsp<RpcModel::Callback>(session_id, head, rpc_name, data);
-                break;
-            case RpcModel::Bind:
-                return deal_rpc_rsp<RpcModel::Bind>(session_id, head, rpc_name, data);
-                break;
-            default:
-                break;
-            }
-            return false;
-        }
-        template <RpcModel rpc_model>
-        typename std::enable_if<rpc_model == RpcModel::Future, bool>::type
-            deal_rpc_rsp(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            if(pkg_model != head.pkg_model_)
-                return false;
-
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            auto iter = m_future_map.find(head.req_id_);
-            if (iter == m_future_map.end())
+        protected:
+#pragma region bind_proxy
+            bool deal_bind(SessionID session_id, const TProxyMsgPtr& msg) {
+                auto iter = m_bind_map.find(msg->get_rpc_name());
+                if (iter == m_bind_map.end())
+                    return false;
+                iter->second(session_id, msg);
                 return true;
-
-            iter->second->set_value(std::make_shared<pkg_helper<pkg_model>>(data));
-            m_future_map.erase(iter);
-            return true;
-        }
-        template <RpcModel rpc_model>
-        typename std::enable_if<rpc_model == RpcModel::Callback, bool>::type
-            deal_rpc_rsp(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            std::unique_lock<std::mutex> lock(m_func_map_mtx);
-            auto timer_iter = m_async_overtimes.find(head.req_id_);
-            if (timer_iter != m_async_overtimes.end()) {
-                m_async_timer.erase(timer_iter->second);
-                m_async_overtimes.erase(timer_iter);
             }
 
-            auto iter = m_callback_map.find(head.req_id_);
-            if (iter == m_callback_map.end())
-                return true; // ½öÒì³£Çé¿ö·µ»Øfalse,Î´°ó¶¨¶ÔÓ¦º¯Êı²»ËãÒì³£,Òì³£»áÖ±½ÓÊÍ·ÅÁ¬½Ó
-            iter->second(session_id, msg_status::ok, data);
-            m_callback_map.erase(iter);
-            return true;
-        }
-        template <RpcModel rpc_model>
-        typename std::enable_if<rpc_model == RpcModel::Bind, bool>::type
-            deal_rpc_rsp(SessionID session_id, const message_head& head, std::string_view rpc_name, std::string_view data) {
-            return true;
-        }
-#pragma endregion
-
-    protected:
-        virtual bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) = 0;
-
-    protected:
-        // ÕıÈ·Á¬½Ó»Øµ÷
-        std::function<void(SessionID)>                           m_connect_cbk = nullptr;
-        // Á¬½Ó¶Ï¿ª»Øµ÷
-        std::function<void(SessionID)>                           m_close_cbk = nullptr;
-
-        // »Øµ÷Ä£Ê½ÄÚ²¿½âÎöº¯Êı
-        typedef std::function<void(SessionID, msg_status, std::string_view)>           rsp_callback_function_type;
-        // °ó¶¨Ä£Ê½ÄÚ²¿½âÎöº¯Êı
-        typedef std::function<void(std::string_view, const message_head&, SessionID, const std::string&)>                       rsp_bind_function_type;
-
-        // Êı¾İ°²È«Ëø
-        std::mutex                                                                      m_func_map_mtx;
-        // ·¢ÆğÇëÇóÊ±µÄÇëÇóID
-        uint32_t                                                                        m_req_id = 0;
-        // ¶¨Ê±É¾³ıÈÎÎñ
-        BTool::TimerManager                                                             m_async_timer;
-        // req_id, timer_id
-        std::unordered_map<uint32_t, TimerManager::TimerId>                             m_async_overtimes;
-        // callº¯Êı°ó¶¨¼¯ºÏ, <req_id, ÇëÇó½á¹û>
-        std::unordered_map<uint32_t, std::shared_ptr<std::promise<pkg_helper_ptr>>>     m_future_map;
-        // callbackº¯Êı°ó¶¨¼¯ºÏ
-        std::unordered_map<uint32_t, rsp_callback_function_type>                        m_callback_map;
-        // bindº¯Êı°ó¶¨¼¯ºÏ
-        std::unordered_map<std::string, rsp_bind_function_type>                         m_bind_map;
-    };
-
-    // Ä¬ÈÏ³¬Ê±Ê±¼ä, µ¥Î»ºÁÃë
-    template<size_t DEFAULT_TIMEOUT = 1000, pkg_helper_base::PkgModel pkg_model = pkg_helper_base::PkgModel::Msg>
-    class RpcServer : public RpcBase<DEFAULT_TIMEOUT, pkg_model>
-    {
-    public:
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::RpcModel          RpcModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::CommModel         CommModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::PkgModel          PkgModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::message_head      message_head;
-        typedef BTool::BoostNet::NetCallBack::SessionID                         SessionID;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::msg_status        msg_status;
-
-        // async_thread_num: Òì²½»Øµ÷´¦ÀíÏß³ÌÊı, °üÀ¨callback»Øµ÷ÒÔ¼°bind»Øµ÷
-        RpcServer(int async_thread_num = std::thread::hardware_concurrency()) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
-        ~RpcServer() {
-            m_ioc_pool.stop();
-            m_server_ptr.reset();
-        }
-
-    public:
-        // ·¢ÆğÒì²½Á¬½Ó,ĞèÌáÇ°ÉèÖÃÍøÂç»Øµ÷
-        bool listen(const std::string& ip, unsigned short port, bool reuse_address = true) {
-            m_server_ptr = std::make_shared<BTool::BoostNet::TcpServer>(m_ioc_pool);
-            if (!m_server_ptr) return false;
-            this->m_async_timer.start();
-            m_server_ptr->register_cbk(this);
-            m_server_ptr->start(ip.c_str(), port, reuse_address);
-            return true;
-        }
-        bool listen(unsigned short port, size_t async_thread_num = std::thread::hardware_concurrency(), bool reuse_address = true) {
-            return listen("0.0.0.0", port, async_thread_num, reuse_address);
-        }
-
-    public:
-#pragma region Í¬²½µ÷ÓÃ, ´æÔÚ×èÈû
-        // ÎŞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
-        template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
-        typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
-            push(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return this->sync_send<TIMEOUT, TReturn>(session_id, rpc_name, std::forward<Args>(args)...);
-        }
-        // ÎŞ·µ»Ø²ÎÊı(Ä¬ÈÏ³¬Ê±Ê±¼ä) Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
-        template<typename TReturn = void, typename ...Args>
-        typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
-            push(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return push<DEFAULT_TIMEOUT, TReturn>(session_id, rpc_name, std::forward<Args>(args)...);
-        }
-        // ÓĞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
-        template<size_t TIMEOUT, typename TReturn, typename ...Args>
-        std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
-            push(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return this->sync_send<TIMEOUT, TReturn>(session_id, rpc_name, std::forward<Args>(args)...);
-        }
-        // ÓĞ·µ»Ø²ÎÊı(Ä¬ÈÏ³¬Ê±Ê±¼ä) Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
-        template<typename TReturn, typename ...Args>
-        std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
-            push(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return push<DEFAULT_TIMEOUT, TReturn>(session_id, rpc_name, std::forward<Args>(args)...);
-        }
-#pragma endregion
-
-#pragma region Òì²½»Øµ÷, ½öµ±´ÎÓĞĞ§
-        // Òì²½»Øµ÷
-        // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-        // ·µ»Ø²ÎÊıÀàĞÍ: call_back_req_op<...> , Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-        // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
-        template<size_t TIMEOUT, typename ...Args>
-        decltype(auto) push_back(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return RpcBase<DEFAULT_TIMEOUT, pkg_model>::call_back_req_op<TIMEOUT, std::tuple<typename std::decay<Args>::type...>>(this, session_id, rpc_name, std::forward_as_tuple(std::forward<Args>(args)...));
-        }
-        // Òì²½»Øµ÷
-        // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-        // ·µ»Ø²ÎÊıÀàĞÍ: call_back_req_op<...> , Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-        // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
-        template<typename ...Args>
-        decltype(auto) push_back(SessionID session_id, const std::string& rpc_name, Args&&... args) {
-            return push_back<DEFAULT_TIMEOUT>(session_id, rpc_name, std::forward<Args>(args)...);
-        }
-#pragma endregion
-
-    protected:
-        // ¶ÁÈ¡ÏûÏ¢»Øµ÷
-        void on_read_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) override {
-            BTool::MemoryStream read_buffer(const_cast<char*>(msg), bytes_transferred);
-            while (read_buffer.get_res_length() >= sizeof(struct message_head)) {
-                // ¶ÁÈ¡,×Ô´øÆ¯ÒÆ
-                message_head cur_head;
-                read_buffer.read(&cur_head);
-
-                // Òì³£°ü
-                if (cur_head.title_size_ == 0 || cur_head.content_size_ > (uint32_t)(-1) / 2) {
-                    m_server_ptr->close(session_id);
+            template<typename TReturn>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
                     return;
                 }
-
-                // ¶Ï°üÅĞ¶Ï
-                if (read_buffer.get_res_length() < cur_head.title_size_ + cur_head.content_size_)
-                    return;
-
-                std::string_view rpc_name(msg + read_buffer.get_offset(), cur_head.title_size_);
-                read_buffer.add_offset(cur_head.title_size_);
-
-                std::string_view content(msg + read_buffer.get_offset(), cur_head.content_size_);
-                read_buffer.add_offset(cur_head.content_size_);
-
-                // Òì³£
-                if (!this->deal_read_msg(session_id, cur_head, rpc_name, content)) {
-                    m_server_ptr->close(session_id);
-                    return;
-                }
-
-                // Çå³ı¶Á»º´æ
-                m_server_ptr->consume_read_buf(session_id, sizeof(struct message_head) + cur_head.title_size_ + cur_head.content_size_);
+                bind_invoke(bindfunc, session_id, msg->get_message_head());
             }
-        }
-        bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) override {
-            if (m_server_ptr)
-                return m_server_ptr->write(session_id, data, bytes_transferred);
-            return false;
-        }
-
-    private:
-        BTool::AsioContextPool                          m_ioc_pool;
-        std::shared_ptr<BTool::BoostNet::TcpServer>     m_server_ptr = nullptr;
-    };
-
-    // Ä¬ÈÏ³¬Ê±Ê±¼ä, µ¥Î»ºÁÃë
-    template<size_t DEFAULT_TIMEOUT = 1000, pkg_helper_base::PkgModel pkg_model = pkg_helper_base::PkgModel::Msg>
-    class RpcClient : public RpcBase<DEFAULT_TIMEOUT, pkg_model>
-    {
-    public:
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::RpcModel          RpcModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::CommModel         CommModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::PkgModel          PkgModel;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::message_head      message_head;
-        typedef BTool::BoostNet::NetCallBack::SessionID                         SessionID;
-        typedef typename RpcBase<DEFAULT_TIMEOUT, pkg_model>::msg_status        msg_status;
-
-    public:
-        // async_thread_num: Òì²½»Øµ÷´¦ÀíÏß³ÌÊı, °üÀ¨callback»Øµ÷ÒÔ¼°bind»Øµ÷
-        RpcClient(int async_thread_num = 2) : RpcBase<DEFAULT_TIMEOUT, pkg_model>(async_thread_num) {}
-        ~RpcClient() {
-            m_ioc_pool.stop();
-            m_session_ptr.reset();
-        }
-
-    public:
-        // ·¢ÆğÒì²½Á¬½Ó,ĞèÌáÇ°ÉèÖÃÍøÂç»Øµ÷
-        bool connect(const std::string& ip, unsigned short port, bool auto_reconnect = true) {
-            m_session_ptr = std::make_shared<BTool::BoostNet::TcpSession>(m_ioc_pool.get_io_context());
-            if (!m_session_ptr) return false;
-            this->m_async_timer.start();
-            m_session_ptr->register_cbk(this);
-            m_b_auto_reconnect = auto_reconnect;
-            m_session_ptr->connect(ip.c_str(), port);
-            return true;
-        }
-
-    public:
-#pragma region Í¬²½µ÷ÓÃ, ´æÔÚ×èÈû
-        // ÎŞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
-        template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
-        typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
-            call(const std::string& rpc_name, Args&&... args) {
-            return this->sync_send<TIMEOUT, TReturn>(get_session_id(), rpc_name, std::forward<Args>(args)...);
-        }
-        // ÎŞ·µ»Ø²ÎÊı(Ä¬ÈÏ³¬Ê±Ê±¼ä) Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
-        template<typename TReturn = void, typename ...Args>
-        typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
-            call(const std::string& rpc_name, Args&&... args) {
-            return call<DEFAULT_TIMEOUT, TReturn>(rpc_name, std::forward<Args>(args)...);
-        }
-        // ÓĞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
-        template<size_t TIMEOUT, typename TReturn, typename ...Args>
-        std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
-            call(const std::string& rpc_name, Args&&... args) {
-            return this->sync_send<TIMEOUT, TReturn>(get_session_id(), rpc_name, std::forward<Args>(args)...);
-        }
-        // ÓĞ·µ»Ø²ÎÊı(Ä¬ÈÏ³¬Ê±Ê±¼ä) Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-        // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
-        template<typename TReturn, typename ...Args>
-        std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
-            call(const std::string& rpc_name, Args&&... args) {
-            return call<DEFAULT_TIMEOUT, TReturn>(rpc_name, std::forward<Args>(args)...);
-        }
-#pragma endregion
-
-#pragma region Òì²½»Øµ÷, ½öµ±´ÎÓĞĞ§
-        // Òì²½»Øµ÷
-        // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-        // ·µ»Ø²ÎÊıÀàĞÍ: call_back_req_op<...> , Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-        // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
-        template<size_t TIMEOUT, typename ...Args>
-        decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
-            return RpcBase<DEFAULT_TIMEOUT, pkg_model>::call_back_req_op<TIMEOUT, std::tuple<typename std::decay<Args>::type...>>(this, get_session_id(), rpc_name, std::forward_as_tuple(std::forward<Args>(args)...));
-        }
-        // Òì²½»Øµ÷
-        // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-        // ·µ»Ø²ÎÊıÀàĞÍ: call_back_req_op<...> , Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-        // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
-        template<typename ...Args>
-        decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
-            return call_back<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
-        }
-#pragma endregion
-
-    protected:
-        // ¶ÁÈ¡ÏûÏ¢»Øµ÷
-        void on_read_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) override {
-            BTool::MemoryStream read_buffer(const_cast<char*>(msg), bytes_transferred);
-            while (read_buffer.get_res_length() >= sizeof(struct message_head)) {
-                // ¶ÁÈ¡,×Ô´øÆ¯ÒÆ
-                message_head cur_head;
-                read_buffer.read(&cur_head);
-
-                // Òì³£°ü
-                if (cur_head.title_size_ == 0 || cur_head.content_size_ > (uint32_t)(-1) / 2) {
-                    m_session_ptr->shutdown();
+            template<typename TReturn>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
                     return;
                 }
-
-                // ¶Ï°üÅĞ¶Ï
-                if (read_buffer.get_res_length() < cur_head.title_size_ + cur_head.content_size_)
-                    return;
-
-                std::string_view rpc_name(msg + read_buffer.get_offset(), cur_head.title_size_);
-                read_buffer.add_offset(cur_head.title_size_);
-
-                std::string_view content(msg + read_buffer.get_offset(), cur_head.content_size_);
-
-                read_buffer.add_offset(cur_head.content_size_);
-
-                // Òì³£
-                if (!this->deal_read_msg(session_id, cur_head, rpc_name, content)) {
-                    m_session_ptr->shutdown();
-                    return;
-                }
-
-                // Çå³ı¶Á»º´æ
-                m_session_ptr->consume_read_buf(sizeof(struct message_head) + cur_head.title_size_ + cur_head.content_size_);
+                bind_invoke(bindfunc, session_id, msg->get_message_head());
             }
-        }
-        SessionID get_session_id() const {
-            if (m_session_ptr)
-                return m_session_ptr->get_session_id();
-            return BTool::BoostNet::NetCallBack::InvalidSessionID;
-        }
-        bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) override {
-            if (m_session_ptr)
-                return m_session_ptr->write(data, bytes_transferred);
-            return false;
-        }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
+            }
 
-    private:
-        BTool::AsioContextPool                          m_ioc_pool;
-        std::shared_ptr<BTool::BoostNet::TcpSession>    m_session_ptr = nullptr;
-        bool                                            m_b_auto_reconnect = true;
-    };
+            template<typename TReturn>
+            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&)>& bindfunc, SessionID session_id, const message_head& head) {
+                return std::apply(bindfunc, std::forward_as_tuple(session_id, head));
+            }
+            template<typename ArgsTuple, typename TReturn, typename... TParams>
+            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&, TParams...)>& bindfunc, SessionID session_id, const message_head& head, ArgsTuple&& args) {
+                return std::apply(bindfunc, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, head), std::forward<ArgsTuple>(args)));
+            }
 
+            template<typename TReturn>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_auto_invoke(bindfunc, session_id);
+                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+            }
+            template<typename TReturn>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                auto resault = bind_auto_invoke(bindfunc, session_id);
+                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_auto_invoke(bindfunc, session_id, std::move(rsp));
+                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                auto resault = bind_auto_invoke(bindfunc, session_id, std::move(rsp));
+                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
+            }
+
+            template<typename TReturn>
+            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID)>& bindfunc, SessionID session_id) {
+                return std::apply(bindfunc, std::forward_as_tuple(session_id));
+            }
+            template<typename ArgsTuple, typename TReturn, typename... TParams>
+            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID, TParams...)>& bindfunc, SessionID session_id, ArgsTuple&& args) {
+                return std::apply(bindfunc, MemoryStream::tuple_merge(session_id, std::forward<ArgsTuple>(args)));
+            }
+
+
+#pragma endregion
+            // ç»‘å®šæ¨¡å¼å†…éƒ¨è§£æå‡½æ•°
+            typedef std::function<void(SessionID, const TProxyMsgPtr&)>  bind_function_type;
+            // bindå‡½æ•°ç»‘å®šé›†åˆ
+            std::unordered_map<std::string, bind_function_type>     m_bind_map;
+
+        };
+
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        class RpcService : public RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> {
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::TProxyMsgPtr TProxyMsgPtr;
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::PromisePtr   PromisePtr;
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::SessionID    SessionID;
+
+        public:
+            RpcService() {
+                m_service = std::make_shared<TcpServer>(m_ioc_pool);
+                using std::placeholders::_1;
+                using std::placeholders::_2;
+                using std::placeholders::_3;
+                m_service->register_read_cbk(std::bind(&RpcService::read_cbk, this, _1, _2, _3));
+            }
+            ~RpcService() {
+                m_ioc_pool.stop();
+                m_service.reset();
+            }
+
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
+            void register_open_cbk(const NetCallBack::open_cbk& cbk) {
+                m_service->register_open_cbk(cbk);
+            }
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
+            void register_close_cbk(const NetCallBack::close_cbk& cbk) {
+                m_service->register_close_cbk(cbk);
+            }
+
+            void listen(const std::string& ip, unsigned short port, bool reuse_address = true) {
+                m_service->start(ip.c_str(), port, reuse_address);
+            }
+            void run(const std::string& ip, unsigned short port, bool reuse_address = true) {
+                m_service->start(ip.c_str(), port, reuse_address);
+                m_ioc_pool.run();
+            }
+
+        public:
+#pragma region tcpå›è°ƒ
+            //void open_cbk(NetCallBack::SessionID session_id) {
+            //}
+            //void close_cbk(NetCallBack::SessionID session_id) {
+            //}
+            void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
+                auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
+                if (err.status_ != msg_status::ok) {
+                    //this->m_error_proxy.error(err);
+                    m_service->close(session_id);
+                    return;
+                }
+
+                for (auto& item : units) {
+                    if (item->get_comm_model() == comm_model::request) {
+                        if (!this->deal_bind(session_id, item)) {
+                            //this->m_error_proxy.invoke(item);
+                            m_service->close(session_id);
+                            return;
+                        }
+                        continue;
+                    }
+
+                    switch (item->get_rpc_model()) {
+                    case rpc_model::future:
+                        this->m_sync_proxy.invoke(item);
+                        break;
+                    case rpc_model::callback:
+                        this->m_callback_proxy.invoke(item);
+                        break;
+                    default:
+                        //this->m_error_proxy.invoke(item);
+                        m_service->close(session_id);
+                        return;
+                        break;
+                    }
+                }
+
+                m_service->consume_read_buf(session_id, deal_len);
+            }
+#pragma endregion
+
+        public:
+#pragma region push
+            template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
+            decltype(auto) push(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                return this->sync_send<TIMEOUT, TReturn>(rpc_name, session_id, std::forward<Args>(args)...);
+            }
+            template<typename TReturn = void, typename ...Args>
+            decltype(auto) push(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                return this->sync_send<DEFAULT_TIMEOUT, TReturn>(rpc_name, session_id, std::forward<Args>(args)...);
+            }
+#pragma endregion
+
+#pragma region pushback
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
+            template<size_t TIMEOUT, typename ...Args>
+            decltype(auto) push_back(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                return RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::callback_req_op<TIMEOUT, std::tuple<typename std::decay<Args>::type...>>(this, rpc_name, session_id, std::forward_as_tuple(std::forward<Args>(args)...));
+            }
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
+            template<typename ...Args>
+            decltype(auto) push_back(const std::string& rpc_name, SessionID session_id, Args&&... args) {
+                return push_back<DEFAULT_TIMEOUT>(rpc_name, session_id, std::forward<Args>(args)...);
+            }
+#pragma endregion
+
+        private:
+
+            bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) override {
+                if (m_service)
+                    return m_service->write(session_id, data, bytes_transferred);
+                return false;
+            }
+
+        private:
+            AsioContextPool                          m_ioc_pool;
+            std::shared_ptr<TcpServer>               m_service;
+            //NetCallBack                              m_cbk;
+        };
+
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        class RpcClient : public RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> {
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::TProxyMsgPtr TProxyMsgPtr;
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::PromisePtr   PromisePtr;
+            typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::SessionID    SessionID;
+
+        public:
+            RpcClient() {
+                m_session = std::make_shared<TcpSession>(m_ioc_pool.get_io_context());
+                using std::placeholders::_1;
+                using std::placeholders::_2;
+                using std::placeholders::_3;
+                m_session->register_cbk(m_cbk);
+                m_session->register_open_cbk(std::bind(&RpcClient::open_cbk, this, _1))
+                    .register_close_cbk(std::bind(&RpcClient::close_cbk, this, _1))
+                    .register_read_cbk(std::bind(&RpcClient::read_cbk, this, _1, _2, _3));
+
+            }
+            ~RpcClient() {
+                m_b_auto_reconnect = false;
+                m_ioc_pool.stop();
+                m_session.reset();
+            }
+
+            void connect(const std::string& ip, unsigned short port, bool auto_reconnect = true) {
+                m_b_auto_reconnect = auto_reconnect;
+                m_session->connect(ip.c_str(), port);
+            }
+
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
+            void register_open_cbk(const NetCallBack::open_cbk& cbk) {
+                m_cbk.open_cbk_ = cbk;
+            }
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
+            void register_close_cbk(const NetCallBack::close_cbk& cbk) {
+                m_cbk.close_cbk_ = cbk;
+            }
+
+        public:
+#pragma region tcpå›è°ƒ
+            void open_cbk(NetCallBack::SessionID session_id) {
+                m_connecting = true;
+                if (m_cbk.open_cbk_)
+                    m_cbk.open_cbk_(session_id);
+            }
+            void close_cbk(NetCallBack::SessionID session_id) {
+                if (m_cbk.close_cbk_)
+                    m_cbk.close_cbk_(session_id);
+
+                if (m_connecting && m_b_auto_reconnect)
+                    m_session->reconnect();
+            }
+            void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
+                auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
+                if (err.status_ != msg_status::ok) {
+                    //this->m_error_proxy.error(err);
+                    m_session->shutdown();
+                    return;
+                }
+
+                for (auto& item : units) {
+                    if (item->get_comm_model() == comm_model::request) {
+                        if (!this->deal_bind(session_id, item)) {
+                            //this->m_error_proxy.invoke(item);
+                            m_session->shutdown();
+                            return;
+                        }
+                        continue;
+                    }
+
+                    switch (item->get_rpc_model()) {
+                    case rpc_model::future:
+                        this->m_sync_proxy.invoke(item);
+                        break;
+                    case rpc_model::callback:
+                        this->m_callback_proxy.invoke(item);
+                        break;
+                    default:
+                        //this->m_error_proxy.invoke(item);
+                        m_session->shutdown();
+                        return;
+                        break;
+                    }
+                }
+
+                m_session->consume_read_buf(deal_len);
+            }
+#pragma endregion
+
+        public:
+#pragma region call
+            template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
+            decltype(auto) call(const std::string& rpc_name, Args&&... args) {
+                return this->sync_send<TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
+            }
+            template<typename TReturn = void, typename ...Args>
+            decltype(auto) call(const std::string& rpc_name, Args&&... args) {
+                return this->sync_send<DEFAULT_TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
+            }
+#pragma endregion
+
+#pragma region callback
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
+            template<size_t TIMEOUT, typename ...Args>
+            decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
+                return RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::callback_req_op<TIMEOUT, std::tuple<typename std::decay<Args>::type...>>(this, rpc_name, get_session_id(), std::forward_as_tuple(std::forward<Args>(args)...));
+            }
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
+            template<typename ...Args>
+            decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
+                return call_back<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
+            }
+#pragma endregion
+
+        private:
+            SessionID get_session_id() const {
+                if (m_session)
+                    return m_session->get_session_id();
+                return BoostNet::NetCallBack::InvalidSessionID;
+            }
+            bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) override {
+                if (m_session)
+                    return m_session->write(data, bytes_transferred);
+                return false;
+            }
+
+        private:
+            AsioContextPool                          m_ioc_pool;
+            std::shared_ptr<TcpSession>              m_session;
+            bool                                     m_b_auto_reconnect = true;
+            bool                                     m_connecting = false;
+            NetCallBack                              m_cbk;
+        };
+    }
 }

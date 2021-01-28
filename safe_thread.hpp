@@ -3,10 +3,10 @@ File name:  safe_thread.hpp
 Author:     AChar
 Version:
 Date:
-Description:    Ìá¹©°²È«µÄÏß³Ì²Ù×÷
-1, ¿É¸´ÖÆ¶ÔÏó,´Ó¶ø¼ÓÈëÈİÆ÷ÖĞ;
-2, ±ÜÃâÊ¹ÓÃnewµÈ×ÔÎ¬»¤µÄÄÚ´æÄ£¿éÊ±,ÓÉÓÚÏß³ÌÒÑÖ´ĞĞÍê±Ï¶ø×Ô¶¯ÊÍ·ÅÊ±,µ¼ÖÂÖØ¸´Îö¹¹µÄÎÊÌâ;
-3, ·Ç°²È«ÍË³öÊ±,Ö´ĞĞstd::thread±¾ÉíµÄterminate();¿ÉÍ¨¹ıset_terminate(func_cbk)²¶»ñ
+Description:    æä¾›å®‰å…¨çš„çº¿ç¨‹æ“ä½œ
+1, å¯å¤åˆ¶å¯¹è±¡,ä»è€ŒåŠ å…¥å®¹å™¨ä¸­;
+2, é¿å…ä½¿ç”¨newç­‰è‡ªç»´æŠ¤çš„å†…å­˜æ¨¡å—æ—¶,ç”±äºçº¿ç¨‹å·²æ‰§è¡Œå®Œæ¯•è€Œè‡ªåŠ¨é‡Šæ”¾æ—¶,å¯¼è‡´é‡å¤ææ„çš„é—®é¢˜;
+3, éå®‰å…¨é€€å‡ºæ—¶,æ‰§è¡Œstd::threadæœ¬èº«çš„terminate();å¯é€šè¿‡set_terminate(func_cbk)æ•è·
 *************************************************/
 #pragma once
 
@@ -14,12 +14,12 @@ Description:    Ìá¹©°²È«µÄÏß³Ì²Ù×÷
 
 namespace BTool
 {
-    // °²È«Ïß³Ì
+    // å®‰å…¨çº¿ç¨‹
     class SafeThread
     {
     public:
-        // °²È«Ïß³Ì
-        // safe_exit: ÊÇ·ñÈ·±£°²È«ÍË³ö, ÈôÎªfalseÔòÔÙÍË³öÊ±µ÷ÓÃterminate()
+        // å®‰å…¨çº¿ç¨‹
+        // safe_exit: æ˜¯å¦ç¡®ä¿å®‰å…¨é€€å‡º, è‹¥ä¸ºfalseåˆ™å†é€€å‡ºæ—¶è°ƒç”¨terminate()
         SafeThread(bool safe_exit = true) noexcept
             : m_safe_exit(safe_exit)
         {
@@ -36,7 +36,7 @@ namespace BTool
             stop();
         }
 
-        // ½ûÖ¹¿½±´
+        // ç¦æ­¢æ‹·è´
         SafeThread(const SafeThread&) = delete;
         SafeThread& operator=(const SafeThread&) = delete;
 
@@ -48,7 +48,7 @@ namespace BTool
             m_safe_exit = safe_exit;
         }
 
-        // ¿ªÆôÈÎÎñ,Èç¹ûÔ­ÏÈÈÎÎñÒÑ´æÔÚÇÒÎ´½áÊøÔò·µ»Øfalse
+        // å¼€å¯ä»»åŠ¡,å¦‚æœåŸå…ˆä»»åŠ¡å·²å­˜åœ¨ä¸”æœªç»“æŸåˆ™è¿”å›false
         template<typename _Callable, typename... _Args>
         bool start(_Callable&& _Fx, _Args&&... _args)
         {
@@ -58,7 +58,7 @@ namespace BTool
             return true;
         }
 
-        // ¿ªÆôÈÎÎñ,Èç¹ûÔ­ÏÈÈÎÎñÒÑ´æÔÚÇÒÎ´½áÊøÔòµÈ´ı½áÊøºó²Å»á¿ªÆô,´æÔÚ×èÈû,½÷É÷Ê¹ÓÃ
+        // å¼€å¯ä»»åŠ¡,å¦‚æœåŸå…ˆä»»åŠ¡å·²å­˜åœ¨ä¸”æœªç»“æŸåˆ™ç­‰å¾…ç»“æŸåæ‰ä¼šå¼€å¯,å­˜åœ¨é˜»å¡,è°¨æ…ä½¿ç”¨
         template<typename _Callable, typename... _Args>
         void restart(_Callable&& _Fx, _Args&&... _args)
         {
@@ -106,9 +106,9 @@ namespace BTool
         }
 
     private:
-        // ÊÇ·ñ°²È«ÍË³ö
+        // æ˜¯å¦å®‰å…¨é€€å‡º
         bool                m_safe_exit;
-        // Ö´ĞĞÏß³Ì
+        // æ‰§è¡Œçº¿ç¨‹
         std::thread         m_thread;
     };
 }

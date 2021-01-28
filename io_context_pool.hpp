@@ -3,7 +3,7 @@ File name:  io_context_pool.hpp
 Author:     AChar
 Version:
 Date:
-Description:    Ìá¹©io_contextµÄ¶ÔÏó³Ø,Ìá¹©Òì²½start¼°Í¬²½stop½Ó¿Ú
+Description:    æä¾›io_contextçš„å¯¹è±¡æ± ,æä¾›å¼‚æ­¥startåŠåŒæ­¥stopæ¥å£
 *************************************************/
 #pragma once
 
@@ -16,15 +16,15 @@ Description:    Ìá¹©io_contextµÄ¶ÔÏó³Ø,Ìá¹©Òì²½start¼°Í¬²½stop½Ó¿Ú
 
 namespace BTool
 {
-    // io_contextµÄ¶ÔÏó³Ø
+    // io_contextçš„å¯¹è±¡æ± 
     class AsioContextPool : private boost::noncopyable
     {
     public:
         typedef boost::asio::io_context         ioc_type;
         typedef boost::asio::io_context::work   work_type;
 
-        // io_contextµÄ¶ÔÏó³Ø
-        // pool_size È±Ê¡Ê±,·şÎñ¶ÔÏóÊıÊÇ»úÆ÷ÀïcpuÊı
+        // io_contextçš„å¯¹è±¡æ± 
+        // pool_size ç¼ºçœæ—¶,æœåŠ¡å¯¹è±¡æ•°æ˜¯æœºå™¨é‡Œcpuæ•°
         AsioContextPool(int pool_size = 0)
             : m_bstart(false)
             , m_pool_size(pool_size)
@@ -41,10 +41,10 @@ namespace BTool
             stop();
         }
 
-        // ·Ç×èÈûÊ½Æô¶¯·şÎñ
+        // éé˜»å¡å¼å¯åŠ¨æœåŠ¡
         void start() {
             bool expected = false;
-            if (!m_bstart.compare_exchange_strong(expected, true))  // ÒÑÆô¶¯ÔòÍË³ö
+            if (!m_bstart.compare_exchange_strong(expected, true))  // å·²å¯åŠ¨åˆ™é€€å‡º
                 return;
 
             init(m_pool_size);
@@ -59,22 +59,22 @@ namespace BTool
             init(m_pool_size);
         }
 
-        // ×èÈûÊ½Æô¶¯·şÎñ,Ê¹ÓÃjoin_allµÈ´ı
+        // é˜»å¡å¼å¯åŠ¨æœåŠ¡,ä½¿ç”¨join_allç­‰å¾…
         void run() {
             start();
             m_threads.join_all();
         }
 
-        // Í£Ö¹·şÎñ,¿ÉÄÜ²úÉú×èÈû
+        // åœæ­¢æœåŠ¡,å¯èƒ½äº§ç”Ÿé˜»å¡
         void stop() {
             bool expected = true;
-            if (!m_bstart.compare_exchange_strong(expected, false))  // Î´Æô¶¯ÔòÍË³ö
+            if (!m_bstart.compare_exchange_strong(expected, false))  // æœªå¯åŠ¨åˆ™é€€å‡º
                 return;
 
             stop_sync();
         }
 
-        // Ñ­»·»ñÈ¡io_context
+        // å¾ªç¯è·å–io_context
         ioc_type& get_io_context() {
             return *m_io_context;
         }
@@ -106,15 +106,15 @@ namespace BTool
         }
 
     private:
-        // Ïß³Ì³Ø¸öÊı
+        // çº¿ç¨‹æ± ä¸ªæ•°
         int                     m_pool_size;
-        // io_contextµÄ¶ÔÏó³Ø
+        // io_contextçš„å¯¹è±¡æ± 
         ioc_type*               m_io_context;
-        // io_contextÔÚÎŞÈÎºÎÈÎÎñµÄÇé¿öÏÂ±ã»áÍË³ö,ÎªÈ·±£ÎŞÈÎÎñÏÂ²»»áÍË³ö,Ôö¼ÓworkÈ·±£ÓĞÈÎÎñ
+        // io_contextåœ¨æ— ä»»ä½•ä»»åŠ¡çš„æƒ…å†µä¸‹ä¾¿ä¼šé€€å‡º,ä¸ºç¡®ä¿æ— ä»»åŠ¡ä¸‹ä¸ä¼šé€€å‡º,å¢åŠ workç¡®ä¿æœ‰ä»»åŠ¡
         work_type*              m_io_work;
-        // Ïß³Ì³Ø
+        // çº¿ç¨‹æ± 
         boost::thread_group     m_threads;
-        // ÊÇ·ñÒÑ¿ªÆô
+        // æ˜¯å¦å·²å¼€å¯
         std::atomic<bool>       m_bstart;
     };
 }

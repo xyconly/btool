@@ -3,13 +3,13 @@ File name:  task_queue.hpp
 Author:     AChar
 Version:
 Date:
-Description:    Ìá¹©¸÷ÀàÈÎÎñ¶ÓÁĞ,±ÜÃâÍâ½çÖØ¸´´´½¨
+Description:    æä¾›å„ç±»ä»»åŠ¡é˜Ÿåˆ—,é¿å…å¤–ç•Œé‡å¤åˆ›å»º
 
-Note:  condition_variableÊ¹ÓÃ×¢Òâ:ÔÚ½øĞĞwaitÊ±»áÊ×ÏÈ
-       1.Ö´ĞĞÅĞ¶Ï,ÎªtrueÔòÍË³ö
-       2.ÊÍ·ÅËø½øÈë(ĞÅºÅÁ¿)ĞİÃß
-       3.½ÓÊÕnotify,¾ºÕùËø
-       È»ºóÖØ¸´1-3²Ù×÷,Ö±ÖÁ´ïµ½´¥·¢Ìõ¼şºóÍË³ö,×¢Òâ´ËÊ±ÒÀ¾ÉÎª1²Ù×÷ÖĞ,²¢Î´ÊÍ·ÅËø
+Note:  condition_variableä½¿ç”¨æ³¨æ„:åœ¨è¿›è¡Œwaitæ—¶ä¼šé¦–å…ˆ
+       1.æ‰§è¡Œåˆ¤æ–­,ä¸ºtrueåˆ™é€€å‡º
+       2.é‡Šæ”¾é”è¿›å…¥(ä¿¡å·é‡)ä¼‘çœ 
+       3.æ¥æ”¶notify,ç«äº‰é”
+       ç„¶åé‡å¤1-3æ“ä½œ,ç›´è‡³è¾¾åˆ°è§¦å‘æ¡ä»¶åé€€å‡º,æ³¨æ„æ­¤æ—¶ä¾æ—§ä¸º1æ“ä½œä¸­,å¹¶æœªé‡Šæ”¾é”
 *************************************************/
 #pragma once
 #include <queue>
@@ -25,11 +25,11 @@ Note:  condition_variableÊ¹ÓÃ×¢Òâ:ÔÚ½øĞĞwaitÊ±»áÊ×ÏÈ
 namespace BTool
 {
     /*************************************************
-               ÈÎÎñÏß³Ì¶ÓÁĞ»ùÀà
+               ä»»åŠ¡çº¿ç¨‹é˜Ÿåˆ—åŸºç±»
     *************************************************/
 
     class TaskQueueBaseVirtual {
-        // ½ûÖ¹¿½±´
+        // ç¦æ­¢æ‹·è´
         TaskQueueBaseVirtual(const TaskQueueBaseVirtual&) = delete;
         TaskQueueBaseVirtual& operator=(const TaskQueueBaseVirtual&) = delete;
 
@@ -37,16 +37,16 @@ namespace BTool
         TaskQueueBaseVirtual() {}
 
     public:
-        // µ±Ç°¶ÓÁĞÊÇ·ñÎª¿Õ
+        // å½“å‰é˜Ÿåˆ—æ˜¯å¦ä¸ºç©º
         virtual bool empty() const = 0;
-        // Çå¿Õµ±Ç°¶ÓÁĞ
+        // æ¸…ç©ºå½“å‰é˜Ÿåˆ—
         virtual void clear() = 0;
-        // ÖØĞÂ¿ªÆôµ±Ç°µ±Ç°
+        // é‡æ–°å¼€å¯å½“å‰å½“å‰
         virtual void start() = 0;
-        // ÖÕÖ¹µ±Ç°
-        // bwait: ÊÇ·ñÇ¿ÖÆµÈ´ıµ±Ç°ËùÓĞ¶ÓÁĞÖ´ĞĞÍê±Ïºó²Å½áÊø
+        // ç»ˆæ­¢å½“å‰
+        // bwait: æ˜¯å¦å¼ºåˆ¶ç­‰å¾…å½“å‰æ‰€æœ‰é˜Ÿåˆ—æ‰§è¡Œå®Œæ¯•åæ‰ç»“æŸ
         virtual void stop(bool bwait = false) = 0;
-        // ÒÆ³ıÒ»¸ö¶¥²ã·Çµ±Ç°Ö´ĞĞÊôĞÔÈÎÎñ,¶ÓÁĞÎª¿ÕÊ±´æÔÚ×èÈû
+        // ç§»é™¤ä¸€ä¸ªé¡¶å±‚éå½“å‰æ‰§è¡Œå±æ€§ä»»åŠ¡,é˜Ÿåˆ—ä¸ºç©ºæ—¶å­˜åœ¨é˜»å¡
         virtual void pop_task() = 0;
     };
 
@@ -77,7 +77,7 @@ namespace BTool
         }
 
         void start() override {
-            // ¸´Î»ÒÑÖÕÖ¹±êÖ¾·û
+            // å¤ä½å·²ç»ˆæ­¢æ ‡å¿—ç¬¦
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
                 return;
@@ -89,7 +89,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) override {
-            // ÊÇ·ñÒÑÖÕÖ¹ÅĞ¶Ï
+            // æ˜¯å¦å·²ç»ˆæ­¢åˆ¤æ–­
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
@@ -134,38 +134,38 @@ namespace BTool
         }
 
     protected:
-        // ÊÇ·ñ´¦ÓÚÎ´Âú×´Ì¬
+        // æ˜¯å¦å¤„äºæœªæ»¡çŠ¶æ€
         bool not_full() const {
             return m_max_task_count == 0 || m_queue.size() < m_max_task_count;
         }
 
-        // ÊÇ·ñ´¦ÓÚ¿Õ×´Ì¬
+        // æ˜¯å¦å¤„äºç©ºçŠ¶æ€
         bool not_empty() const {
             return !m_queue.empty();
         }
 
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         virtual void invoke(TTaskType& task) = 0;
 
     protected:
-        // ÊÇ·ñÒÑÖÕÖ¹±êÊ¶·û
+        // æ˜¯å¦å·²ç»ˆæ­¢æ ‡è¯†ç¬¦
         std::atomic<bool>           m_bstop;
-        // Êı¾İ°²È«Ëø
+        // æ•°æ®å®‰å…¨é”
         mutable std::mutex          m_mtx;
 
-        // ×Ü´ıÖ´ĞĞÈÎÎñ¶ÓÁĞ,°üº¬ËùÓĞµÄ´ıÖ´ĞĞÈÎÎñ
+        // æ€»å¾…æ‰§è¡Œä»»åŠ¡é˜Ÿåˆ—,åŒ…å«æ‰€æœ‰çš„å¾…æ‰§è¡Œä»»åŠ¡
         std::queue<TTaskType>       m_queue;
-        // ×î´óÈÎÎñ¸öÊı,µ±Îª0Ê±±íÊ¾ÎŞÏŞÖÆ
+        // æœ€å¤§ä»»åŠ¡ä¸ªæ•°,å½“ä¸º0æ—¶è¡¨ç¤ºæ— é™åˆ¶
         size_t                      m_max_task_count;
 
-        // ²»Îª¿ÕµÄÌõ¼ş±äÁ¿
+        // ä¸ä¸ºç©ºçš„æ¡ä»¶å˜é‡
         std::condition_variable     m_cv_not_empty;
-        // Ã»ÓĞÂúµÄÌõ¼ş±äÁ¿
+        // æ²¡æœ‰æ»¡çš„æ¡ä»¶å˜é‡
         std::condition_variable     m_cv_not_full;
     };
 
     /*************************************************
-    Description:Ìá¹©»ùÓÚº¯ÊıµÄFIFOÈÎÎñ¶ÓÁĞ
+    Description:æä¾›åŸºäºå‡½æ•°çš„FIFOä»»åŠ¡é˜Ÿåˆ—
     *************************************************/
     class TaskQueue : public TaskQueueBase<std::function<void()>>
     {
@@ -191,14 +191,14 @@ namespace BTool
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task();
         }
     };
 
     /*************************************************
-    Description:Ìá¹©FIFOÈÎÎñ¶ÓÁĞ,½«µ÷ÓÃº¯Êı×ªÎªÔª×æ¶ÔÏó´æ´¢
+    Description:æä¾›FIFOä»»åŠ¡é˜Ÿåˆ—,å°†è°ƒç”¨å‡½æ•°è½¬ä¸ºå…ƒç¥–å¯¹è±¡å­˜å‚¨
     *************************************************/
     class TupleTaskQueue : public TaskQueueBase<std::shared_ptr<TaskVirtual>>
     {
@@ -219,21 +219,21 @@ namespace BTool
                 return false;
 
 //             return add_task_tolist(std::make_shared<PackagedTask>(std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // ´Ë´¦TTuple²»¿É²ÉÓÃstd::forward_as_tuple(std::forward<Args>(args)...)
-            // ¼ÙÊ¹agrsÖĞº¬ÓĞconst & Ê±,»áµ¼ÖÂtupleÖĞ´æ´¢µÄÒàÎªconst &¶ÔÏó,´Ó¶øÍâ²¿ÊÍ·Å¶ÔÏóºóµ¼ÖÂÄÚ²¿¶ÔÏóÎŞĞ§
-            // ²ÉÓÃstd::make_shared<TTuple>Ôò»áµ¼ÖÂ´æÔÚÒ»´Î¿½±´,ÓÉstd::make_tupleÒıÆğ(const&/&&)
+            // æ­¤å¤„TTupleä¸å¯é‡‡ç”¨std::forward_as_tuple(std::forward<Args>(args)...)
+            // å‡ä½¿agrsä¸­å«æœ‰const & æ—¶,ä¼šå¯¼è‡´tupleä¸­å­˜å‚¨çš„äº¦ä¸ºconst &å¯¹è±¡,ä»è€Œå¤–éƒ¨é‡Šæ”¾å¯¹è±¡åå¯¼è‡´å†…éƒ¨å¯¹è±¡æ— æ•ˆ
+            // é‡‡ç”¨std::make_shared<TTuple>åˆ™ä¼šå¯¼è‡´å­˜åœ¨ä¸€æ¬¡æ‹·è´,ç”±std::make_tupleå¼•èµ·(const&/&&)
             typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
             return add_task_tolist(std::make_shared<TupleTask<TFunction, TTuple>>(std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task->invoke();
         }
 
       private:
-        // ĞÂÔöÈÎÎñÖÁ¶ÓÁĞ
+        // æ–°å¢ä»»åŠ¡è‡³é˜Ÿåˆ—
         bool add_task_tolist(TaskType&& new_task_item)
         {
             if (!new_task_item)
@@ -251,7 +251,7 @@ namespace BTool
     class LastTaskQueueBase : public TaskQueueBaseVirtual
     {
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         LastTaskQueueBase(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
             , m_bstop(false)
@@ -275,7 +275,7 @@ namespace BTool
         }
 
         void start() override {
-            // ¸´Î»ÒÑÖÕÖ¹±êÖ¾·û
+            // å¤ä½å·²ç»ˆæ­¢æ ‡å¿—ç¬¦
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
                 return;
@@ -287,7 +287,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) override {
-            // ÊÇ·ñÒÑÖÕÖ¹ÅĞ¶Ï
+            // æ˜¯å¦å·²ç»ˆæ­¢åˆ¤æ–­
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
@@ -312,7 +312,7 @@ namespace BTool
                 if (m_bstop.load() && !not_empty())
                     return;
 
-                // ÊÇ·ñÒÑÎŞ¿Épop¶ÓÁĞ
+                // æ˜¯å¦å·²æ— å¯popé˜Ÿåˆ—
                 if (m_wait_props.empty())
                     return;
 
@@ -321,7 +321,7 @@ namespace BTool
                         continue;
 
                     pop_type = *pop_type_iter;
-                    // »ñÈ¡ÈÎÎñÖ¸Õë
+                    // è·å–ä»»åŠ¡æŒ‡é’ˆ
                     pop_task = std::move(m_wait_tasks[pop_type]);
                     m_wait_tasks.erase(pop_type);
                     m_wait_props.erase(pop_type_iter);
@@ -339,7 +339,7 @@ namespace BTool
             }
         }
 
-        // ÒÆ³ıËùÓĞÖ¸¶¨ÊôĞÔÈÎÎñ,µ±Ç°ÕıÔÚÖ´ĞĞ³ıÍâ,¿ÉÄÜ´æÔÚ×èÈû
+        // ç§»é™¤æ‰€æœ‰æŒ‡å®šå±æ€§ä»»åŠ¡,å½“å‰æ­£åœ¨æ‰§è¡Œé™¤å¤–,å¯èƒ½å­˜åœ¨é˜»å¡
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
             std::unique_lock<std::mutex> locker(m_mtx);
@@ -359,50 +359,50 @@ namespace BTool
         }
 
     protected:
-        // ÊÇ·ñ´¦ÓÚÎ´Âú×´Ì¬
+        // æ˜¯å¦å¤„äºæœªæ»¡çŠ¶æ€
         bool not_full() const {
             return m_max_task_count == 0 || m_wait_props.size() < m_max_task_count;
         }
 
-        // ÊÇ·ñ´¦ÓÚ·Ç¿Õ×´Ì¬
+        // æ˜¯å¦å¤„äºéç©ºçŠ¶æ€
         bool not_empty() const {
             return !m_wait_props.empty();
         }
 
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         virtual void invoke(TTaskType& task) = 0;
 
     protected:
-        // ÊÇ·ñÒÑÖÕÖ¹±êÊ¶·û
+        // æ˜¯å¦å·²ç»ˆæ­¢æ ‡è¯†ç¬¦
         std::atomic<bool>                m_bstop;
 
-        // Êı¾İ°²È«Ëø
+        // æ•°æ®å®‰å…¨é”
         mutable std::mutex               m_mtx;
-        // ×Ü´ıÖ´ĞĞÈÎÎñÊôĞÔË³Ğò¶ÓÁĞ,ÓÃÓÚÅĞ¶ÏÖ´ĞĞ¶ÓÁĞË³Ğò
+        // æ€»å¾…æ‰§è¡Œä»»åŠ¡å±æ€§é¡ºåºé˜Ÿåˆ—,ç”¨äºåˆ¤æ–­æ‰§è¡Œé˜Ÿåˆ—é¡ºåº
         std::list<TPropType>             m_wait_props;
-        // ×Ü´ıÖ´ĞĞÈÎÎñ¶ÓÁĞÊôĞÔ¼°Æä¶ÔÓ¦ÈÎÎñ,Æä¸öÊı±ØĞëÊ¼ÖÕÓëm_wait_tasks¸öÊıÍ¬²½
+        // æ€»å¾…æ‰§è¡Œä»»åŠ¡é˜Ÿåˆ—å±æ€§åŠå…¶å¯¹åº”ä»»åŠ¡,å…¶ä¸ªæ•°å¿…é¡»å§‹ç»ˆä¸m_wait_tasksä¸ªæ•°åŒæ­¥
         std::map<TPropType, TTaskType>   m_wait_tasks;
-        // µ±Ç°ÕıÔÚpopÈÎÎñÊôĞÔ
+        // å½“å‰æ­£åœ¨popä»»åŠ¡å±æ€§
         std::set<TPropType>              m_cur_pop_props;
-        // ×î´óÈÎÎñ¸öÊı,µ±Îª0Ê±±íÊ¾ÎŞÏŞÖÆ
+        // æœ€å¤§ä»»åŠ¡ä¸ªæ•°,å½“ä¸º0æ—¶è¡¨ç¤ºæ— é™åˆ¶
         size_t                           m_max_task_count;
 
-        // ²»Îª¿ÕµÄÌõ¼ş±äÁ¿
+        // ä¸ä¸ºç©ºçš„æ¡ä»¶å˜é‡
         std::condition_variable          m_cv_not_empty;
-        // Ã»ÓĞÂúµÄÌõ¼ş±äÁ¿
+        // æ²¡æœ‰æ»¡çš„æ¡ä»¶å˜é‡
         std::condition_variable          m_cv_not_full;
     };
 
     /*************************************************
-    Description:Ìá¹©°´ÊôĞÔ»®·ÖµÄ,½ö±£Áô×îĞÂ×´Ì¬µÄFIFOÈÎÎñ¶ÓÁĞ,½«µ÷ÓÃº¯Êı×ªÎªÔª×æ¶ÔÏó´æ´¢
-                µ±Ä³Ò»ÊôĞÔÕıÔÚ¶ÓÁĞÖĞÊ±,Í¬ÊôĞÔµÄÆäËûÈÎÎñĞÂÔöÊ±,Ô­ÈÎÎñ»á±»¸²¸Ç
+    Description:æä¾›æŒ‰å±æ€§åˆ’åˆ†çš„,ä»…ä¿ç•™æœ€æ–°çŠ¶æ€çš„FIFOä»»åŠ¡é˜Ÿåˆ—,å°†è°ƒç”¨å‡½æ•°è½¬ä¸ºå…ƒç¥–å¯¹è±¡å­˜å‚¨
+                å½“æŸä¸€å±æ€§æ­£åœ¨é˜Ÿåˆ—ä¸­æ—¶,åŒå±æ€§çš„å…¶ä»–ä»»åŠ¡æ–°å¢æ—¶,åŸä»»åŠ¡ä¼šè¢«è¦†ç›–
     *************************************************/
     template<typename TPropType>
     class LastTaskQueue : public LastTaskQueueBase<TPropType, std::function<void()>>
     {
         typedef std::function<void()> TaskType;
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         LastTaskQueue(size_t max_task_count = 0)
             : LastTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
@@ -425,15 +425,15 @@ namespace BTool
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task();
         }
     };
 
     /*************************************************
-    Description:Ìá¹©°´ÊôĞÔ»®·ÖµÄ,½ö±£Áô×îĞÂ×´Ì¬µÄFIFOÈÎÎñ¶ÓÁĞ,½«µ÷ÓÃº¯Êı×ªÎªÔª×æ¶ÔÏó´æ´¢
-                µ±Ä³Ò»ÊôĞÔÕıÔÚ¶ÓÁĞÖĞÊ±,Í¬ÊôĞÔµÄÆäËûÈÎÎñĞÂÔöÊ±,Ô­ÈÎÎñ»á±»¸²¸Ç
+    Description:æä¾›æŒ‰å±æ€§åˆ’åˆ†çš„,ä»…ä¿ç•™æœ€æ–°çŠ¶æ€çš„FIFOä»»åŠ¡é˜Ÿåˆ—,å°†è°ƒç”¨å‡½æ•°è½¬ä¸ºå…ƒç¥–å¯¹è±¡å­˜å‚¨
+                å½“æŸä¸€å±æ€§æ­£åœ¨é˜Ÿåˆ—ä¸­æ—¶,åŒå±æ€§çš„å…¶ä»–ä»»åŠ¡æ–°å¢æ—¶,åŸä»»åŠ¡ä¼šè¢«è¦†ç›–
     *************************************************/
     template<typename TPropType>
     class LastTupleTaskQueue : public LastTaskQueueBase<TPropType, std::shared_ptr<PropTaskVirtual<TPropType>>>
@@ -441,7 +441,7 @@ namespace BTool
         typedef std::shared_ptr<PropTaskVirtual<TPropType>> TaskType;
 
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         LastTupleTaskQueue(size_t max_task_count = 0)
             : LastTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
@@ -456,21 +456,21 @@ namespace BTool
                 return false;
 
 //             return add_task_tolist(std::make_shared<PropPackagedTask<TPropType>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // ´Ë´¦TTuple²»¿É²ÉÓÃstd::forward_as_tuple(std::forward<Args>(args)...)
-            // ¼ÙÊ¹agrsÖĞº¬ÓĞconst & Ê±,»áµ¼ÖÂtupleÖĞ´æ´¢µÄÒàÎªconst &¶ÔÏó,´Ó¶øÍâ²¿ÊÍ·Å¶ÔÏóºóµ¼ÖÂÄÚ²¿¶ÔÏóÎŞĞ§
-            // ²ÉÓÃstd::make_shared<TTuple>Ôò»áµ¼ÖÂ´æÔÚÒ»´Î¿½±´,ÓÉstd::make_tupleÒıÆğ(const&/&&)
+            // æ­¤å¤„TTupleä¸å¯é‡‡ç”¨std::forward_as_tuple(std::forward<Args>(args)...)
+            // å‡ä½¿agrsä¸­å«æœ‰const & æ—¶,ä¼šå¯¼è‡´tupleä¸­å­˜å‚¨çš„äº¦ä¸ºconst &å¯¹è±¡,ä»è€Œå¤–éƒ¨é‡Šæ”¾å¯¹è±¡åå¯¼è‡´å†…éƒ¨å¯¹è±¡æ— æ•ˆ
+            // é‡‡ç”¨std::make_shared<TTuple>åˆ™ä¼šå¯¼è‡´å­˜åœ¨ä¸€æ¬¡æ‹·è´,ç”±std::make_tupleå¼•èµ·(const&/&&)
             typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
             return add_task_tolist(std::make_shared<PropTupleTask<TPropType, TFunction, TTuple>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task->invoke();
         }
 
     private:
-        // ĞÂÔöÈÎÎñÖÁ¶ÓÁĞ
+        // æ–°å¢ä»»åŠ¡è‡³é˜Ÿåˆ—
         bool add_task_tolist(TaskType&& new_task_item)
         {
             if (!new_task_item)
@@ -492,19 +492,19 @@ namespace BTool
     class SerialTaskQueueBase : public TaskQueueBaseVirtual
     {
     protected:
-        // Á¬ĞøÊôĞÔË«ÏòÁ´±í,ÓÃÓÚ´æ´¢Í¬Ò»ÊôĞÔÉÏÏÂÎ»ÖÃ,¼°FIFOË³Ğò
-        // ·ÇÏß³Ì°²È«
+        // è¿ç»­å±æ€§åŒå‘é“¾è¡¨,ç”¨äºå­˜å‚¨åŒä¸€å±æ€§ä¸Šä¸‹ä½ç½®,åŠFIFOé¡ºåº
+        // éçº¿ç¨‹å®‰å…¨
         class PropCountNodeList
         {
-            // Á¬ĞøÈÎÎñ½á¹¹Ìå
+            // è¿ç»­ä»»åŠ¡ç»“æ„ä½“
             struct PropCountNode {
-                bool         can_pop_;      // µ±Ç°½ÚµãÊÇ·ñ¿É±»pop, Ã¿´Î¸´Î»ºó/ĞÂÔöºóÊ×Á´±í»á±»¸´Î»Îªtrue
-                size_t       count_;        // µ±Ç°Á¬ĞøĞÂÔöÍ¬ÊôĞÔÈÎÎñ¸öÊı,ÈçÁ¬ĞøĞÂÔö300¸öÍ¬ÊôĞÔ,ÔÚ¶ÓÁĞÖĞÖ»´´½¨Ò»¸öPropCountNode,¼ÆÊıÎª300
+                bool         can_pop_;      // å½“å‰èŠ‚ç‚¹æ˜¯å¦å¯è¢«pop, æ¯æ¬¡å¤ä½å/æ–°å¢åé¦–é“¾è¡¨ä¼šè¢«å¤ä½ä¸ºtrue
+                size_t       count_;        // å½“å‰è¿ç»­æ–°å¢åŒå±æ€§ä»»åŠ¡ä¸ªæ•°,å¦‚è¿ç»­æ–°å¢300ä¸ªåŒå±æ€§,åœ¨é˜Ÿåˆ—ä¸­åªåˆ›å»ºä¸€ä¸ªPropCountNode,è®¡æ•°ä¸º300
 
-                PropCountNode*  pre_same_prop_node_;  // Í¬ÊôĞÔÉÏÒ»Á¬ĞøÈÎÎñÖ¸Õë
-                PropCountNode*  next_same_prop_node_; // Í¬ÊôĞÔÏÂÒ»Á¬ĞøÈÎÎñÖ¸Õë
-                PropCountNode*  pre_list_prop_node_;  // ¶ÓÁĞµÄÉÏÒ»Á¬ĞøÈÎÎñÖ¸Õë
-                PropCountNode*  next_list_prop_node_; // ¶ÓÁĞµÄÏÂÒ»Á¬ĞøÈÎÎñÖ¸Õë
+                PropCountNode*  pre_same_prop_node_;  // åŒå±æ€§ä¸Šä¸€è¿ç»­ä»»åŠ¡æŒ‡é’ˆ
+                PropCountNode*  next_same_prop_node_; // åŒå±æ€§ä¸‹ä¸€è¿ç»­ä»»åŠ¡æŒ‡é’ˆ
+                PropCountNode*  pre_list_prop_node_;  // é˜Ÿåˆ—çš„ä¸Šä¸€è¿ç»­ä»»åŠ¡æŒ‡é’ˆ
+                PropCountNode*  next_list_prop_node_; // é˜Ÿåˆ—çš„ä¸‹ä¸€è¿ç»­ä»»åŠ¡æŒ‡é’ˆ
 
                 TPropType    prop_;
 
@@ -546,20 +546,20 @@ namespace BTool
 
             template<typename AsTPropType>
             void push_back(AsTPropType&& prop, bool can_immediately_pop) {
-                // ÊÇ·ñÒÑ´æÔÚ½Úµã
+                // æ˜¯å¦å·²å­˜åœ¨èŠ‚ç‚¹
                 if (!m_end_node) {
                     m_begin_node = m_end_node = new PropCountNode(std::forward<AsTPropType>(prop), nullptr, nullptr, can_immediately_pop);
                     m_all_nodes[m_end_node->get_prop_type()].emplace_back(m_end_node);
                     return;
                 }
 
-                //×îºóÒ»¸ö½ÚµãÊÇ·ñÏàÍ¬ÊôĞÔ
+                //æœ€åä¸€ä¸ªèŠ‚ç‚¹æ˜¯å¦ç›¸åŒå±æ€§
                 if (m_end_node->get_prop_type() == prop) {
                     m_end_node->add();
                     return;
                 }
 
-                // ¸ÃÊôĞÔÊÇ·ñ²»´æÔÚÆäËûÈÎÎñ
+                // è¯¥å±æ€§æ˜¯å¦ä¸å­˜åœ¨å…¶ä»–ä»»åŠ¡
                 auto all_nodes_iter = m_all_nodes.find(prop);
                 if (all_nodes_iter == m_all_nodes.end())
                 {
@@ -575,7 +575,7 @@ namespace BTool
                 m_all_nodes[new_node->get_prop_type()].emplace_back(new_node);
             }
 
-            // ÖØÖÃÄ³¸öÊôĞÔµÄÈÎÎñ
+            // é‡ç½®æŸä¸ªå±æ€§çš„ä»»åŠ¡
             void reset_prop(const TPropType& prop_type) {
                 auto all_nodes_iter = m_all_nodes.find(prop_type);
                 if (all_nodes_iter == m_all_nodes.end())
@@ -584,7 +584,7 @@ namespace BTool
                 all_nodes_iter->second.front()->reset_can_pop(true);
             }
 
-            // È¥³ıÊ×¸öÖ¸¶¨ÊôĞÔ¼¯ºÏµÄÊ×¸ö½Úµã,ÎŞ¸Ã½ÚµãÊ±·µ»Øfalse
+            // å»é™¤é¦–ä¸ªæŒ‡å®šå±æ€§é›†åˆçš„é¦–ä¸ªèŠ‚ç‚¹,æ— è¯¥èŠ‚ç‚¹æ—¶è¿”å›false
             TPropType pop_front() {
                 auto pop_front_node = m_begin_node;
                 while (pop_front_node) {
@@ -601,7 +601,7 @@ namespace BTool
                     return pop_front_node->get_prop_type();
                 }
 
-                // »ñÈ¡ÏÂÒ»Í¬ÊôĞÔ½Úµã,¶ÔÏÂÒ»Í¬ÊôĞÔ½ÚµãµÄÉÏÒ»½ÚµãÖ¸ÕëÖÃ¿Õ
+                // è·å–ä¸‹ä¸€åŒå±æ€§èŠ‚ç‚¹,å¯¹ä¸‹ä¸€åŒå±æ€§èŠ‚ç‚¹çš„ä¸Šä¸€èŠ‚ç‚¹æŒ‡é’ˆç½®ç©º
                 auto next_same_prop_node = pop_front_node->get_next_same_prop_node();
                 if (next_same_prop_node) {
                     next_same_prop_node->reset_pre_same_prop_node(nullptr);
@@ -611,8 +611,8 @@ namespace BTool
                     m_all_nodes.erase(pop_front_node->get_prop_type());
                 }
 
-                // »ñÈ¡ÏÂÒ»½Úµã,¶ÔÏÂÒ»½ÚµãµÄ ÉÏÒ»½ÚµãÖ¸Õë  ¸³ÖµÎª Ô­±¾Ö¸ÕëµÄ ÉÏÒ»½ÚµãÖ¸Õë
-                // ²¢½«ÉÏÒ»½ÚµãµÄÏÂÒ»½ÚµãÖ¸Õë  ¸³ÖµÎª ±¾Ö¸ÕëµÄ  ÏÂÒ»½ÚµãÖ¸Õë
+                // è·å–ä¸‹ä¸€èŠ‚ç‚¹,å¯¹ä¸‹ä¸€èŠ‚ç‚¹çš„ ä¸Šä¸€èŠ‚ç‚¹æŒ‡é’ˆ  èµ‹å€¼ä¸º åŸæœ¬æŒ‡é’ˆçš„ ä¸Šä¸€èŠ‚ç‚¹æŒ‡é’ˆ
+                // å¹¶å°†ä¸Šä¸€èŠ‚ç‚¹çš„ä¸‹ä¸€èŠ‚ç‚¹æŒ‡é’ˆ  èµ‹å€¼ä¸º æœ¬æŒ‡é’ˆçš„  ä¸‹ä¸€èŠ‚ç‚¹æŒ‡é’ˆ
                 auto pre_list_prop_node = pop_front_node->get_pre_list_prop_node();
                 auto next_list_prop_node = pop_front_node->get_next_list_prop_node();
                 if (next_list_prop_node)
@@ -636,16 +636,16 @@ namespace BTool
                 if (all_node_iter == m_all_nodes.end())
                     return;
 
-                bool need_comp_begin(false); // ÊÇ·ñĞèÒª±È¶Ôbegin½Úµã
+                bool need_comp_begin(false); // æ˜¯å¦éœ€è¦æ¯”å¯¹beginèŠ‚ç‚¹
                 if (m_begin_node && m_begin_node->get_prop_type() == prop)
                     need_comp_begin = true;
-                bool need_comp_end(false); // ÊÇ·ñĞèÒª±È¶Ôend½Úµã
+                bool need_comp_end(false); // æ˜¯å¦éœ€è¦æ¯”å¯¹endèŠ‚ç‚¹
                 if (m_end_node && m_end_node->get_prop_type() == prop)
                     need_comp_end = true;
 
                 for (auto& item : all_node_iter->second) {
-                    // ĞŞ¸Ä×ÔÉíÉÏÒ»½ÚµãÖ¸ÕëµÄ  ÏÂÒ»½ÚµãÎª µ±Ç°µÄÏÂÒ»½Úµã
-                    // ·´Ö®Í¬Àí
+                    // ä¿®æ”¹è‡ªèº«ä¸Šä¸€èŠ‚ç‚¹æŒ‡é’ˆçš„  ä¸‹ä¸€èŠ‚ç‚¹ä¸º å½“å‰çš„ä¸‹ä¸€èŠ‚ç‚¹
+                    // åä¹‹åŒç†
                     auto pre_list_prop_node = item->get_pre_list_prop_node();
                     auto next_list_prop_node = item->get_next_list_prop_node();
                     if (pre_list_prop_node)
@@ -653,7 +653,7 @@ namespace BTool
                     if (next_list_prop_node)
                         next_list_prop_node->reset_pre_list_prop_node(pre_list_prop_node);
 
-                    // ÅĞ¶Ï²¢ÖØÖÃbegin½Úµã
+                    // åˆ¤æ–­å¹¶é‡ç½®beginèŠ‚ç‚¹
                     if (need_comp_begin && item == m_begin_node) {
                         m_begin_node = next_list_prop_node;
                         if (m_begin_node)
@@ -661,7 +661,7 @@ namespace BTool
                         if (!m_begin_node || m_begin_node->get_prop_type() != prop)
                             need_comp_begin = false;
                     }
-                    // ÅĞ¶Ï²¢ÖØÖÃend½Úµã
+                    // åˆ¤æ–­å¹¶é‡ç½®endèŠ‚ç‚¹
                     if (need_comp_end && item == m_end_node) {
                         m_end_node = pre_list_prop_node;
                         if (m_end_node)
@@ -670,7 +670,7 @@ namespace BTool
                             need_comp_end = false;
                     }
 
-                    // É¾³ı¸Ã½Úµã
+                    // åˆ é™¤è¯¥èŠ‚ç‚¹
                     delete item;
                 }
                 m_all_nodes.erase(all_node_iter);
@@ -689,13 +689,13 @@ namespace BTool
             }
 
         private:
-            PropCountNode*                                  m_begin_node;   // ¶ÓÁĞÆğÊ¼½Úµã
-            PropCountNode*                                  m_end_node;     // ¶ÓÁĞ½áÊø½Úµã
-            std::map<TPropType, std::list<PropCountNode*>>  m_all_nodes;    // ËùÓĞ¶ÓÁĞ½Úµã
+            PropCountNode*                                  m_begin_node;   // é˜Ÿåˆ—èµ·å§‹èŠ‚ç‚¹
+            PropCountNode*                                  m_end_node;     // é˜Ÿåˆ—ç»“æŸèŠ‚ç‚¹
+            std::map<TPropType, std::list<PropCountNode*>>  m_all_nodes;    // æ‰€æœ‰é˜Ÿåˆ—èŠ‚ç‚¹
         };
 
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         SerialTaskQueueBase(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
             , m_bstop(false)
@@ -721,7 +721,7 @@ namespace BTool
         }
 
         void start() override {
-            // ¸´Î»ÒÑÖÕÖ¹±êÖ¾·û
+            // å¤ä½å·²ç»ˆæ­¢æ ‡å¿—ç¬¦
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
                 return;
@@ -732,7 +732,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) override {
-            // ÊÇ·ñÒÑÖÕÖ¹ÅĞ¶Ï
+            // æ˜¯å¦å·²ç»ˆæ­¢åˆ¤æ–­
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
@@ -781,8 +781,8 @@ namespace BTool
             }
         }
 
-        // ÒÆ³ıËùÓĞÖ¸¶¨ÊôĞÔÈÎÎñ,µ±Ç°ÕıÔÚÖ´ĞĞ³ıÍâ,¿ÉÄÜ´æÔÚ×èÈû
-        // ´æÔÚ±éÀú,¿ÉÄÜ±È½ÏºÄÊ±
+        // ç§»é™¤æ‰€æœ‰æŒ‡å®šå±æ€§ä»»åŠ¡,å½“å‰æ­£åœ¨æ‰§è¡Œé™¤å¤–,å¯èƒ½å­˜åœ¨é˜»å¡
+        // å­˜åœ¨éå†,å¯èƒ½æ¯”è¾ƒè€—æ—¶
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
             std::unique_lock<std::mutex> locker(m_mtx);
@@ -805,7 +805,7 @@ namespace BTool
         }
 
     protected:
-        // É¾³ıµ±Ç°ÔËĞĞÊôĞÔ
+        // åˆ é™¤å½“å‰è¿è¡Œå±æ€§
         template<typename AsTPropType>
         inline void remove_cur_prop(AsTPropType&& prop_type) {
             auto prop_iter = m_cur_props.find(std::forward<AsTPropType>(prop_type));
@@ -813,60 +813,60 @@ namespace BTool
                 m_cur_props.erase(prop_iter);
         }
 
-        // ÊÇ·ñ´¦ÓÚÎ´Âú×´Ì¬
+        // æ˜¯å¦å¤„äºæœªæ»¡çŠ¶æ€
         inline bool not_full() const {
             return m_max_task_count == 0 || m_wait_tasks.size() < m_max_task_count;
         }
 
-        // ÊÇ·ñ´¦ÓÚ¿Õ×´Ì¬
+        // æ˜¯å¦å¤„äºç©ºçŠ¶æ€
         inline bool not_empty() const {
             return !m_wait_tasks.empty() && m_cur_props.size() < m_wait_tasks.size();
         }
 
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         virtual void invoke(TTaskType& task) = 0;
 
     protected:
-        // ÊÇ·ñÒÑÖÕÖ¹±êÊ¶·û
+        // æ˜¯å¦å·²ç»ˆæ­¢æ ‡è¯†ç¬¦
         std::atomic<bool>                           m_bstop;
 
-        // Êı¾İ°²È«Ëø
+        // æ•°æ®å®‰å…¨é”
         mutable std::mutex                          m_mtx;
-        // ×Ü´ıÖ´ĞĞÈÎÎñÊôĞÔË³Ğò¶ÓÁĞ,ÓÃÓÚÅĞ¶ÏÖ´ĞĞ¶ÓÁĞË³Ğò
+        // æ€»å¾…æ‰§è¡Œä»»åŠ¡å±æ€§é¡ºåºé˜Ÿåˆ—,ç”¨äºåˆ¤æ–­æ‰§è¡Œé˜Ÿåˆ—é¡ºåº
         PropCountNodeList                           m_wait_props;
-        // ×Ü´ıÖ´ĞĞÈÎÎñ¶ÓÁĞÊôĞÔ¼°Æä¶ÔÓ¦ÈÎÎñ
+        // æ€»å¾…æ‰§è¡Œä»»åŠ¡é˜Ÿåˆ—å±æ€§åŠå…¶å¯¹åº”ä»»åŠ¡
         std::map<TPropType, std::list<TTaskType>>   m_wait_tasks;
-        // ×î´óÈÎÎñ¸öÊı,µ±Îª0Ê±±íÊ¾ÎŞÏŞÖÆ
+        // æœ€å¤§ä»»åŠ¡ä¸ªæ•°,å½“ä¸º0æ—¶è¡¨ç¤ºæ— é™åˆ¶
         size_t                                      m_max_task_count;
 
-        // ²»Îª¿ÕµÄÌõ¼ş±äÁ¿
+        // ä¸ä¸ºç©ºçš„æ¡ä»¶å˜é‡
         std::condition_variable                     m_cv_not_empty;
-        // Ã»ÓĞÂúµÄÌõ¼ş±äÁ¿
+        // æ²¡æœ‰æ»¡çš„æ¡ä»¶å˜é‡
         std::condition_variable                     m_cv_not_full;
 
-        // µ±Ç°ÕıÔÚÖ´ĞĞÖĞµÄÈÎÎñÊôĞÔ
+        // å½“å‰æ­£åœ¨æ‰§è¡Œä¸­çš„ä»»åŠ¡å±æ€§
         std::set<TPropType>                         m_cur_props;
 
     };
 
     /*************************************************
-    Description:Ìá¹©°´ÊôĞÔ»®·ÖµÄ,±£ÁôËùÓĞÈÎÎñµÄFIFOÈÎÎñ¶ÓÁĞ,½«µ÷ÓÃº¯Êı×ªÎªÔª×æ¶ÔÏó´æ´¢
-                µ±Ä³Ò»ÊôĞÔÕıÔÚ¶ÓÁĞÖĞÊ±,Í¬ÊôĞÔµÄÆäËûÈÎÎñĞÂÔöÊ±,»á×·¼ÓÖÁÔ­ÈÎÎñÖ®ºóÖ´ĞĞ
-                µ±Ä³Ò»ÈÎÎñÕıÔÚÖ´ĞĞÊ±,Í¬ÊôĞÔÆäËûÈÎÎñ½«²»±»Ö´ĞĞ,Í¬Ò»ÊôĞÔÖ®¼äµÄÈÎÎñ¾ù°´ÕÕFIFO´®ĞĞÖ´ĞĞÍê±Ï
+    Description:æä¾›æŒ‰å±æ€§åˆ’åˆ†çš„,ä¿ç•™æ‰€æœ‰ä»»åŠ¡çš„FIFOä»»åŠ¡é˜Ÿåˆ—,å°†è°ƒç”¨å‡½æ•°è½¬ä¸ºå…ƒç¥–å¯¹è±¡å­˜å‚¨
+                å½“æŸä¸€å±æ€§æ­£åœ¨é˜Ÿåˆ—ä¸­æ—¶,åŒå±æ€§çš„å…¶ä»–ä»»åŠ¡æ–°å¢æ—¶,ä¼šè¿½åŠ è‡³åŸä»»åŠ¡ä¹‹åæ‰§è¡Œ
+                å½“æŸä¸€ä»»åŠ¡æ­£åœ¨æ‰§è¡Œæ—¶,åŒå±æ€§å…¶ä»–ä»»åŠ¡å°†ä¸è¢«æ‰§è¡Œ,åŒä¸€å±æ€§ä¹‹é—´çš„ä»»åŠ¡å‡æŒ‰ç…§FIFOä¸²è¡Œæ‰§è¡Œå®Œæ¯•
     *************************************************/
     template<typename TPropType>
     class SerialTaskQueue : public SerialTaskQueueBase<TPropType, std::function<void()>>
     {
         typedef std::function<void()> TaskType;
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         SerialTaskQueue(size_t max_task_count = 0)
             : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
 
         ~SerialTaskQueue() {}
 
-        // ÌØ±ğ×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëĞÔÖÊµÄÁÙÊ±Ö¸Õë,±ØĞë×ª»»ÎªstringµÈÊµÀı¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
+        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®ä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œææ„å,å°†æŒ‡å‘é‡æŒ‡é’ˆ!!!!
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
             std::unique_lock<std::mutex> locker(this->m_mtx);
@@ -882,7 +882,7 @@ namespace BTool
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task();
         }
@@ -890,23 +890,23 @@ namespace BTool
     };
 
     /*************************************************
-    Description:Ìá¹©°´ÊôĞÔ»®·ÖµÄ,±£ÁôËùÓĞÈÎÎñµÄFIFOÈÎÎñ¶ÓÁĞ,½«µ÷ÓÃº¯Êı×ªÎªÔª×æ¶ÔÏó´æ´¢
-                µ±Ä³Ò»ÊôĞÔÕıÔÚ¶ÓÁĞÖĞÊ±,Í¬ÊôĞÔµÄÆäËûÈÎÎñĞÂÔöÊ±,»á×·¼ÓÖÁÔ­ÈÎÎñÖ®ºóÖ´ĞĞ
-                µ±Ä³Ò»ÈÎÎñÕıÔÚÖ´ĞĞÊ±,Í¬ÊôĞÔÆäËûÈÎÎñ½«²»±»Ö´ĞĞ,Í¬Ò»ÊôĞÔÖ®¼äµÄÈÎÎñ¾ù°´ÕÕFIFO´®ĞĞÖ´ĞĞÍê±Ï
+    Description:æä¾›æŒ‰å±æ€§åˆ’åˆ†çš„,ä¿ç•™æ‰€æœ‰ä»»åŠ¡çš„FIFOä»»åŠ¡é˜Ÿåˆ—,å°†è°ƒç”¨å‡½æ•°è½¬ä¸ºå…ƒç¥–å¯¹è±¡å­˜å‚¨
+                å½“æŸä¸€å±æ€§æ­£åœ¨é˜Ÿåˆ—ä¸­æ—¶,åŒå±æ€§çš„å…¶ä»–ä»»åŠ¡æ–°å¢æ—¶,ä¼šè¿½åŠ è‡³åŸä»»åŠ¡ä¹‹åæ‰§è¡Œ
+                å½“æŸä¸€ä»»åŠ¡æ­£åœ¨æ‰§è¡Œæ—¶,åŒå±æ€§å…¶ä»–ä»»åŠ¡å°†ä¸è¢«æ‰§è¡Œ,åŒä¸€å±æ€§ä¹‹é—´çš„ä»»åŠ¡å‡æŒ‰ç…§FIFOä¸²è¡Œæ‰§è¡Œå®Œæ¯•
     *************************************************/
     template<typename TPropType>
     class SerialTupleTaskQueue : public SerialTaskQueueBase<TPropType, std::shared_ptr<PropTaskVirtual<TPropType>>>
     {
         typedef std::shared_ptr<PropTaskVirtual<TPropType>> TaskType;
     public:
-        // max_task_count: ×î´óÈÎÎñ¸öÊı,³¬¹ı¸ÃÊıÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎŞÏŞÖÆ
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         SerialTupleTaskQueue(size_t max_task_count = 0)
             : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
         {}
 
         ~SerialTupleTaskQueue() {}
 
-        // ÌØ±ğ×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëĞÔÖÊµÄÁÙÊ±Ö¸Õë,±ØĞë×ª»»ÎªstringµÈÊµÀı¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
+        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®ä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œææ„å,å°†æŒ‡å‘é‡æŒ‡é’ˆ!!!!
         template<typename AsTPropType, typename TFunction, typename... Args>
         bool add_task(AsTPropType&& prop, TFunction&& func, Args&&... args) {
             std::unique_lock<std::mutex> locker(this->m_mtx);
@@ -916,21 +916,21 @@ namespace BTool
                 return false;
 
 //             return add_task_tolist(std::make_shared<PropPackagedTask<TPropType>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // ´Ë´¦TTuple²»¿É²ÉÓÃstd::forward_as_tuple(std::forward<Args>(args)...)
-            // ¼ÙÊ¹agrsÖĞº¬ÓĞconst & Ê±,»áµ¼ÖÂtupleÖĞ´æ´¢µÄÒàÎªconst &¶ÔÏó,´Ó¶øÍâ²¿ÊÍ·Å¶ÔÏóºóµ¼ÖÂÄÚ²¿¶ÔÏóÎŞĞ§
-            // ²ÉÓÃstd::make_shared<TTuple>Ôò»áµ¼ÖÂ´æÔÚÒ»´Î¿½±´,ÓÉstd::make_tupleÒıÆğ(const&/&&)
+            // æ­¤å¤„TTupleä¸å¯é‡‡ç”¨std::forward_as_tuple(std::forward<Args>(args)...)
+            // å‡ä½¿agrsä¸­å«æœ‰const & æ—¶,ä¼šå¯¼è‡´tupleä¸­å­˜å‚¨çš„äº¦ä¸ºconst &å¯¹è±¡,ä»è€Œå¤–éƒ¨é‡Šæ”¾å¯¹è±¡åå¯¼è‡´å†…éƒ¨å¯¹è±¡æ— æ•ˆ
+            // é‡‡ç”¨std::make_shared<TTuple>åˆ™ä¼šå¯¼è‡´å­˜åœ¨ä¸€æ¬¡æ‹·è´,ç”±std::make_tupleå¼•èµ·(const&/&&)
             typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
             return add_task_tolist(std::make_shared<PropTupleTask<TPropType, TFunction, TTuple>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
         }
 
     protected:
-        // Ö´ĞĞÈÎÎñ
+        // æ‰§è¡Œä»»åŠ¡
         void invoke(TaskType& task) override {
             task->invoke();
         }
 
     private:
-        // ĞÂÔöÈÎÎñÖÁ¶ÓÁĞ
+        // æ–°å¢ä»»åŠ¡è‡³é˜Ÿåˆ—
         bool add_task_tolist(TaskType&& new_task_item)
         {
             if (!new_task_item)

@@ -3,7 +3,7 @@ File name:      coro_websocket_session.hpp
 Author:			AChar
 Version:
 Date:
-Purpose: ÀûÓÃbeastÊµÏÖÅäºÏCoroServerµÄwebsocketÁ¬½Ó¶ÔÏó
+Purpose: åˆ©ç”¨beastå®ç°é…åˆCoroServerçš„websocketè¿æ¥å¯¹è±¡
 *************************************************/
 
 #pragma once
@@ -22,7 +22,7 @@ namespace BTool
 {
     namespace BeastCoro
     {
-        // Á¬½Ó¶ÔÏó
+        // è¿æ¥å¯¹è±¡
         class WebsocketSession : public std::enable_shared_from_this<WebsocketSession>
         {
             enum {
@@ -52,17 +52,17 @@ namespace BTool
 
             ~WebsocketSession() {}
 
-#pragma region Í¨ÓÃÁ¬½ÓĞÅÏ¢
+#pragma region é€šç”¨è¿æ¥ä¿¡æ¯
         private:
             boost::beast::websocket::stream<boost::asio::ip::tcp::socket>::lowest_layer_type& socket() const {
                 return const_cast<WebsocketSession*>(this)->m_socket.lowest_layer();
             }
         public:
-            // ¹¤¾ßº¯Êı£º»ñÈ¡±¾µØ¡¢Ô¶¶ËµÄÍøÂçµØÖ·ºÍ¶Ë¿ÚºÅ
+            // å·¥å…·å‡½æ•°ï¼šè·å–æœ¬åœ°ã€è¿œç«¯çš„ç½‘ç»œåœ°å€å’Œç«¯å£å·
             unsigned long getLocalAddress() const {
                 return m_local_addr_u;
             }
-            // ·µ»Ø±¾µØ»úÆ÷IP£¨V4£©µØÖ·×Ö·û´®
+            // è¿”å›æœ¬åœ°æœºå™¨IPï¼ˆV4ï¼‰åœ°å€å­—ç¬¦ä¸²
             std::string getLocalAddress_str() const {
                 return m_local_addr_str;
             }
@@ -78,7 +78,7 @@ namespace BTool
             unsigned short getPeerPort() const {
                 return m_peer_port;
             }
-            // ÉèÖÃÎŞÑÓ³Ù·¢ËÍÑ¡Ïî
+            // è®¾ç½®æ— å»¶è¿Ÿå‘é€é€‰é¡¹
             bool setnodelay(bool isnodelay, std::string& errmsg)
             {
                 boost::asio::ip::tcp::no_delay nodelay(isnodelay);
@@ -93,12 +93,12 @@ namespace BTool
             }
 #pragma endregion
 
-#pragma region Êı¾İ½âÎöÓë»ØÓ¦
-            // ÉèÖÃ¶ÁÈ¡ÏûÏ¢»Øµ÷,Ğ­³Ì¶¯Á¦
+#pragma region æ•°æ®è§£æä¸å›åº”
+            // è®¾ç½®è¯»å–æ¶ˆæ¯å›è°ƒ,åç¨‹åŠ¨åŠ›
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
             }
-            // ÉèÖÃ¶Ï¿ªÁ¬½Ó»Øµ÷,Ğ­³Ì¶¯Á¦
+            // è®¾ç½®æ–­å¼€è¿æ¥å›è°ƒ,åç¨‹åŠ¨åŠ›
             void setDisConnectCbk(const disconn_func_t& cbk) {
                 m_disconnect_cbk = cbk;
             }
@@ -154,7 +154,7 @@ namespace BTool
 
 #pragma endregion
 
-#pragma region ÄÚ²¿º¯Êı
+#pragma region å†…éƒ¨å‡½æ•°
         private:
             bool coro_read()
             {
@@ -192,21 +192,21 @@ namespace BTool
             boost::asio::yield_context&         m_yield;
 
         private:
-            // ±¾µØÁ¬½ÓĞÅÏ¢
+            // æœ¬åœ°è¿æ¥ä¿¡æ¯
             unsigned long   m_local_addr_u;
             std::string     m_local_addr_str;
             unsigned short  m_local_port;
-            // Á¬½Ó¶ÔÏóĞÅÏ¢
+            // è¿æ¥å¯¹è±¡ä¿¡æ¯
             unsigned long   m_peer_addr_u;
             std::string     m_peer_addr_str;
             unsigned short  m_peer_port;
 
         private:
-            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
+            // è¯»å–æ¶ˆæ¯å›è°ƒ
             read_msg_func_t     m_read_cbk;
-            // ¶Ï¿ªÁ¬½Ó»Øµ÷
+            // æ–­å¼€è¿æ¥å›è°ƒ
             disconn_func_t      m_disconnect_cbk;
-            // ÊÇ·ñÒÑ¿ªÆô
+            // æ˜¯å¦å·²å¼€å¯
             std::atomic<bool>   m_bstart;
         };
     }

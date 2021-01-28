@@ -1,15 +1,15 @@
 /************************************************************************
 File name:  scope_guard.hpp
 Author:     AChar
-Purpose:  ͨ�õġ�����RAII˼�����Դ������
-Note:   Դ��:https://stackoverflow.com/questions/10270328/the-simplest-and-neatest-c11-scopeguard
+Purpose:  通用的、采用RAII思想的资源管理类
+Note:   源自:https://stackoverflow.com/questions/10270328/the-simplest-and-neatest-c11-scopeguard
 
-ʹ�÷���:
-    // �˳���ִ��
+使用方法:
+    // 退出即执行
     ScopeGuard scope_exit([&]{});
-    // �쳣�˳�ʱ��ִ��
+    // 异常退出时才执行
     ScopeGuard scope_fail(ScopeGuard::ExecutionType::Exception);
-    // ���쳣�˳�ʱ��ִ��
+    // 无异常退出时才执行
     ScopeGuard scope_safe_exit([&]{}, ScopeGuard::ExecutionType::NoException);
 
     scope_exit += [&]{ ... };
@@ -37,11 +37,11 @@ namespace BTool
     class ScopeGuard
     {
     public:
-        // ��������ִ�����
+        // 函数队列执行情况
         enum class ExecutionType {
-            Always,         // ����ִ��
-            NoException,    // ���쳣ʱ��ִ��
-            Exception       // ���쳣ʱ��ִ��
+            Always,         // 总是执行
+            NoException,    // 无异常时才执行
+            Exception       // 有异常时才执行
         };
 
         explicit ScopeGuard(ExecutionType policy = ExecutionType::Always)
@@ -74,9 +74,9 @@ namespace BTool
             if (m_policy == ExecutionType::Always ||
                 (std::uncaught_exceptions() > 0 && (m_policy == ExecutionType::Exception)))
             {
-                // ��Ҫ���쳣����,��Ȼ�ú����������쳣����ʱҲ��ִ��
-                // ��ִ�к�����Ӧ�����쳣,�������ҲӦ�����ⲿͨ���������Ʋ���
-                // �������ά�����������Ѷ�;��ʵ����������ɷſ�ע�ͼ���
+                // 不要做异常捕获,虽然该函数是期望异常发生时也能执行
+                // 但执行函数不应发生异常,如果发生也应该在外部通过其他机制捕获
+                // 否则后期维护反而增加难度;若实在有需求则可放开注释即可
                 for (auto &f : m_handlers)/* try {*/
                     f();
                 /*}*/

@@ -1,7 +1,7 @@
 /******************************************************************************
 File name:  websocket_callback.hpp
 Author:	    AChar
-Purpose:    ÍøÂçÍ¨Ñ¶»Øµ÷½Ó¿Ú
+Purpose:    ç½‘ç»œé€šè®¯å›è°ƒæ¥å£
 *****************************************************************************/
 #pragma once
 
@@ -15,19 +15,23 @@ namespace BTool
         {
         public:
             typedef unsigned long long  SessionID;
+            typedef std::function<void(SessionID session_id)> open_cbk;
+            typedef std::function<void(SessionID session_id)> close_cbk;
+            typedef std::function<void(SessionID session_id, const char* const msg, size_t bytes_transferred)> read_cbk;
+            typedef std::function<void(SessionID session_id, const char* const msg, size_t bytes_transferred)> write_cbk;
 
             enum {
                 InvalidSessionID = 0,
             };
 
-            // ¿ªÆôÁ¬½Ó»Øµ÷
-            virtual void on_open_cbk(SessionID session_id) {}
-            // ¹Ø±ÕÁ¬½Ó»Øµ÷
-            virtual void on_close_cbk(SessionID session_id) {}
-            // ¶ÁÈ¡ÏûÏ¢»Øµ÷
-            virtual void on_read_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) {}
-            // ÒÑ·¢ËÍÏûÏ¢»Øµ÷
-            virtual void on_write_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) {}
+            // å¼€å¯è¿æ¥å›è°ƒ
+            open_cbk open_cbk_ = nullptr;
+            // å…³é—­è¿æ¥å›è°ƒ
+            close_cbk close_cbk_ = nullptr;
+            // è¯»å–æ¶ˆæ¯å›è°ƒ
+            read_cbk read_cbk_ = nullptr;
+            // å·²å‘é€æ¶ˆæ¯å›è°ƒ
+            write_cbk write_cbk_ = nullptr;
         };
     }
 }

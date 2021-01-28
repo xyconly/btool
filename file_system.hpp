@@ -3,7 +3,7 @@ File name:  file_system.hpp
 Author:
 Version:
 Date:
-Description:    windowsÎÄ¼şÏµÍ³²Ù×÷Àà,ÆäËûÏµÍ³ºóÆÚÊµÏÖ
+Description:    windowsæ–‡ä»¶ç³»ç»Ÿæ“ä½œç±»,å…¶ä»–ç³»ç»ŸåæœŸå®ç°
 *************************************************/
 #pragma once
 #include <string>
@@ -28,8 +28,8 @@ namespace BTool {
         FileSystem() {}
         ~FileSystem() {}
 
-        // ´´½¨Ä¿Â¼¼°×ÓÄ¿Â¼
-        // folder: ¿ÉÒÔÊÇÔËĞĞÊ±Ïà¶ÔÄ¿Â¼
+        // åˆ›å»ºç›®å½•åŠå­ç›®å½•
+        // folder: å¯ä»¥æ˜¯è¿è¡Œæ—¶ç›¸å¯¹ç›®å½•
         static bool CreateDir(const std::string& folder) {
             std::string folder_builder;
             std::string sub;
@@ -57,7 +57,7 @@ namespace BTool {
             return true;
         }
 
-        // É¾³ıÎÄ¼ş
+        // åˆ é™¤æ–‡ä»¶
         static bool DeleteFile(const std::string& file_name) {
             return std::remove(file_name.c_str()) == 0;
         }
@@ -76,8 +76,8 @@ namespace BTool {
             return pBuf;
         }
 
-        // fullFilePath: ÎÄ¼şÃûÈ«Â·¾¶, ÎÄ¼ş²»´æÔÚÊÇ´´½¨ÎÄ¼ş
-        // isOver: ÊÇ·ñÒÔ¸²¸ÇĞÎÊ½Ğ´ÈëÎÄ¼ş,Ä¬ÈÏÒÔ×·¼ÓĞÎÊ½¼ÓÈë
+        // fullFilePath: æ–‡ä»¶åå…¨è·¯å¾„, æ–‡ä»¶ä¸å­˜åœ¨æ˜¯åˆ›å»ºæ–‡ä»¶
+        // isOver: æ˜¯å¦ä»¥è¦†ç›–å½¢å¼å†™å…¥æ–‡ä»¶,é»˜è®¤ä»¥è¿½åŠ å½¢å¼åŠ å…¥
         static bool WriteToFile(const char* fullFilePath, const char* msg, size_t len, bool isOver = false)
         {
             HANDLE hFile = CreateFileA(
@@ -92,7 +92,7 @@ namespace BTool {
 
             if (hFile == INVALID_HANDLE_VALUE)
             {
-                CloseHandle(hFile);        //Ò»¶¨×¢ÒâÔÚº¯ÊıÍË³öÖ®Ç°¶Ô¾ä±ú½øĞĞÊÍ·Å¡£
+                CloseHandle(hFile);        //ä¸€å®šæ³¨æ„åœ¨å‡½æ•°é€€å‡ºä¹‹å‰å¯¹å¥æŸ„è¿›è¡Œé‡Šæ”¾ã€‚
                 return false;
             }
 
@@ -170,10 +170,10 @@ namespace BTool {
             int pathLen = path.length();
             char currentPath[128] = { 0 };
             char fullPath[128] = { 0 };
-            //Ïà¶ÔÂ·¾¶
+            //ç›¸å¯¹è·¯å¾„
             if ('/' != path[0])
             {
-                //»ñÈ¡µ±Ç°Â·¾¶
+                //è·å–å½“å‰è·¯å¾„
                 char* tmp = getcwd(currentPath, sizeof(currentPath));
                 strcat(currentPath, "/");
                 beginCmpPath = strlen(currentPath);
@@ -186,7 +186,7 @@ namespace BTool {
             }
             else
             {
-                //¾ø¶ÔÂ·¾¶
+                //ç»å¯¹è·¯å¾„
                 strcpy(currentPath, path.c_str());
                 if (path[pathLen] != '/')
                 {
@@ -195,7 +195,7 @@ namespace BTool {
                 beginCmpPath = 1;
                 endCmpPath = strlen(currentPath);
             }
-            //´´½¨¸÷¼¶Ä¿Â¼
+            //åˆ›å»ºå„çº§ç›®å½•
             for (int i = beginCmpPath; i < endCmpPath; i++)
             {
                 if ('/' == currentPath[i])

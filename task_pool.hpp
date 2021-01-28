@@ -3,7 +3,7 @@ File name:  task_pool.hpp
 Author:     AChar
 Version:
 Date:
-Description:    Ìá¹©¸÷ÀàÈÎÎñÏß³Ì³Ø»ùÀà,±ÜÃâÍâ½çÖØ¸´´´½¨
+Description:    æä¾›å„ç±»ä»»åŠ¡çº¿ç¨‹æ± åŸºç±»,é¿å…å¤–ç•Œé‡å¤åˆ›å»º
 *************************************************/
 #pragma once
 #include <mutex>
@@ -15,12 +15,12 @@ Description:    Ìá¹©¸÷ÀàÈÎÎñÏß³Ì³Ø»ùÀà,±ÜÃâÍâ½çÖØ¸´´´½¨
 namespace BTool
 {
     /*************************************************
-                   ÈÎÎñÏß³Ì³Ø»ùÀà
+                   ä»»åŠ¡çº¿ç¨‹æ± åŸºç±»
     *************************************************/
     class TaskPoolBase
     {
         enum {
-            TP_MAX_THREAD = 2000,   // ×î´óÏß³ÌÊý
+            TP_MAX_THREAD = 2000,   // æœ€å¤§çº¿ç¨‹æ•°
         };
 
     public:
@@ -35,8 +35,8 @@ namespace BTool
         virtual void pop_task_inner() = 0;
 
     public:
-        // ¿ªÆôÏß³Ì³Ø
-        // thread_num: ¿ªÆôÏß³ÌÊý,×î´óÎªSTP_MAX_THREAD¸öÏß³Ì,0±íÊ¾ÏµÍ³CPUºËÊý
+        // å¼€å¯çº¿ç¨‹æ± 
+        // thread_num: å¼€å¯çº¿ç¨‹æ•°,æœ€å¤§ä¸ºSTP_MAX_THREADä¸ªçº¿ç¨‹,0è¡¨ç¤ºç³»ç»ŸCPUæ ¸æ•°
         void start(size_t thread_num = std::thread::hardware_concurrency()) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
@@ -46,10 +46,10 @@ namespace BTool
             create_thread(thread_num);
         }
 
-        // ÖÕÖ¹Ïß³Ì³Ø
-        // ×¢Òâ´Ë´¦¿ÉÄÜ×èÈûµÈ´ýtaskµÄ»Øµ÷Ïß³Ì½áÊø,¹ÊÔÚtaskµÄ»Øµ÷Ïß³ÌÖÐ²»¿Éµ÷ÓÃ¸Ãº¯Êý
-        // bwait: ÊÇ·ñÇ¿ÖÆµÈ´ýµ±Ç°ËùÓÐ¶ÓÁÐÖ´ÐÐÍê±Ïºó²Å½áÊø
-        // ÍêÈ«Í£Ö¹ºó·½¿ÉÖØÐÂ¿ªÆô
+        // ç»ˆæ­¢çº¿ç¨‹æ± 
+        // æ³¨æ„æ­¤å¤„å¯èƒ½é˜»å¡žç­‰å¾…taskçš„å›žè°ƒçº¿ç¨‹ç»“æŸ,æ•…åœ¨taskçš„å›žè°ƒçº¿ç¨‹ä¸­ä¸å¯è°ƒç”¨è¯¥å‡½æ•°
+        // bwait: æ˜¯å¦å¼ºåˆ¶ç­‰å¾…å½“å‰æ‰€æœ‰é˜Ÿåˆ—æ‰§è¡Œå®Œæ¯•åŽæ‰ç»“æŸ
+        // å®Œå…¨åœæ­¢åŽæ–¹å¯é‡æ–°å¼€å¯
         void stop(bool bwait = false) {
             if (!m_atomic_switch.stop())
                 return;
@@ -71,14 +71,14 @@ namespace BTool
             m_atomic_switch.reset();
         }
 
-        // Çå¿ÕÈÎÎñ¶ÓÁÐ,²»»á×èÈû
+        // æ¸…ç©ºä»»åŠ¡é˜Ÿåˆ—,ä¸ä¼šé˜»å¡ž
         void clear() {
             m_task_queue->clear();
         }
 
-        // ÖØÖÃÏß³Ì³Ø¸öÊý,Ã¿ËõÈÝÒ»¸öÏß³ÌÊ±»á´æÔÚÒ»¸öÖ¸ÕëµÄÄÚ´æÈßÓà(Ïß³Ì×ÊÔ´»á×Ô¶¯ÊÍ·Å),Ö´ÐÐstopº¯Êý»òÎö¹¹º¯Êý¿ÉÏû³ý¸ÃÈßÓà
-        // thread_num: ÖØÖÃÏß³ÌÊý,×î´óÎªSTP_MAX_THREAD¸öÏß³Ì,0±íÊ¾ÏµÍ³CPUºËÊý
-        // ×¢Òâ:±ØÐë¿ªÆôÏß³Ì³Øºó·½¿ÉÉúÐ§
+        // é‡ç½®çº¿ç¨‹æ± ä¸ªæ•°,æ¯ç¼©å®¹ä¸€ä¸ªçº¿ç¨‹æ—¶ä¼šå­˜åœ¨ä¸€ä¸ªæŒ‡é’ˆçš„å†…å­˜å†—ä½™(çº¿ç¨‹èµ„æºä¼šè‡ªåŠ¨é‡Šæ”¾),æ‰§è¡Œstopå‡½æ•°æˆ–æžæž„å‡½æ•°å¯æ¶ˆé™¤è¯¥å†—ä½™
+        // thread_num: é‡ç½®çº¿ç¨‹æ•°,æœ€å¤§ä¸ºSTP_MAX_THREADä¸ªçº¿ç¨‹,0è¡¨ç¤ºç³»ç»ŸCPUæ ¸æ•°
+        // æ³¨æ„:å¿…é¡»å¼€å¯çº¿ç¨‹æ± åŽæ–¹å¯ç”Ÿæ•ˆ
         void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency()) {
             if (!m_atomic_switch.has_started())
                 return;
@@ -88,7 +88,7 @@ namespace BTool
         }
 
     private:
-        // ´´½¨Ïß³Ì
+        // åˆ›å»ºçº¿ç¨‹
         void create_thread(size_t thread_num) {
             if (thread_num == 0) {
                 thread_num = std::thread::hardware_concurrency();
@@ -100,7 +100,7 @@ namespace BTool
             }
         }
 
-        // Ïß³Ì³ØÏß³Ì
+        // çº¿ç¨‹æ± çº¿ç¨‹
         void thread_fun(size_t thread_ver) {
             while (true) {
                 if (m_atomic_switch.has_stoped() && m_task_queue->empty()) {
@@ -115,32 +115,32 @@ namespace BTool
         }
 
     protected:
-        // Ô­×ÓÆôÍ£±êÖ¾
+        // åŽŸå­å¯åœæ ‡å¿—
         AtomicSwitch                m_atomic_switch;
-        // ¶ÓÁÐÖ¸Õë,²»Í¬Ïß³Ì³ØÖ»ÐèÌæ»»²»Í¬¶ÓÁÐÖ¸Õë¼´¿É
+        // é˜Ÿåˆ—æŒ‡é’ˆ,ä¸åŒçº¿ç¨‹æ± åªéœ€æ›¿æ¢ä¸åŒé˜Ÿåˆ—æŒ‡é’ˆå³å¯
         TaskQueueBaseVirtual*       m_task_queue;
 
         std::mutex                  m_threads_mtx;
-        // Ïß³Ì¶ÓÁÐ
+        // çº¿ç¨‹é˜Ÿåˆ—
         std::vector<SafeThread*>    m_cur_thread;
-        // µ±Ç°ÉèÖÃÏß³Ì°æ±¾ºÅ,Ã¿´ÎÖØÐÂÉèÖÃÏß³ÌÊýÊ±,»áµÝÔö¸ÃÊýÖµ
+        // å½“å‰è®¾ç½®çº¿ç¨‹ç‰ˆæœ¬å·,æ¯æ¬¡é‡æ–°è®¾ç½®çº¿ç¨‹æ•°æ—¶,ä¼šé€’å¢žè¯¥æ•°å€¼
         std::atomic<size_t>         m_cur_thread_ver;
     };
 
     /*************************************************
-    Description:    Ìá¹©²¢ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-    1, ¿ÉÍ¬Ê±Ìí¼Ó¶à¸öÈÎÎñ;
-    2, ËùÓÐÈÎÎñÓÐÏÈºóÖ´ÐÐË³Ðò,µ«¿ÉÄÜ»áÍ¬Ê±½øÐÐ;
-    4, ÊµÊ±ÐÔ:Ö»ÒªÏß³Ì³ØÏß³ÌÓÐ¿ÕÏÐµÄ,ÄÇÃ´Ìá½»ÈÎÎñºó±ØÐëÁ¢¼´Ö´ÐÐ;¾¡¿ÉÄÜÌá¸ßÏß³ÌµÄÀûÓÃÂÊ¡£
-    5. Ìá¹©¿ÉÀ©Õ¹»òËõÈÝÏß³Ì³ØÊýÁ¿¹¦ÄÜ¡£
+    Description:    æä¾›å¹¶è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+    1, å¯åŒæ—¶æ·»åŠ å¤šä¸ªä»»åŠ¡;
+    2, æ‰€æœ‰ä»»åŠ¡æœ‰å…ˆåŽæ‰§è¡Œé¡ºåº,ä½†å¯èƒ½ä¼šåŒæ—¶è¿›è¡Œ;
+    4, å®žæ—¶æ€§:åªè¦çº¿ç¨‹æ± çº¿ç¨‹æœ‰ç©ºé—²çš„,é‚£ä¹ˆæäº¤ä»»åŠ¡åŽå¿…é¡»ç«‹å³æ‰§è¡Œ;å°½å¯èƒ½æé«˜çº¿ç¨‹çš„åˆ©ç”¨çŽ‡ã€‚
+    5. æä¾›å¯æ‰©å±•æˆ–ç¼©å®¹çº¿ç¨‹æ± æ•°é‡åŠŸèƒ½ã€‚
     *************************************************/
     class ParallelTaskPool
         : public TaskPoolBase
         , private boost::noncopyable
     {
     public:
-        // ¸ù¾ÝÐÂÔöÈÎÎñË³Ðò²¢ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-        // max_task_count: ×î´óÈÎÎñ»º´æ¸öÊý,³¬¹ý¸ÃÊýÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎÞÏÞÖÆ
+        // æ ¹æ®æ–°å¢žä»»åŠ¡é¡ºåºå¹¶è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+        // max_task_count: æœ€å¤§ä»»åŠ¡ç¼“å­˜ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡ž;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         ParallelTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
             set_queue_ptr(&m_task_queue);
         }
@@ -149,8 +149,8 @@ namespace BTool
             stop();
         }
 
-        // ÐÂÔöÈÎÎñ¶ÓÁÐ,³¬³ö×î´óÈÎÎñÊýÊ±´æÔÚ×èÈû
-        // ÌØ±ð×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëÐÔÖÊµÄÁÙÊ±Ö¸Õë,±ØÐë×ª»»ÎªstringµÈÊµÀý¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
+        // æ–°å¢žä»»åŠ¡é˜Ÿåˆ—,è¶…å‡ºæœ€å¤§ä»»åŠ¡æ•°æ—¶å­˜åœ¨é˜»å¡ž
+        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®žä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œæžæž„åŽ,å°†æŒ‡å‘é‡ŽæŒ‡é’ˆ!!!!
         // add_task([param1, param2=...]{...})
         // add_task(std::bind(&func, param1, param2))
         template<typename TFunction>
@@ -170,18 +170,18 @@ namespace BTool
     };
 
     /*************************************************
-    Description:    ×¨ÓÃÓÚCTP,Ìá¹©²¢ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-    1, ¿ÉÍ¬Ê±Ìí¼Ó¶à¸öÈÎÎñ;
-    2, ËùÓÐÈÎÎñÓÐÏÈºóÖ´ÐÐË³Ðò,µ«¿ÉÄÜ»áÍ¬Ê±½øÐÐ;
-    4, ÊµÊ±ÐÔ:Ö»ÒªÏß³Ì³ØÏß³ÌÓÐ¿ÕÏÐµÄ,ÄÇÃ´Ìá½»ÈÎÎñºó±ØÐëÁ¢¼´Ö´ÐÐ;¾¡¿ÉÄÜÌá¸ßÏß³ÌµÄÀûÓÃÂÊ¡£
-    5. Ìá¹©¿ÉÀ©Õ¹»òËõÈÝÏß³Ì³ØÊýÁ¿¹¦ÄÜ¡£
-    6. Ã¿´ÎPOPÊ±¾ùÑÓÊ±1S
+    Description:    ä¸“ç”¨äºŽCTP,æä¾›å¹¶è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+    1, å¯åŒæ—¶æ·»åŠ å¤šä¸ªä»»åŠ¡;
+    2, æ‰€æœ‰ä»»åŠ¡æœ‰å…ˆåŽæ‰§è¡Œé¡ºåº,ä½†å¯èƒ½ä¼šåŒæ—¶è¿›è¡Œ;
+    4, å®žæ—¶æ€§:åªè¦çº¿ç¨‹æ± çº¿ç¨‹æœ‰ç©ºé—²çš„,é‚£ä¹ˆæäº¤ä»»åŠ¡åŽå¿…é¡»ç«‹å³æ‰§è¡Œ;å°½å¯èƒ½æé«˜çº¿ç¨‹çš„åˆ©ç”¨çŽ‡ã€‚
+    5. æä¾›å¯æ‰©å±•æˆ–ç¼©å®¹çº¿ç¨‹æ± æ•°é‡åŠŸèƒ½ã€‚
+    6. æ¯æ¬¡POPæ—¶å‡å»¶æ—¶1S
     *************************************************/
     class ParallelWaitTaskPool : public ParallelTaskPool
     {
     public:
-        // ¸ù¾ÝÐÂÔöÈÎÎñË³Ðò²¢ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-        // max_task_count: ×î´óÈÎÎñ»º´æ¸öÊý,³¬¹ý¸ÃÊýÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎÞÏÞÖÆ
+        // æ ¹æ®æ–°å¢žä»»åŠ¡é¡ºåºå¹¶è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+        // max_task_count: æœ€å¤§ä»»åŠ¡ç¼“å­˜ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡ž;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         ParallelWaitTaskPool(size_t max_task_count = 0)
             : ParallelTaskPool(max_task_count)
             , m_sleep_millseconds(1100)
@@ -189,7 +189,7 @@ namespace BTool
 
         ~ParallelWaitTaskPool() {}
 
-        // ÉèÖÃ¼ä¸ôÊ±¼ä
+        // è®¾ç½®é—´éš”æ—¶é—´
         void set_sleep_milliseconds(long long millseconds) {
             m_sleep_millseconds = millseconds;
         }
@@ -205,12 +205,12 @@ namespace BTool
     };
 
     /*************************************************
-    Description:    Ìá¹©¾ßÓÐÏàÍ¬ÊôÐÔÈÎÎñÖ´ÐÐ×îÐÂ×´Ì¬µÄÏß³Ì³Ø
-    1, Ã¿¸öÊôÐÔ¶¼¿ÉÒÔÍ¬Ê±Ìí¼Ó¶à¸öÈÎÎñ;
-    2, ÓÐºÜ¶àµÄÊôÐÔºÍºÜ¶àµÄÈÎÎñ;
-    3, Ã¿¸öÊôÐÔÌí¼ÓµÄÈÎÎñ±ØÐëÓÐÐò´®ÐÐÖ´ÐÐ,¼´ÔÚÍ¬Ò»Ê±¿Ì²»ÄÜÓÐÍ¬Ê±Ö´ÐÐÒ»¸öÓÃ»§µÄÁ½¸öÈÎÎñ;
-    4, ÊµÊ±ÐÔ:Ö»ÒªÏß³Ì³ØÏß³ÌÓÐ¿ÕÏÐµÄ,ÄÇÃ´Ìá½»ÈÎÎñºó±ØÐëÁ¢¼´Ö´ÐÐ;¾¡¿ÉÄÜÌá¸ßÏß³ÌµÄÀûÓÃÂÊ¡£
-    5. Ìá¹©¿ÉÀ©Õ¹»òËõÈÝÏß³Ì³ØÊýÁ¿¹¦ÄÜ¡£
+    Description:    æä¾›å…·æœ‰ç›¸åŒå±žæ€§ä»»åŠ¡æ‰§è¡Œæœ€æ–°çŠ¶æ€çš„çº¿ç¨‹æ± 
+    1, æ¯ä¸ªå±žæ€§éƒ½å¯ä»¥åŒæ—¶æ·»åŠ å¤šä¸ªä»»åŠ¡;
+    2, æœ‰å¾ˆå¤šçš„å±žæ€§å’Œå¾ˆå¤šçš„ä»»åŠ¡;
+    3, æ¯ä¸ªå±žæ€§æ·»åŠ çš„ä»»åŠ¡å¿…é¡»æœ‰åºä¸²è¡Œæ‰§è¡Œ,å³åœ¨åŒä¸€æ—¶åˆ»ä¸èƒ½æœ‰åŒæ—¶æ‰§è¡Œä¸€ä¸ªç”¨æˆ·çš„ä¸¤ä¸ªä»»åŠ¡;
+    4, å®žæ—¶æ€§:åªè¦çº¿ç¨‹æ± çº¿ç¨‹æœ‰ç©ºé—²çš„,é‚£ä¹ˆæäº¤ä»»åŠ¡åŽå¿…é¡»ç«‹å³æ‰§è¡Œ;å°½å¯èƒ½æé«˜çº¿ç¨‹çš„åˆ©ç”¨çŽ‡ã€‚
+    5. æä¾›å¯æ‰©å±•æˆ–ç¼©å®¹çº¿ç¨‹æ± æ•°é‡åŠŸèƒ½ã€‚
     *************************************************/
     template<typename TPropType>
     class LastTaskPool
@@ -218,8 +218,8 @@ namespace BTool
         , private boost::noncopyable
     {
     public:
-        // ¾ßÓÐÏàÍ¬ÊôÐÔÈÎÎñÖ´ÐÐ×îÐÂ×´Ì¬µÄÏß³Ì³Ø
-        // max_task_count: ×î´óÈÎÎñ¸öÊý,³¬¹ý¸ÃÊýÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎÞÏÞÖÆ
+        // å…·æœ‰ç›¸åŒå±žæ€§ä»»åŠ¡æ‰§è¡Œæœ€æ–°çŠ¶æ€çš„çº¿ç¨‹æ± 
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡ž;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         LastTaskPool(size_t max_task_count = 0)
             : m_task_queue(max_task_count)
         {
@@ -230,8 +230,8 @@ namespace BTool
             stop();
         }
 
-        // ÐÂÔöÈÎÎñ¶ÓÁÐ,³¬³ö×î´óÈÎÎñÊýÊ±´æÔÚ×èÈû
-        // ÌØ±ð×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëÐÔÖÊµÄÁÙÊ±Ö¸Õë,±ØÐë×ª»»ÎªstringµÈÊµÀý¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
+        // æ–°å¢žä»»åŠ¡é˜Ÿåˆ—,è¶…å‡ºæœ€å¤§ä»»åŠ¡æ•°æ—¶å­˜åœ¨é˜»å¡ž
+        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®žä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œæžæž„åŽ,å°†æŒ‡å‘é‡ŽæŒ‡é’ˆ!!!!
         // add_task(prop, [param1, param2=...]{...})
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
@@ -252,17 +252,17 @@ namespace BTool
         }
 
     private:
-        // ´ýÖ´ÐÐÈÎÎñ¶ÓÁÐ
+        // å¾…æ‰§è¡Œä»»åŠ¡é˜Ÿåˆ—
         LastTaskQueue<TPropType>        m_task_queue;
     };
 
     /*************************************************
-    Description:    Ìá¹©¾ßÓÐÏàÍ¬ÊôÐÔÈÎÎñ´®ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-    1, Ã¿¸öÊôÐÔ¶¼¿ÉÒÔÍ¬Ê±Ìí¼Ó¶à¸öÈÎÎñ;
-    2, ÓÐºÜ¶àµÄÊôÐÔºÍºÜ¶àµÄÈÎÎñ;
-    3, Ã¿¸öÊôÐÔÌí¼ÓµÄÈÎÎñ±ØÐëÓÐÐò´®ÐÐÖ´ÐÐ,¼´ÔÚÍ¬Ò»Ê±¿Ì²»ÄÜÓÐÍ¬Ê±Ö´ÐÐÒ»¸öÓÃ»§µÄÁ½¸öÈÎÎñ;
-    4, ÊµÊ±ÐÔ:Ö»ÒªÏß³Ì³ØÏß³ÌÓÐ¿ÕÏÐµÄ,ÄÇÃ´Ìá½»ÈÎÎñºó±ØÐëÁ¢¼´Ö´ÐÐ;¾¡¿ÉÄÜÌá¸ßÏß³ÌµÄÀûÓÃÂÊ¡£
-    5. Ìá¹©¿ÉÀ©Õ¹»òËõÈÝÏß³Ì³ØÊýÁ¿¹¦ÄÜ¡£
+    Description:    æä¾›å…·æœ‰ç›¸åŒå±žæ€§ä»»åŠ¡ä¸²è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+    1, æ¯ä¸ªå±žæ€§éƒ½å¯ä»¥åŒæ—¶æ·»åŠ å¤šä¸ªä»»åŠ¡;
+    2, æœ‰å¾ˆå¤šçš„å±žæ€§å’Œå¾ˆå¤šçš„ä»»åŠ¡;
+    3, æ¯ä¸ªå±žæ€§æ·»åŠ çš„ä»»åŠ¡å¿…é¡»æœ‰åºä¸²è¡Œæ‰§è¡Œ,å³åœ¨åŒä¸€æ—¶åˆ»ä¸èƒ½æœ‰åŒæ—¶æ‰§è¡Œä¸€ä¸ªç”¨æˆ·çš„ä¸¤ä¸ªä»»åŠ¡;
+    4, å®žæ—¶æ€§:åªè¦çº¿ç¨‹æ± çº¿ç¨‹æœ‰ç©ºé—²çš„,é‚£ä¹ˆæäº¤ä»»åŠ¡åŽå¿…é¡»ç«‹å³æ‰§è¡Œ;å°½å¯èƒ½æé«˜çº¿ç¨‹çš„åˆ©ç”¨çŽ‡ã€‚
+    5. æä¾›å¯æ‰©å±•æˆ–ç¼©å®¹çº¿ç¨‹æ± æ•°é‡åŠŸèƒ½ã€‚
     *************************************************/
     template<typename TPropType>
     class SerialTaskPool
@@ -270,8 +270,8 @@ namespace BTool
         , private boost::noncopyable
     {
     public:
-        // ¾ßÓÐÏàÍ¬ÊôÐÔÈÎÎñ´®ÐÐÓÐÐòÖ´ÐÐµÄÏß³Ì³Ø
-        // max_task_count: ×î´óÈÎÎñ¸öÊý,³¬¹ý¸ÃÊýÁ¿½«²úÉú×èÈû;0Ôò±íÊ¾ÎÞÏÞÖÆ
+        // å…·æœ‰ç›¸åŒå±žæ€§ä»»åŠ¡ä¸²è¡Œæœ‰åºæ‰§è¡Œçš„çº¿ç¨‹æ± 
+        // max_task_count: æœ€å¤§ä»»åŠ¡ä¸ªæ•°,è¶…è¿‡è¯¥æ•°é‡å°†äº§ç”Ÿé˜»å¡ž;0åˆ™è¡¨ç¤ºæ— é™åˆ¶
         SerialTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
             set_queue_ptr(&m_task_queue);
         }
@@ -280,8 +280,8 @@ namespace BTool
             stop();
         }
 
-        // ÐÂÔöÈÎÎñ¶ÓÁÐ,³¬³ö×î´óÈÎÎñÊýÊ±´æÔÚ×èÈû
-        // ÌØ±ð×¢Òâ!Óöµ½char*/char[]µÈÖ¸ÕëÐÔÖÊµÄÁÙÊ±Ö¸Õë,±ØÐë×ª»»ÎªstringµÈÊµÀý¶ÔÏó,·ñÔòÍâ½çÎö¹¹ºó,½«Ö¸ÏòÒ°Ö¸Õë!!!!
+        // æ–°å¢žä»»åŠ¡é˜Ÿåˆ—,è¶…å‡ºæœ€å¤§ä»»åŠ¡æ•°æ—¶å­˜åœ¨é˜»å¡ž
+        // ç‰¹åˆ«æ³¨æ„!é‡åˆ°char*/char[]ç­‰æŒ‡é’ˆæ€§è´¨çš„ä¸´æ—¶æŒ‡é’ˆ,å¿…é¡»è½¬æ¢ä¸ºstringç­‰å®žä¾‹å¯¹è±¡,å¦åˆ™å¤–ç•Œæžæž„åŽ,å°†æŒ‡å‘é‡ŽæŒ‡é’ˆ!!!!
         // add_task(prop, [param1, param2=...]{...})
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
@@ -302,7 +302,7 @@ namespace BTool
         }
 
     private:
-        // ´ýÖ´ÐÐÈÎÎñ¶ÓÁÐ
+        // å¾…æ‰§è¡Œä»»åŠ¡é˜Ÿåˆ—
         SerialTaskQueue<TPropType>          m_task_queue;
     };
 
