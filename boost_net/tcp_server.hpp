@@ -30,6 +30,8 @@ namespace BTool
             typedef std::map<SessionID, TcpSessionPtr>      TcpSessionMap;
 
         public:
+            typedef std::function<void()> error_cbk;
+
             // TCP服务
             // handler: session返回回调
             TcpServer(AsioContextPool& ioc, size_t max_wbuffer_size = TcpSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = TcpSession::MAX_READSINGLE_BUFFER_SIZE)
@@ -41,14 +43,23 @@ namespace BTool
             }
 
             ~TcpServer() {
+                m_handler = NetCallBack();
+                m_error_handler = nullptr;
                 stop();
                 boost::system::error_code ec;
                 m_acceptor.close(ec);
             }
 
+            // 设置监听错误回调
+            TcpServer& register_error_cbk(const error_cbk& cbk) {
+                m_error_handler = cbk;
+                return *this;
+            }
+
             // 设置回调,采用该形式可回调至不同类中分开处理
-            void register_cbk(const NetCallBack& handler) {
+            TcpServer& register_cbk(const NetCallBack& handler) {
                 m_handler = handler;
+                return *this;
             }
             // 设置开启连接回调
             TcpServer& register_open_cbk(const NetCallBack::open_cbk& cbk) {
@@ -78,9 +89,15 @@ namespace BTool
             bool start(unsigned short port, bool reuse_address = true) {
                 return start(nullptr, port, reuse_address);
             }
-            bool start(const char* ip, unsigned short port, bool reuse_address = true)
-            {
+            bool start(const char* ip, unsigned short port, bool reuse_address = true) {
                 if (!start_listen(ip, port, reuse_address)) {
+                    return false;
+                }
+                m_ioc_pool.start();
+                return true;
+            }
+            bool start(const boost::asio::ip::tcp::endpoint& endpoint, bool reuse_address = true) {
+                if (!start_listen(endpoint, reuse_address)) {
                     return false;
                 }
                 m_ioc_pool.start();
@@ -94,9 +111,14 @@ namespace BTool
             void run(unsigned short port, bool reuse_address = false) {
                 run(nullptr, port, reuse_address);
             }
-            void run(const char* ip, unsigned short port, bool reuse_address = false)
-            {
+            void run(const char* ip, unsigned short port, bool reuse_address = false) {
                 if (!start_listen(ip, port, reuse_address)) {
+                    return;
+                }
+                m_ioc_pool.run();
+            }
+            void run(const boost::asio::ip::tcp::endpoint& endpoint, bool reuse_address = false) {
+                if (!start_listen(endpoint, reuse_address)) {
                     return;
                 }
                 m_ioc_pool.run();
@@ -213,6 +235,10 @@ namespace BTool
                         return false;
                 }
 
+                return start_listen(endpoint, reuse_address);
+            }
+            bool start_listen(const boost::asio::ip::tcp::endpoint& endpoint, bool reuse_address)
+            {
                 try {
                     m_acceptor.open(endpoint.protocol());
                     m_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(reuse_address));
@@ -238,6 +264,8 @@ namespace BTool
                 }
                 catch (std::exception&) {
                     stop();
+                    if (m_error_handler)
+                        m_error_handler();
                 }
             }
 
@@ -290,6 +318,7 @@ namespace BTool
             AsioContextPool&    m_ioc_pool;
             accept_type         m_acceptor;
             NetCallBack         m_handler;
+            error_cbk           m_error_handler = nullptr;
             size_t              m_max_wbuffer_size;
             size_t              m_max_rbuffer_size;
 

@@ -201,6 +201,9 @@ namespace BTool {
             m_offset += len;
             m_buffer_size += len;
         }
+        void append(const MemoryStream& data) {
+            append(data.data(), data.size());
+        }
         void append(std::string_view data) {
             append(data.data(), data.size());
         }
@@ -268,7 +271,8 @@ namespace BTool {
              read_args(bool offset_flag = true) {
             size_t cur_offset(m_offset);
             auto param1 = read_args<Type>();
-            auto rslt = std::forward_as_tuple(std::move(param1), read_args<typename std::decay<Args>::type...>());
+
+            auto rslt = tuple_merge(std::move(param1), read_args<typename std::decay<Args>::type...>());
             if (!offset_flag)
                 m_offset = cur_offset;
             return rslt;

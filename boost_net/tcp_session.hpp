@@ -5,8 +5,8 @@ Purpose:    tcp连接类
 Note:       为了外部尽可能的无缓存,外部操作读取数据后需要主动调用consume_read_buf,
             以此来删除读缓存
 
-Special Note: 构造函数中ioc_type& ios为外部引用,需要优先释放该对象之后才能释放ios对象
-            这就导致外部单独使用使用需要先声明ios对象,然后声明该对象,例如:
+Special Note: 构造函数中ioc_type& ioc为外部引用,需要优先释放该对象之后才能释放ioc对象
+            这就导致外部单独使用使用需要先声明ioc对象,然后声明该对象,例如:
                 class TcpClient{
                     ...
                 private:
@@ -16,8 +16,8 @@ Special Note: 构造函数中ioc_type& ios为外部引用,需要优先释放该对象之后才能释放io
             当然如果外部主动控制其先后顺序会更好,例如:
                 class TcpClient {
                 public:
-                    TcpClient(ioc_type& ios) {
-                        m_session = std::make_shared<TcpSession>(ios);
+                    TcpClient(ioc_type& ioc) {
+                        m_session = std::make_shared<TcpSession>(ioc);
                     }
                     ~TcpClient() {
                         m_session.reset();
@@ -59,13 +59,13 @@ namespace BTool
 
         public:
             // TCP连接对象,默认队列发送模式,可通过set_only_one_mode设置为批量发送模式
-            // ios: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ios对象
+            // ioc: io读写动力服务, 为外部引用, 需要优先释放该对象之后才能释放ioc对象
             // max_buffer_size: 最大写缓冲区大小
             // max_rbuffer_size: 单次读取最大缓冲区大小
-            TcpSession(ioc_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_io_context(ios)
-                , m_socket(ios)
-                , m_overtime_timer(ios)
+            TcpSession(ioc_type& ioc, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
+                : m_io_context(ioc)
+                , m_socket(ioc)
+                , m_overtime_timer(ioc)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_connect_port(0)
@@ -75,6 +75,7 @@ namespace BTool
             }
 
             ~TcpSession() {
+                m_handler = NetCallBack();
                 m_overtime_timer.cancel();
                 close();
             }
@@ -237,7 +238,7 @@ namespace BTool
             // 异步读
             bool read() {
                 try {
-                    m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
+                    m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size - m_read_buf.size()),
                         std::bind(&TcpSession::handle_read, shared_from_this(),
                             std::placeholders::_1, std::placeholders::_2));
                     return true;
@@ -319,7 +320,7 @@ namespace BTool
                 if (m_handler.write_cbk_ && m_current_send_msg) {
                     m_handler.write_cbk_(m_session_id, m_current_send_msg->data(), m_current_send_msg->size());
                 }
-                
+
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 m_current_send_msg.reset();
                 if (m_write_buf.empty()) {

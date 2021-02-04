@@ -67,11 +67,19 @@ namespace BTool
 
         // 停止服务,可能产生阻塞
         void stop() {
+            if (m_io_context) {
+                m_io_context->stop();
+            }
+            m_threads.join_all();
+        }
+
+        // 重置
+        void reset() {
             bool expected = true;
             if (!m_bstart.compare_exchange_strong(expected, false))  // 未启动则退出
                 return;
 
-            stop_sync();
+            reset_sync();
         }
 
         // 循环获取io_context
@@ -81,7 +89,7 @@ namespace BTool
 
     private:
         void init(int pool_size) {
-            stop_sync();
+            reset_sync();
 
             m_io_context = new ioc_type(pool_size);
             m_io_work = new work_type(*m_io_context);
@@ -90,7 +98,7 @@ namespace BTool
             }
         }
 
-        void stop_sync() {
+        void reset_sync() {
             if (m_io_context) {
                 m_io_context->stop();
             }

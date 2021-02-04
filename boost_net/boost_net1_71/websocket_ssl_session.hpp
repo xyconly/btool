@@ -100,6 +100,7 @@ namespace BTool
             }
 
             ~WebsocketSslSession() {
+                m_handler = BoostNet::NetCallBack();
                 shutdown();
             }
 

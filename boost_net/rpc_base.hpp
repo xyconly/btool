@@ -117,153 +117,6 @@
         }
     };
 
-#include <iostream>
-#include "utility/boost_net/rpc_base.hpp"
-
-using namespace BTool;
-using namespace BTool::BoostNet;
-int main() {
-    int msg = 88;
-    RpcService<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 100000> service;
-    service.listen("192.168.50.31", 41207);
-    NetCallBack::SessionID session_id = 1;
-    auto status3 = service.push("ReqHeartBeat", session_id, msg);
-    auto [status4, rsp_msg4] = service.push<int>("ReqHeartBeat", session_id, msg);
-    service.push_back("ReqHeartBeat", session_id, msg)([](NetCallBack::SessionID session_id, msg_status status, int rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << "; status:" << (int)status
-            << std::endl;
-        });
-
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-    service.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-
-
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-    service.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-
-    system("pause");
-
-    RpcClient<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 100000> client;
-    client.connect("192.168.50.31", 41207);
-
-    auto status = client.call("req", msg);
-    auto [status2, rsp_msg] = client.call<int>("req", msg);
-
-    client.call_back("ReqHeartBeat", msg)([](NetCallBack::SessionID session_id, msg_status status, int rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << "; status:" << (int)status
-            << std::endl;
-        });
-
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-    client.bind("ReqHeartBeat", [](NetCallBack::SessionID session_id, const message_head&, const int& rsp_msg, int eee)->bool {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return false;
-        });
-
-
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee) {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        });
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-    client.bind_auto("ReqHeartBeat", [](NetCallBack::SessionID session_id, const int& rsp_msg, int eee)->int {
-        std::cout << "session_id:" << session_id
-            << std::endl;
-        return int();
-        });
-}
-
 */
 
 #pragma once
@@ -525,9 +378,10 @@ namespace BTool
                     read_buffer.add_offset(cur_head.content_size_);
 
                     auto item = std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, cur_head, content);
+
                     resault.push_back(item);
                 }
-                return { resault, read_buffer.get_length(), error() };
+                return { resault, read_buffer.get_offset(), error() };
             }
         };
 
@@ -1040,6 +894,10 @@ namespace BTool
                 m_service.reset();
             }
 
+            // 设置监听错误回调
+            void register_error_cbk(const TcpServer::error_cbk& cbk) {
+                m_service->register_error_cbk(cbk);
+            }
             // 设置开启连接回调
             void register_open_cbk(const NetCallBack::open_cbk& cbk) {
                 m_service->register_open_cbk(cbk);
@@ -1049,20 +907,16 @@ namespace BTool
                 m_service->register_close_cbk(cbk);
             }
 
-            void listen(const std::string& ip, unsigned short port, bool reuse_address = true) {
-                m_service->start(ip.c_str(), port, reuse_address);
+            bool listen(const std::string& ip, unsigned short port, bool reuse_address = true) {
+                return m_service->start(ip.c_str(), port, reuse_address);
             }
             void run(const std::string& ip, unsigned short port, bool reuse_address = true) {
-                m_service->start(ip.c_str(), port, reuse_address);
-                m_ioc_pool.run();
+                if (m_service->start(ip.c_str(), port, reuse_address))
+                    m_ioc_pool.run();
             }
 
         public:
 #pragma region tcp回调
-            //void open_cbk(NetCallBack::SessionID session_id) {
-            //}
-            //void close_cbk(NetCallBack::SessionID session_id) {
-            //}
             void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
                 if (err.status_ != msg_status::ok) {
@@ -1092,6 +946,7 @@ namespace BTool
                     default:
                         //this->m_error_proxy.invoke(item);
                         m_service->close(session_id);
+
                         return;
                         break;
                     }
@@ -1143,7 +998,6 @@ namespace BTool
         private:
             AsioContextPool                          m_ioc_pool;
             std::shared_ptr<TcpServer>               m_service;
-            //NetCallBack                              m_cbk;
         };
 
         template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
