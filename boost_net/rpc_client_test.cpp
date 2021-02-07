@@ -1,5 +1,5 @@
 #include <iostream>
-#include "boost_net/rpc_base.hpp"
+#include "rpc_base.hpp"
 
 using namespace BTool;
 using namespace BTool::BoostNet;
@@ -8,6 +8,7 @@ std::atomic<int>  count1 = 0;
 std::atomic<int>  count2 = 0;
 std::atomic<int>  count3 = 0;
 std::atomic<int>  count4 = 0;
+std::atomic<int>  count5 = 0;
 
 std::atomic<bool>  start_flag = false;
 std::atomic<bool>  exit_flag = false;
@@ -35,14 +36,14 @@ int main() {
         }
 
         std::thread thr1([&] {
-            while (exit_flag.load()) {
+            while (!exit_flag.load()) {
                 auto [status, rslt] = client.call<int>("add1", 1, 2);
                 assert(rslt == 3 && status == msg_status::ok);
                 count1++;
             }
             });
         std::thread thr2([&] {
-            while (exit_flag.load()) {
+            while (!exit_flag.load()) {
                 auto [status, rslt] = client.call<int>("add2", 1, 2);
                 assert(rslt == 3 && status == msg_status::ok);
                 count2++;
@@ -50,7 +51,7 @@ int main() {
             });
 
         std::thread thr3([&] {
-            while (exit_flag.load()) {
+            while (!exit_flag.load()) {
                 client.call_back<int>("add3", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt) {
                     assert(rslt == 3 && status == msg_status::ok);
                     count3++;
@@ -58,7 +59,7 @@ int main() {
             }
             });
         std::thread thr4([&] {
-            while (exit_flag.load()) {
+            while (!exit_flag.load()) {
                 client.call_back<int>("add4", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt) {
                     assert(rslt == 3 && status == msg_status::ok);
                     count4++;
@@ -69,7 +70,7 @@ int main() {
             while (!exit_flag.load()) {
                 client.call_back<int>("test", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt, bool bl, test_st ts) {
                     assert(rslt == 3 && status == msg_status::ok && bl == true && ts.i == 3 && ts.b == false);
-                    count4++;
+                    count5++;
                 });
             }
             });
@@ -85,7 +86,8 @@ int main() {
             << "  2:" << count2 << std::endl
             << "  3:" << count3 << std::endl
             << "  4:" << count4 << std::endl
-            << "总计:" << (count1 + count2 + count3 + count4) / 60.0 << "条每秒" << std::endl;
+            << "  5:" << count5 << std::endl
+            << "总计:" << (count1 + count2 + count3 + count4 + count5) / 60.0 << "条每秒" << std::endl;
     }
     system("pause");
 }
