@@ -1,5 +1,5 @@
 #include <iostream>
-#include "rpc_base.hpp"
+#include "boost_net/rpc_base.hpp"
 
 using namespace BTool;
 using namespace BTool::BoostNet;
@@ -8,6 +8,11 @@ std::atomic<int>  count1 = 0;
 std::atomic<int>  count2 = 0;
 std::atomic<int>  count3 = 0;
 std::atomic<int>  count4 = 0;
+
+struct test_st {
+    int i;
+    bool b;
+};
 
 int add1(NetCallBack::SessionID session_id, int a, int b) {
     count1++;
@@ -54,6 +59,12 @@ int main() {
             count4++;
             return a + b;
             });
+
+        service.bind_auto("test", [](NetCallBack::SessionID session_id, int a, int b)->std::tuple<int,bool, test_st> {
+            count4++;
+            return std::forward_as_tuple(a + b, true, test_st{ a + b , false});
+            });
+
 
         while(getchar() != EOF)
         {

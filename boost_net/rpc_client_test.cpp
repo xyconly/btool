@@ -1,5 +1,5 @@
 #include <iostream>
-#include "rpc_base.hpp"
+#include "boost_net/rpc_base.hpp"
 
 using namespace BTool;
 using namespace BTool::BoostNet;
@@ -11,6 +11,11 @@ std::atomic<int>  count4 = 0;
 
 std::atomic<bool>  start_flag = false;
 std::atomic<bool>  exit_flag = false;
+
+struct test_st {
+    int i;
+    bool b;
+};
 
 int main() {
     {
@@ -30,14 +35,14 @@ int main() {
         }
 
         std::thread thr1([&] {
-            while (!exit_flag.load()) {
+            while (exit_flag.load()) {
                 auto [status, rslt] = client.call<int>("add1", 1, 2);
                 assert(rslt == 3 && status == msg_status::ok);
                 count1++;
             }
             });
         std::thread thr2([&] {
-            while (!exit_flag.load()) {
+            while (exit_flag.load()) {
                 auto [status, rslt] = client.call<int>("add2", 1, 2);
                 assert(rslt == 3 && status == msg_status::ok);
                 count2++;
@@ -45,7 +50,7 @@ int main() {
             });
 
         std::thread thr3([&] {
-            while (!exit_flag.load()) {
+            while (exit_flag.load()) {
                 client.call_back<int>("add3", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt) {
                     assert(rslt == 3 && status == msg_status::ok);
                     count3++;
@@ -53,20 +58,28 @@ int main() {
             }
             });
         std::thread thr4([&] {
-            while (!exit_flag.load()) {
+            while (exit_flag.load()) {
                 client.call_back<int>("add4", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt) {
                     assert(rslt == 3 && status == msg_status::ok);
                     count4++;
                     });
             }
             });
-
+        std::thread thr5([&] {
+            while (!exit_flag.load()) {
+                client.call_back<int>("test", 1, 2)([](NetCallBack::SessionID session_id, msg_status status, int rslt, bool bl, test_st ts) {
+                    assert(rslt == 3 && status == msg_status::ok && bl == true && ts.i == 3 && ts.b == false);
+                    count4++;
+                });
+            }
+            });
         std::this_thread::sleep_for(std::chrono::seconds(60));
         exit_flag.store(true);
         thr1.join();
         thr2.join();
         thr3.join();
         thr4.join();
+        thr5.join();
 
         std::cout << "  1:" << count1 << std::endl
             << "  2:" << count2 << std::endl

@@ -198,13 +198,13 @@ namespace BTool
                 : rpc_name_(rpc_name)
                 , head_(head)
             {
-                msg_.load(msg);
+                msg_.load(msg.data(), msg.size());
             }
             ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, std::string_view msg)
                 : rpc_name_(rpc_name)
                 , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), uint32_t(msg.length()) })
             {
-                msg_.load(msg);
+                msg_.load(msg.data(), msg.size());
             }
             virtual ~ProxyMsg() {}
 
@@ -277,18 +277,22 @@ namespace BTool
             template<typename Type>
             typename std::enable_if<!std::is_void<Type>::value, Type>::type
                 get_req_params(MemoryStream& msg, msg_status& status) {
-                if (msg.size() < sizeof(Type) + sizeof(msg_status)) {
+                if (msg.size() < MemoryStream::get_args_sizeof<Type>() + sizeof(msg_status)) {
                     status = msg_status::unpack_error;
                     return Type();
                 }
                 msg.read(&status);
                 return msg.read_args<Type>();
             }
-            template<typename Type1, typename Type2, typename... TParams>
-            decltype(auto) get_req_params(MemoryStream& msg, msg_status& status) {
-                msg.read(&status);
-                return msg.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
-            }
+            //template<typename Type1, typename Type2, typename... TParams>
+            //decltype(auto) get_req_params(MemoryStream& msg, msg_status& status) {
+            //    msg.read(&status);
+            //    //if (msg.get_res_length() < MemoryStream::get_args_sizeof<Type1, Type2, typename std::decay<TParams>::type...>()) {
+            //    //    status = msg_status::unpack_error;
+            //    //    return Type();
+            //    //}
+            //    return msg.read_args<Type1, Type2, typename std::decay<TParams>::type...>();
+            //}
 
             template<typename Type = void>
             typename std::enable_if<std::is_void<Type>::value, Type>::type
@@ -310,8 +314,8 @@ namespace BTool
                 if (status == msg_status::no_bind) {
                     return Type();
                 }
-
-                if (msg.size() < sizeof(msg_status) + sizeof(Type)) {
+                
+                if (msg.get_res_length() < MemoryStream::get_args_sizeof<Type>()) {
                     status = msg_status::unpack_error;
                     return Type();
                 }
@@ -348,7 +352,7 @@ namespace BTool
                 // content
                 write_buffer.append(content_buffer.data(), content_buffer.size());
 
-                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), write_buffer.string_view());
+                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), std::string_view{ write_buffer.data(), write_buffer.size() });
             }
             std::tuple<std::vector<TProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
                 std::vector<TProxyMsgPtr>  resault;
@@ -1016,7 +1020,6 @@ namespace BTool
                 m_session->register_open_cbk(std::bind(&RpcClient::open_cbk, this, _1))
                     .register_close_cbk(std::bind(&RpcClient::close_cbk, this, _1))
                     .register_read_cbk(std::bind(&RpcClient::read_cbk, this, _1, _2, _3));
-
             }
             ~RpcClient() {
                 m_b_auto_reconnect = false;

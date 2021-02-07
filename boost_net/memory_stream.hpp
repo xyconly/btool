@@ -9,7 +9,6 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 #pragma once
 
 #include <memory>
-#include <string_view>
 
 #ifdef _MSC_VER
 # include <stdint.h>
@@ -62,29 +61,11 @@ namespace BTool {
         {
         }
 
-        MemoryStream(std::string_view data)
-            : m_buffer_size(data.size())
-            , m_offset(0)
-            , m_capacity(data.size())
-            , m_buffer((char*)data.data())
-            , m_auto_delete(false)
-        {
-        }
-
         virtual ~MemoryStream() {
             clear();
         }
 
     public:
-        // 获取缓存内容
-        std::string_view string_view() const {
-            return { m_buffer, m_buffer_size };
-        }
-
-        std::string_view res_string_view() const {
-            return { m_buffer + m_offset, m_buffer_size - m_offset };
-        }
-
         const char* const data() const {
             return m_buffer;
         }
@@ -168,9 +149,6 @@ namespace BTool {
             memcpy(m_buffer, buffer, len);
             m_auto_delete = true;
         }
-        void load(std::string_view data) {
-            load(data.data(), data.size());
-        }
         // 追加数据至指定位置的内存处
         void append(const void* buffer, size_t len, size_t offset) {
             if (!buffer || len == 0)
@@ -202,9 +180,6 @@ namespace BTool {
             m_buffer_size += len;
         }
         void append(const MemoryStream& data) {
-            append(data.data(), data.size());
-        }
-        void append(std::string_view data) {
             append(data.data(), data.size());
         }
         void append(const std::string& data) {
@@ -267,26 +242,25 @@ namespace BTool {
         }
 
         template <typename Type, typename...Args>
-        typename std::enable_if<sizeof...(Args) == 1, std::tuple<Type, typename std::decay<Args>::type...> >::type
+        typename std::enable_if<sizeof...(Args) >= 1, std::tuple<Type, typename std::decay<Args>::type...> >::type
              read_args(bool offset_flag = true) {
             size_t cur_offset(m_offset);
             auto param1 = read_args<Type>();
-
             auto rslt = tuple_merge(std::move(param1), read_args<typename std::decay<Args>::type...>());
             if (!offset_flag)
                 m_offset = cur_offset;
             return rslt;
         }
-        template <typename Type, typename...Args>
-        typename std::enable_if<sizeof...(Args) >= 2, std::tuple<Type, typename std::decay<Args>::type...> >::type
-            read_args(bool offset_flag = true) {
-            size_t cur_offset(m_offset);
-            auto param1 = read_args<Type>();
-            auto rslt = tuple_merge(std::move(param1), read_args<typename std::decay<Args>::type...>());
-            if (!offset_flag)
-                m_offset = cur_offset;
-            return rslt;
-        }
+        //template <typename Type, typename...Args>
+        //typename std::enable_if<sizeof...(Args) >= 2, std::tuple<Type, typename std::decay<Args>::type...> >::type
+        //    read_args(bool offset_flag = true) {
+        //    size_t cur_offset(m_offset);
+        //    auto param1 = read_args<Type>();
+        //    auto rslt = tuple_merge(std::move(param1), read_args<typename std::decay<Args>::type...>());
+        //    if (!offset_flag)
+        //        m_offset = cur_offset;
+        //    return rslt;
+        //}
 
         // tuple -> args...
         template<typename Type, typename... Args, typename type_is_tuple = typename std::enable_if<!is_tuple<Type>::value, void >::type>
@@ -329,6 +303,22 @@ namespace BTool {
         static typename std::enable_if<!is_tuple<Type>::value, std::tuple<Type>>::type
             tuple_merge(Type&& tp1) {
             return std::forward_as_tuple(std::forward<Type>(tp1));
+        }
+
+        // sizeof(std::tuple<...>) 非tuple对齐
+        static size_t get_args_sizeof() { return 0; }
+        template <typename Type>
+        static typename std::enable_if<!is_tuple<Type>::value, size_t>::type
+            get_args_sizeof() { return sizeof(Type); }
+        template <typename Type>
+        static typename std::enable_if<is_tuple<Type>::value, size_t>::type
+            get_args_sizeof() { 
+            return get_args_sizeof_impl<Type>(typename std::make_index_sequence<std::tuple_size<Type>::value>{});
+        }
+        template <typename Type, typename...Args>
+        static typename std::enable_if<sizeof...(Args) >= 1, size_t>::type
+            get_args_sizeof() {
+            return get_args_sizeof<Type>() + get_args_sizeof<Args...>();
         }
 
     protected:
@@ -377,6 +367,12 @@ namespace BTool {
         template <size_t... Indexes, typename... Args, typename...Types>
         void append_args_tp_impl(std::index_sequence<Indexes...>, const std::tuple<Args...>& tp, Types&&...srcs) {
             append_args(std::get<Indexes>(std::forward<const std::tuple<Args...>&>(tp))..., std::forward<Types>(srcs)...);
+        }
+
+        // sizeof(std::tuple<...>) 非tuple对齐
+        template<class Tuple, std::size_t... Indexes>
+        static size_t get_args_sizeof_impl(std::index_sequence<Indexes...>) {
+            return get_args_sizeof<typename std::tuple_element<Indexes, Tuple>::type...>();
         }
 
         // 扩容至len的长度
