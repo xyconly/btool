@@ -12,7 +12,6 @@ Note:    server本身存储session对象,外部仅提供ID进行操作
 #include <mutex>
 #include <set>
 #include <map>
-#include <boost/lexical_cast.hpp>
 #include "../io_context_pool.hpp"
 #include "tcp_session.hpp"
 #include "net_callback.hpp"
@@ -30,8 +29,6 @@ namespace BTool
             typedef std::map<SessionID, TcpSessionPtr>      TcpSessionMap;
 
         public:
-            typedef std::function<void()> error_cbk;
-
             // TCP服务
             // handler: session返回回调
             TcpServer(AsioContextPool& ioc, size_t max_wbuffer_size = TcpSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = TcpSession::MAX_READSINGLE_BUFFER_SIZE)
@@ -51,7 +48,7 @@ namespace BTool
             }
 
             // 设置监听错误回调
-            TcpServer& register_error_cbk(const error_cbk& cbk) {
+            TcpServer& register_error_cbk(const NetCallBack::server_error_cbk& cbk) {
                 m_error_handler = cbk;
                 return *this;
             }
@@ -204,36 +201,13 @@ namespace BTool
             }
 
         private:
-            static boost::asio::ip::tcp::endpoint GetPointByName(const char* host, unsigned short port, boost::system::error_code& ec) {
-                ec = boost::asio::error::host_not_found;
-                boost::asio::io_context ioc;
-                boost::asio::ip::tcp::resolver rslv(ioc);
-                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
-                try {
-                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
-                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
-                        ec.clear();
-                        return iter->endpoint();
-                    }
-                }
-                catch (...) {
-                    ec = boost::asio::error::fault;
-                }
-                return boost::asio::ip::tcp::endpoint();
-            }
             // 启动监听端口
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::system::error_code ec;
-                boost::asio::ip::tcp::endpoint endpoint;
-                if (!ip) {
-                    endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
-                }
-                else {
-                    endpoint = GetPointByName(ip, port, ec);
-                    if (ec)
-                        return false;
-                }
+                boost::asio::ip::tcp::endpoint endpoint = GetEndPointByHost(ip, port, ec);
+                if (ec)
+                    return false;;
 
                 return start_listen(endpoint, reuse_address);
             }
@@ -315,16 +289,16 @@ namespace BTool
             }
 
         private:
-            AsioContextPool&    m_ioc_pool;
-            accept_type         m_acceptor;
-            NetCallBack         m_handler;
-            error_cbk           m_error_handler = nullptr;
-            size_t              m_max_wbuffer_size;
-            size_t              m_max_rbuffer_size;
+            AsioContextPool&                    m_ioc_pool;
+            accept_type                         m_acceptor;
+            NetCallBack                         m_handler;
+            NetCallBack::server_error_cbk       m_error_handler = nullptr;
+            size_t                              m_max_wbuffer_size;
+            size_t                              m_max_rbuffer_size;
 
-            mutable std::mutex  m_mutex;
+            mutable std::mutex                  m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间
-            TcpSessionMap       m_sessions;
+            TcpSessionMap                       m_sessions;
         };
     }
 }

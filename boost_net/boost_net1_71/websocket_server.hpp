@@ -41,9 +41,17 @@ namespace BTool
             }
 
             ~WebsocketServer() {
+                m_handler = BoostNet::NetCallBack();
+                m_error_handler = nullptr;
                 stop();
                 boost::system::error_code ec;
                 m_acceptor.close(ec);
+            }
+
+            // 设置监听错误回调
+            WebsocketServer& register_error_cbk(const BoostNet::NetCallBack::server_error_cbk& cbk) {
+                m_error_handler = cbk;
+                return *this;
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -180,15 +188,9 @@ namespace BTool
             bool start_listen(const char* ip, unsigned short port, bool reuse_address)
             {
                 boost::beast::error_code ec;
-                boost::asio::ip::tcp::endpoint endpoint;
-                if (!ip) {
-                    endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
-                }
-                else {
-                    endpoint = WebsocketSession::GetEndpointByHost(ip, port, ec);
-                    if (ec)
-                        return false;
-                }
+                boost::asio::ip::tcp::endpoint endpoint = BoostNet::GetEndPointByHost(ip, port, ec);
+                if (ec)
+                    return false;;
 
                 try {
                     m_acceptor.open(endpoint.protocol());
@@ -220,6 +222,8 @@ namespace BTool
                 }
                 catch (std::exception&) {
                     stop();
+                    if (m_error_handler)
+                        m_error_handler();
                 }
             }
 
@@ -273,15 +277,16 @@ namespace BTool
             }
 
         private:
-            AsioContextPool&        m_ioc_pool;
-            accept_type             m_acceptor;
-            BoostNet::NetCallBack   m_handler;
-            size_t                  m_max_wbuffer_size;
-            size_t                  m_max_rbuffer_size;
+            AsioContextPool&                            m_ioc_pool;
+            accept_type                                 m_acceptor;
+            BoostNet::NetCallBack                       m_handler;
+            BoostNet::NetCallBack::server_error_cbk     m_error_handler = nullptr;
+            size_t                                      m_max_wbuffer_size;
+            size_t                                      m_max_rbuffer_size;
 
-            mutable std::mutex      m_mutex;
+            mutable std::mutex                          m_mutex;
             // 所有连接对象，后期改为内存块，节省开辟/释放内存时间
-            WebsocketSessionMap     m_sessions;
+            WebsocketSessionMap                         m_sessions;
         };
     }
 }

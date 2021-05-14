@@ -120,13 +120,13 @@
 */
 
 #pragma once
+
 #include <memory>
 #include <string>
 #include <vector>
 #include <tuple>
 #include <functional>
 #include <future>
-#include "tcp_server.hpp"
 #include "../timer_manager.hpp"
 
 namespace BTool
@@ -370,7 +370,7 @@ namespace BTool
 
                     // 断包判断
                     if (read_buffer.get_res_length() < cur_head.title_size_ + cur_head.content_size_) {
-                        return { resault, read_buffer.get_length() - sizeof(struct message_head), error() };
+                        return { resault, read_buffer.get_offset() - sizeof(struct message_head), error() };
                     }
 
                     // rpc_name
@@ -542,6 +542,167 @@ namespace BTool
             std::unordered_map<uint32_t, rsp_callback_function_type>        m_callback_map;
         };
 
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT>
+        class RpcBase;
+
+        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        class BindProxy {
+            typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>  TProxyMsgPtr;
+            typedef NetCallBack::SessionID                      SessionID;
+            // 回调模式内部解析函数
+            typedef std::function<void(SessionID, msg_status, TProxyMsgPtr)>       rsp_callback_function_type;
+
+        public:
+            BindProxy(RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>* parent) {
+                m_parent = parent;
+            }
+
+            // 返回是否已绑定
+            bool invoke(SessionID session_id, const TProxyMsgPtr& msg) {
+                auto iter = m_bind_map.find(msg->get_rpc_name());
+                if (iter == m_bind_map.end())
+                    return false;
+                iter->second(session_id, msg);
+                return true;
+            }
+
+            template<typename TReturn, typename... TParams>
+            inline void insert(const std::string& rpc_name, const std::function<TReturn(SessionID, const message_head&, TParams...)>& bindfunc) {
+                m_bind_map[rpc_name] = std::bind(&BindProxy::bind_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+            }
+                     
+            template<typename TReturn, typename... TParams>
+            inline void insert_auto_rsp(const std::string& rpc_name, const std::function<TReturn(SessionID, TParams...)>& bindfunc) {
+                m_bind_map[rpc_name] = std::bind(&BindProxy::bind_auto_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+            }
+
+        protected:
+#pragma region bind_proxy
+            template<typename TReturn>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head());
+            }
+            template<typename TReturn>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head());
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
+            }
+
+            template<typename TReturn>
+            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&)>& bindfunc, SessionID session_id, const message_head& head) {
+                return std::apply(bindfunc, std::forward_as_tuple(session_id, head));
+            }
+            template<typename ArgsTuple, typename TReturn, typename... TParams>
+            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&, TParams...)>& bindfunc, SessionID session_id, const message_head& head, ArgsTuple&& args) {
+                return std::apply(bindfunc, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, head), std::forward<ArgsTuple>(args)));
+            }
+
+            template<typename TReturn>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_auto_invoke(bindfunc, session_id);
+                m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+            }
+            template<typename TReturn>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                msg->get_req_params(status);
+                if (status != msg_status::ok) {
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                auto resault = bind_auto_invoke(bindfunc, session_id);
+                m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    return;
+                }
+                bind_auto_invoke(bindfunc, session_id, std::move(rsp));
+                m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+            }
+            template<typename TReturn, typename TParam0, typename... TParams>
+            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
+                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
+                msg_status status = msg_status::fail;
+                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
+                auto rsp = msg->get_req_params<args_type>(status);
+                if (status != msg_status::ok) {
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    return;
+                }
+                auto resault = bind_auto_invoke(bindfunc, session_id, std::move(rsp));
+                m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
+            }
+
+            template<typename TReturn>
+            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID)>& bindfunc, SessionID session_id) {
+                return std::apply(bindfunc, std::forward_as_tuple(session_id));
+            }
+            template<typename ArgsTuple, typename TReturn, typename... TParams>
+            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID, TParams...)>& bindfunc, SessionID session_id, ArgsTuple&& args) {
+                return std::apply(bindfunc, MemoryStream::tuple_merge(session_id, std::forward<ArgsTuple>(args)));
+            }
+
+#pragma endregion
+            // 绑定模式内部解析函数
+            typedef std::function<void(SessionID, const TProxyMsgPtr&)>  bind_function_type;
+            // bind函数绑定集合
+            std::unordered_map<std::string, bind_function_type>          m_bind_map;
+            // 所属对象
+            RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>*  m_parent;
+        };
+
         template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
         class RpcBase {
         protected:
@@ -550,6 +711,9 @@ namespace BTool
             typedef NetCallBack::SessionID                      SessionID;
 
         public:
+            RpcBase():m_bind_proxy(this){}
+            virtual ~RpcBase() {}
+
 #pragma region call_back 请求操作定义
             // 回调辅助操作类
             template<size_t TIMEOUT, typename TTuple>
@@ -614,7 +778,7 @@ namespace BTool
             // 函数的执行结果需主动调动rsp_bind
             template<typename TReturn, typename... TParams>
             inline void bind_functional(const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, TParams...)> bindfunc) {
-                m_bind_map[rpc_name] = std::bind(&RpcBase::bind_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+                m_bind_proxy.insert(rpc_name, bindfunc);
             }
             // &functional
             // 函数的执行结果需主动调动rsp_bind
@@ -639,7 +803,7 @@ namespace BTool
             // 函数的执行结果直接返回给请求端
             template<typename TReturn, typename... TParams>
             inline void bind_auto_functional(const std::string& rpc_name, std::function<TReturn(SessionID, TParams...)> bindfunc) {
-                m_bind_map[rpc_name] = std::bind(&RpcBase::bind_auto_proxy<TReturn, TParams...>, this, bindfunc, rpc_name, std::placeholders::_1, std::placeholders::_2);
+                m_bind_proxy.insert_auto_rsp(rpc_name, bindfunc);
             }
             // &functional
             // 函数的执行结果直接返回给请求端
@@ -740,154 +904,23 @@ namespace BTool
 #pragma endregion
 
         protected:
-            ProxyPkg<TProxyPkgHandle, TProxyMsgHandle>  m_proxy_deal;
-            SyncProxy<TProxyMsgHandle>                  m_sync_proxy;
-            CallbackProxy<TProxyMsgHandle>              m_callback_proxy;
-
-        protected:
-#pragma region bind_proxy
-            bool deal_bind(SessionID session_id, const TProxyMsgPtr& msg) {
-                auto iter = m_bind_map.find(msg->get_rpc_name());
-                if (iter == m_bind_map.end())
-                    return false;
-                iter->second(session_id, msg);
-                return true;
-            }
-
-            template<typename TReturn>
-            typename std::enable_if<std::is_void<TReturn>::value, void>::type
-                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                msg->get_req_params(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-                    return;
-                }
-                bind_invoke(bindfunc, session_id, msg->get_message_head());
-            }
-            template<typename TReturn>
-            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
-                bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                msg->get_req_params(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
-                    return;
-                }
-                bind_invoke(bindfunc, session_id, msg->get_message_head());
-            }
-            template<typename TReturn, typename TParam0, typename... TParams>
-            typename std::enable_if<std::is_void<TReturn>::value, void>::type
-                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
-                auto rsp = msg->get_req_params<args_type>(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-                    return;
-                }
-                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
-            }
-            template<typename TReturn, typename TParam0, typename... TParams>
-            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
-                bind_proxy(std::function<TReturn(SessionID, const message_head&, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
-                auto rsp = msg->get_req_params<args_type>(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
-                    return;
-                }
-                bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
-            }
-
-            template<typename TReturn>
-            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&)>& bindfunc, SessionID session_id, const message_head& head) {
-                return std::apply(bindfunc, std::forward_as_tuple(session_id, head));
-            }
-            template<typename ArgsTuple, typename TReturn, typename... TParams>
-            decltype(auto) bind_invoke(const std::function<TReturn(SessionID, const message_head&, TParams...)>& bindfunc, SessionID session_id, const message_head& head, ArgsTuple&& args) {
-                return std::apply(bindfunc, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, head), std::forward<ArgsTuple>(args)));
-            }
-
-            template<typename TReturn>
-            typename std::enable_if<std::is_void<TReturn>::value, void>::type
-                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                msg->get_req_params(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-                    return;
-                }
-                bind_auto_invoke(bindfunc, session_id);
-                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-            }
-            template<typename TReturn>
-            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
-                bind_auto_proxy(std::function<TReturn(SessionID)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                msg->get_req_params(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
-                    return;
-                }
-                auto resault = bind_auto_invoke(bindfunc, session_id);
-                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
-            }
-            template<typename TReturn, typename TParam0, typename... TParams>
-            typename std::enable_if<std::is_void<TReturn>::value, void>::type
-                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
-                auto rsp = msg->get_req_params<args_type>(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-                    return;
-                }
-                bind_auto_invoke(bindfunc, session_id, std::move(rsp));
-                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
-            }
-            template<typename TReturn, typename TParam0, typename... TParams>
-            typename std::enable_if<!std::is_void<TReturn>::value, void>::type
-                bind_auto_proxy(std::function<TReturn(SessionID, TParam0, TParams...)> bindfunc, const std::string& rpc_name, SessionID session_id, const TProxyMsgPtr& msg) {
-                msg_status status = msg_status::fail;
-                using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TParams>::type...>;
-                auto rsp = msg->get_req_params<args_type>(status);
-                if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
-                    return;
-                }
-                auto resault = bind_auto_invoke(bindfunc, session_id, std::move(rsp));
-                rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, std::move(resault));
-            }
-
-            template<typename TReturn>
-            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID)>& bindfunc, SessionID session_id) {
-                return std::apply(bindfunc, std::forward_as_tuple(session_id));
-            }
-            template<typename ArgsTuple, typename TReturn, typename... TParams>
-            decltype(auto) bind_auto_invoke(const std::function<TReturn(SessionID, TParams...)>& bindfunc, SessionID session_id, ArgsTuple&& args) {
-                return std::apply(bindfunc, MemoryStream::tuple_merge(session_id, std::forward<ArgsTuple>(args)));
-            }
-
-
-#pragma endregion
-            // 绑定模式内部解析函数
-            typedef std::function<void(SessionID, const TProxyMsgPtr&)>  bind_function_type;
-            // bind函数绑定集合
-            std::unordered_map<std::string, bind_function_type>     m_bind_map;
-
+            ProxyPkg<TProxyPkgHandle, TProxyMsgHandle>                      m_proxy_deal;
+            SyncProxy<TProxyMsgHandle>                                      m_sync_proxy;
+            CallbackProxy<TProxyMsgHandle>                                  m_callback_proxy;
+            BindProxy<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>    m_bind_proxy;
         };
 
-        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        template<typename TServer, template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
         class RpcService : public RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> {
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::TProxyMsgPtr TProxyMsgPtr;
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::PromisePtr   PromisePtr;
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::SessionID    SessionID;
 
         public:
-            RpcService() {
-                m_service = std::make_shared<TcpServer>(m_ioc_pool);
+            // max_buffer_size: 最大写缓冲区大小,0表示无限制
+            // max_rbuffer_size: 单次读取最大缓冲区大小
+            RpcService(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) {
+                m_service = std::make_shared<TServer>(m_ioc_pool, max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
                 using std::placeholders::_2;
                 using std::placeholders::_3;
@@ -899,7 +932,7 @@ namespace BTool
             }
 
             // 设置监听错误回调
-            void register_error_cbk(const TcpServer::error_cbk& cbk) {
+            void register_error_cbk(const NetCallBack::server_error_cbk& cbk) {
                 m_service->register_error_cbk(cbk);
             }
             // 设置开启连接回调
@@ -931,7 +964,7 @@ namespace BTool
 
                 for (auto& item : units) {
                     if (item->get_comm_model() == comm_model::request) {
-                        if (!this->deal_bind(session_id, item)) {
+                        if (!this->m_bind_proxy.invoke(session_id, item)) {
                             //this->m_error_proxy.invoke(item);
                             //m_service->close(session_id);
                             this->rsp_bind(item->get_rpc_name(), session_id, item->get_req_id(), item->get_rpc_model(), msg_status::no_bind);
@@ -1001,28 +1034,32 @@ namespace BTool
 
         private:
             AsioContextPool                          m_ioc_pool;
-            std::shared_ptr<TcpServer>               m_service;
+            std::shared_ptr<TServer>                 m_service;
         };
 
-        template<template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        template<typename TSession, template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
         class RpcClient : public RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> {
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::TProxyMsgPtr TProxyMsgPtr;
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::PromisePtr   PromisePtr;
             typedef typename RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>::SessionID    SessionID;
 
         public:
-            RpcClient() {
-                m_session = std::make_shared<TcpSession>(m_ioc_pool.get_io_context());
+            // max_buffer_size: 最大写缓冲区大小,0表示无限制
+            // max_rbuffer_size: 单次读取最大缓冲区大小
+            RpcClient(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) {
+                m_session = std::make_shared<TSession>(m_ioc_pool.get_io_context(), max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
                 using std::placeholders::_2;
                 using std::placeholders::_3;
-                m_session->register_cbk(m_cbk);
+                //m_session->register_cbk(m_cbk);
                 m_session->register_open_cbk(std::bind(&RpcClient::open_cbk, this, _1))
                     .register_close_cbk(std::bind(&RpcClient::close_cbk, this, _1))
                     .register_read_cbk(std::bind(&RpcClient::read_cbk, this, _1, _2, _3));
             }
             ~RpcClient() {
                 m_b_auto_reconnect = false;
+                m_session->register_cbk(NetCallBack());
+                m_session->shutdown();
                 m_ioc_pool.stop();
                 m_session.reset();
             }
@@ -1065,7 +1102,7 @@ namespace BTool
 
                 for (auto& item : units) {
                     if (item->get_comm_model() == comm_model::request) {
-                        if (!this->deal_bind(session_id, item)) {
+                        if (!this->m_bind_proxy.invoke(session_id, item)) {
                             //this->m_error_proxy.invoke(item);
                             //m_session->shutdown();
                             this->rsp_bind(item->get_rpc_name(), session_id, item->get_req_id(), item->get_rpc_model(), msg_status::no_bind);
@@ -1138,7 +1175,7 @@ namespace BTool
 
         private:
             AsioContextPool                          m_ioc_pool;
-            std::shared_ptr<TcpSession>              m_session;
+            std::shared_ptr<TSession>                m_session;
             bool                                     m_b_auto_reconnect = true;
             bool                                     m_connecting = false;
             NetCallBack                              m_cbk;

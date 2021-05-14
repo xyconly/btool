@@ -42,7 +42,7 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 #include "../../atomic_switch.hpp"
 
 // 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
-//#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
+#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 namespace BTool
 {
@@ -60,7 +60,7 @@ namespace BTool
             typedef BoostNet::NetCallBack::SessionID                                SessionID;
 
             enum {
-                NOLIMIT_WRITE_BUFFER_SIZE = 0, // 无限制
+                NOLIMIT_WRITE_BUFFER_SIZE = 0, // ??????
                 MAX_WRITE_BUFFER_SIZE = 30000,
                 MAX_READSINGLE_BUFFER_SIZE = 20000,
             };
@@ -99,24 +99,6 @@ namespace BTool
             ~WebsocketSession() {
                 m_handler = BoostNet::NetCallBack();
                 shutdown();
-            }
-
-            static boost::asio::ip::tcp::endpoint GetEndpointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
-                ec = boost::asio::error::host_not_found;
-                boost::asio::io_context ioc;
-                boost::asio::ip::tcp::resolver rslv(ioc);
-                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
-                try {
-                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
-                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
-                        ec.clear();
-                        return iter->endpoint();
-                    }
-                }
-                catch (...) {
-                    ec = boost::asio::error::fault;
-                }
-                return boost::asio::ip::tcp::endpoint();
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -166,6 +148,7 @@ namespace BTool
             }
 
             // 客户端开启连接,同时开启读取
+            // 支持域名及IP
             void connect(const char* host, unsigned short port, char const* addr = "/") {
                 if (!m_atomic_switch.init())
                     return;
@@ -237,7 +220,7 @@ namespace BTool
                 }
 
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
-                if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE&& m_write_buf.size() + size > m_max_wbuffer_size) {
+                if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
                     return false;
                 }
                 if (!m_write_buf.append(send_msg, size)) {

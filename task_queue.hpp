@@ -115,6 +115,11 @@ namespace BTool
 
                 pop_task = std::move(this->m_queue.front());
                 this->m_queue.pop();
+                // queue不会主动释放已开辟空间,当任务清空时则释放一下,若实际环境中,可自己定义为list来避免queue长期占用的问题,但这会导致性能的略微下降,根据实际情况决定
+                if (this->m_queue.empty()) {
+                    std::queue<TTaskType> empty;
+                    this->m_queue.swap(empty);
+                }
                 this->m_cv_not_full.notify_one();
             }
 

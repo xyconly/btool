@@ -104,24 +104,6 @@ namespace BTool
                 shutdown();
             }
 
-            static boost::asio::ip::tcp::endpoint GetEndpointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
-                ec = boost::asio::error::host_not_found;
-                boost::asio::io_context ioc;
-                boost::asio::ip::tcp::resolver rslv(ioc);
-                boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
-                try {
-                    boost::asio::ip::tcp::resolver::iterator iter = rslv.resolve(qry);
-                    if (iter != boost::asio::ip::tcp::resolver::iterator()) {
-                        ec.clear();
-                        return iter->endpoint();
-                    }
-                }
-                catch (...) {
-                    ec = boost::asio::error::fault;
-                }
-                return boost::asio::ip::tcp::endpoint();
-            }
-
             // 设置回调,采用该形式可回调至不同类中分开处理
             WebsocketSslSession& register_cbk(const BoostNet::NetCallBack& handler) {
                 m_handler = handler;

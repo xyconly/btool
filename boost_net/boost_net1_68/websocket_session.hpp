@@ -69,7 +69,8 @@ namespace BTool
             WebsocketSession(ios_type& ios, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_io_service(ios)
                 , m_socket(ios)
-				, m_resolver(ios)
+                , m_overtime_timer(ioc)
+                , m_resolver(ios)
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_max_rbuffer_size(max_rbuffer_size)
                 , m_handler(nullptr)
@@ -82,6 +83,7 @@ namespace BTool
 
             ~WebsocketSession() {
                 m_handler = nullptr;
+                m_overtime_timer.cancel();
                 shutdown();
             }
 
@@ -129,12 +131,22 @@ namespace BTool
                 m_connect_port = port;
                 m_hand_addr = addr;
 
-                m_resolver.async_resolve({ boost::asio::ip::address::from_string(ip), port },
-                    std::bind(
-                        &WebsocketSession::handle_resolve,
-                        shared_from_this(),
-                        std::placeholders::_1,
-                        std::placeholders::_2));
+                m_overtime_timer.cancel();
+
+                boost::system::error_code ec;
+                boost::asio::ip::tcp::endpoint host = GetEndPointByHost(ip, port, ec);
+                if (ec) {
+                    m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(1));
+                    m_overtime_timer.async_wait([this, ec](boost::system::error_code) {
+                        handle_resolve(ec, boost::asio::ip::tcp::resolver::iterator());
+                        });
+                    return;
+                }
+
+                m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(2000));
+                m_overtime_timer.async_wait(std::bind(&WebsocketSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
+
+                m_resolver.async_resolve(host, std::bind(&WebsocketSession::handle_resolve, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
             }
 
             // 客户端重连
@@ -245,10 +257,15 @@ namespace BTool
             }
 
             void handle_resolve(boost::system::error_code ec, boost::asio::ip::tcp::resolver::iterator result) {
+                m_overtime_timer.cancel();
+
                 if (ec) {
                     close();
                     return;
                 }
+
+                m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(2000));
+                m_overtime_timer.async_wait(std::bind(&WebsocketSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
 
                 boost::asio::async_connect(
                     get_socket(),
@@ -259,8 +276,9 @@ namespace BTool
             }
 
             // 处理连接回调
-            void handle_connect(const boost::system::error_code& error)
-            {
+            void handle_connect(const boost::system::error_code& error) {
+                m_overtime_timer.cancel();
+
                 if (error) {
                     close();
                     return;
@@ -269,14 +287,18 @@ namespace BTool
                 if (m_hand_addr.empty())
                     m_hand_addr = "/";
 
+                m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(2000));
+                m_overtime_timer.async_wait(std::bind(&WebsocketSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
+
                 m_socket.async_handshake(m_connect_ip, m_hand_addr,
                     std::bind(&WebsocketSession::handle_handshake
                         , shared_from_this()
                         , std::placeholders::_1));
             }
 
-            void handle_handshake(const boost::system::error_code& ec)
-            {
+            void handle_handshake(const boost::system::error_code& ec) {
+                m_overtime_timer.cancel();
+
                 if (ec) {
                     close();
                     return;
@@ -288,8 +310,10 @@ namespace BTool
             // 处理开始
             void handle_start(const boost::system::error_code& error) {
                 boost::system::error_code ec;
-                m_connect_ip = get_socket().remote_endpoint(ec).address().to_v4().to_string();
-                m_connect_port = get_socket().remote_endpoint(ec).port();
+                if (m_connect_ip.empty())
+                    m_connect_ip = get_socket().remote_endpoint(ec).address().to_string();
+                if (m_connect_port == 0)
+                    m_connect_port = get_socket().remote_endpoint(ec).port();
 
                 if (m_atomic_switch.start() && read() && m_handler) {
                     m_handler->on_open_cbk(m_session_id);
@@ -360,13 +384,21 @@ namespace BTool
                 }
             }
 
+            void handle_overtimer(boost::system::error_code ec) {
+                if (!ec) {
+                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                    m_socket.close(ec);
+                }
+            }
         private:
             // TCP解析器
             boost::asio::ip::tcp::resolver m_resolver;
             // asio的socket封装
             websocket_stream_type   m_socket;
-            ios_type&               m_io_service;
+            ios_type& m_io_service;
             SessionID               m_session_id;
+
+            boost::asio::deadline_timer m_overtime_timer;
 
             // 读缓冲
             ReadBufferType          m_read_buf;
@@ -383,7 +415,7 @@ namespace BTool
             size_t                  m_max_wbuffer_size;
 
             // 回调操作
-            BoostNet::NetCallBack*  m_handler;
+            BoostNet::NetCallBack* m_handler;
 
             // 原子启停标志
             AtomicSwitch            m_atomic_switch;
@@ -392,7 +424,7 @@ namespace BTool
             std::string             m_connect_ip;
             // 连接者Port
             unsigned short          m_connect_port;
-			// 地址
+            // 地址
             std::string             m_hand_addr;
         };
     }
