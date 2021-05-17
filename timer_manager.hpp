@@ -7,6 +7,11 @@ Note:     插入时间复杂度: O(logN)
           每个时间插入后存在时间间隔的问题,会自动对应至下一个时间间隔,而不是完全一致的时间
           由于windows的最小时钟间隔为 0.5ms - 15.6001ms,故外界判断时应允许判断15.6001ms的误差
           实际测试中发现基本误差在1ms以内,向前漂移或者向后漂移
+
+注意事项: 当回调执行的函数超过定时器的时间时,erase无法减少执行的次数,如:
+          workers==1情况下,间隔1s执行操作A,但是A本身耗时2秒,
+          那么此时,间隔10秒后执行erase,则依旧会执行10次操作A,
+          故而在执行时,应该自身确保异步函数执行时间不得高于间隔时间,或使用stop/clear函数终止
 /************************************************************************/
 #pragma once
 
@@ -26,7 +31,6 @@ namespace BTool {
     {
         typedef boost::asio::basic_waitable_timer<std::chrono::system_clock> my_system_timer;
         typedef std::shared_ptr<my_system_timer> timer_ptr;
-
 
     public:
         enum {
@@ -57,7 +61,6 @@ namespace BTool {
 
             ~TimerQueue() {
                 clear();
-                m_task_pool.stop();
             }
 
             template<typename TFunction>
@@ -132,6 +135,7 @@ namespace BTool {
             void clear() {
                 m_all_timer_map.clear();
                 m_timer_part_queue.clear();
+                m_task_pool.clear();
             }
 
             bool empty() const {
@@ -240,7 +244,6 @@ namespace BTool {
         }
 
         ~TimerManager() {
-            clear();
             stop();
         }
 
@@ -257,6 +260,7 @@ namespace BTool {
                 return;
 
             m_ioc_pool.stop();
+            clear();
 
             m_atomic_switch.reset();
         }
@@ -398,6 +402,7 @@ namespace BTool {
             m_timer_queue.clear();
             if(m_timer)
                 m_timer->cancel();
+            m_cur_task = nullptr;
         }
 
         // 清空指定时间下所有定时器

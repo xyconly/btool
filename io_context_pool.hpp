@@ -67,6 +67,10 @@ namespace BTool
 
         // 停止服务,可能产生阻塞
         void stop() {
+            bool expected = true;
+            if (!m_bstart.compare_exchange_strong(expected, false))  // 已终止则退出
+                return;
+
             if (m_io_context) {
                 m_io_context->stop();
             }

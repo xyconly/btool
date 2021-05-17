@@ -59,7 +59,7 @@ namespace BTool
             std::vector<SafeThread*> tmp_threads;
             {
                 std::lock_guard<std::mutex> lck(m_threads_mtx);
-                tmp_threads.swap(m_cur_thread);
+                tmp_threads.swap(m_cur_threads);
             }
 
             for (auto& thread : tmp_threads) {
@@ -96,7 +96,7 @@ namespace BTool
             size_t cur_thread_ver = ++m_cur_thread_ver;
             thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
             for (size_t i = 0; i < thread_num; i++) {
-                m_cur_thread.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver)));
+                m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver)));
             }
         }
 
@@ -122,7 +122,7 @@ namespace BTool
 
         std::mutex                  m_threads_mtx;
         // 线程队列
-        std::vector<SafeThread*>    m_cur_thread;
+        std::vector<SafeThread*>    m_cur_threads;
         // 当前设置线程版本号,每次重新设置线程数时,会递增该数值
         std::atomic<size_t>         m_cur_thread_ver;
     };
