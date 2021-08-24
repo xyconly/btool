@@ -189,45 +189,45 @@ namespace BTool {
         }
         template<>
         void append<const std::string&>(const std::string& data) {
-            append(size_t(data.length() + 1));
+            append(uint32_t(data.length() + 1)); // 一般不会超过该数值
             append(data.c_str(), data.length() + 1);
         }
         template<>
         void append<std::string&>(std::string& data) {
-            append(size_t(data.length() + 1));
+            append(uint32_t(data.length() + 1));
             append(data.c_str(), data.length() + 1);
         }
         template<>
         void append<std::string>(std::string&& data) {
-            append(size_t(data.length() + 1));
+            append(uint32_t(data.length() + 1));
             append(data.c_str(), data.length() + 1);
         }
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
         template<>
         void append<const std::string_view&>(const std::string_view& data) {
-            append(size_t(data.length() + 1));
-            append(data.data(), data.length() + 1);
+            append(uint32_t(data.length()));
+            append(data.data(), data.length());
         }
         template<>
         void append<std::string_view&>(std::string_view& data) {
-            append(size_t(data.length() + 1));
-            append(data.data(), data.length() + 1);
+            append(uint32_t(data.length()));
+            append(data.data(), data.length());
         }
         template<>
         void append<std::string_view>(std::string_view&& data) {
-            append(size_t(data.length() + 1));
-            append(data.data(), data.length() + 1);
+            append(uint32_t(data.length()));
+            append(data.data(), data.length());
         }
 #endif
 
         template<>
         void append<MemoryStream&>(MemoryStream& data) {
-            append(data.size());
+            append(uint32_t(data.size()));
             append(data.data(), data.size());
         }
         template<>
         void append<const MemoryStream&>(const MemoryStream& data) {
-            append(data.size());
+            append(uint32_t(data.size()));
             append(data.data(), data.size());
         }
 
@@ -263,35 +263,35 @@ namespace BTool {
         }
         template<>
         void read<MemoryStream>(MemoryStream* pDst, bool offset_flag) {
-            size_t length = 0;
-            read(&length, sizeof(size_t), true);
+            uint32_t length = 0;
+            read(&length, sizeof(length), true);
 
             pDst->clear();
             pDst->load(m_buffer + m_offset, length);
 
             if (!offset_flag)
-                m_offset -= sizeof(size_t);
+                m_offset -= sizeof(length);
         }
         template<>
         void read<std::string>(std::string* pDst, bool offset_flag) {
-            size_t length = 0;
-            read(&length, sizeof(size_t), true);
+            uint32_t length = 0;
+            read(&length, sizeof(length), true);
 
             *pDst = std::string(m_buffer + m_offset, length);
             if (!offset_flag)
-                m_offset -= sizeof(size_t);
+                m_offset -= sizeof(length);
             else
                 m_offset += length;
         }
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
         template<>
         void read<std::string_view>(std::string_view* pDst, bool offset_flag) {
-            size_t length = 0;
-            read(&length, sizeof(size_t), true);
+            uint32_t length = 0;
+            read(&length, sizeof(length), true);
 
             *pDst = std::string_view(m_buffer + m_offset, length);
             if (!offset_flag)
-                m_offset -= sizeof(size_t);
+                m_offset -= sizeof(length);
             else
                 m_offset += length;
         }
