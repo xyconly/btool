@@ -8,7 +8,11 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 *************************************************/
 #pragma once
 
+#include <string>
 #include <memory>
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+# include <string_view>
+#endif
 
 #ifdef _MSC_VER
 # include <stdint.h>
@@ -179,16 +183,54 @@ namespace BTool {
             m_offset += len;
             m_buffer_size += len;
         }
-        void append(const MemoryStream& data) {
-            append(data.data(), data.size());
-        }
-        void append(const std::string& data) {
-            append(data.c_str(), data.length());
-        }
         template<typename Type>
         void append(Type&& src) {
             append(&src, sizeof(Type));
         }
+        template<>
+        void append<const std::string&>(const std::string& data) {
+            append(size_t(data.length() + 1));
+            append(data.c_str(), data.length() + 1);
+        }
+        template<>
+        void append<std::string&>(std::string& data) {
+            append(size_t(data.length() + 1));
+            append(data.c_str(), data.length() + 1);
+        }
+        template<>
+        void append<std::string>(std::string&& data) {
+            append(size_t(data.length() + 1));
+            append(data.c_str(), data.length() + 1);
+        }
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+        template<>
+        void append<const std::string_view&>(const std::string_view& data) {
+            append(size_t(data.length() + 1));
+            append(data.data(), data.length() + 1);
+        }
+        template<>
+        void append<std::string_view&>(std::string_view& data) {
+            append(size_t(data.length() + 1));
+            append(data.data(), data.length() + 1);
+        }
+        template<>
+        void append<std::string_view>(std::string_view&& data) {
+            append(size_t(data.length() + 1));
+            append(data.data(), data.length() + 1);
+        }
+#endif
+
+        template<>
+        void append<MemoryStream&>(MemoryStream& data) {
+            append(data.size());
+            append(data.data(), data.size());
+        }
+        template<>
+        void append<const MemoryStream&>(const MemoryStream& data) {
+            append(data.size());
+            append(data.data(), data.size());
+        }
+
         // 追加数据至最新位置的内存处
         void append_args() {}
         template <typename Type, typename...Args>
@@ -213,12 +255,68 @@ namespace BTool {
             if (offset_flag)
                 m_offset += len;
         }
-        template<typename Type>
         // 读取当前漂移位下参数数值
         // offset_flag : 是否需要漂移当前漂移位
-        void read(Type* pDst, bool offset_flag = true) {
+        template<typename Type>
+        void read(Type* pDst, bool offset_flag) {
             read(pDst, sizeof(Type), offset_flag);
         }
+        template<>
+        void read<MemoryStream>(MemoryStream* pDst, bool offset_flag) {
+            size_t length = 0;
+            read(&length, sizeof(size_t), true);
+
+            pDst->clear();
+            pDst->load(m_buffer + m_offset, length);
+
+            if (!offset_flag)
+                m_offset -= sizeof(size_t);
+        }
+        template<>
+        void read<std::string>(std::string* pDst, bool offset_flag) {
+            size_t length = 0;
+            read(&length, sizeof(size_t), true);
+
+            *pDst = std::string(m_buffer + m_offset, length);
+            if (!offset_flag)
+                m_offset -= sizeof(size_t);
+            else
+                m_offset += length;
+        }
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+        template<>
+        void read<std::string_view>(std::string_view* pDst, bool offset_flag) {
+            size_t length = 0;
+            read(&length, sizeof(size_t), true);
+
+            *pDst = std::string_view(m_buffer + m_offset, length);
+            if (!offset_flag)
+                m_offset -= sizeof(size_t);
+            else
+                m_offset += length;
+        }
+#endif
+
+        // 读取当前漂移位下参数数值,读取后自动漂移当前漂移位(特化模板不能使用默认参数)
+        template<typename Type>
+        void read(Type* pDst) {
+            read(pDst, true);
+        }
+        template<>
+        void read<MemoryStream>(MemoryStream* pDst) {
+            read(pDst, true);
+        }
+        template<>
+        void read<std::string>(std::string* pDst) {
+            read(pDst, true);
+        }
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+        template<>
+        void read<std::string_view>(std::string_view* pDst) {
+            read(pDst, true);
+        }
+#endif
+
         // 读取数据当前漂移位下参数数值
         // offset_flag : 是否需要漂移当前漂移位
         template <typename Type>
