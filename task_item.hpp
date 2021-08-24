@@ -51,7 +51,12 @@ namespace BTool
         {}
         ~TupleInvoke() {}
 
-#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17版本才开始支持std::apply
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+        // 执行调用函数
+        void invoke() {
+            std::apply(std::forward<TFunction>(m_fun_cbk), std::forward<TTuple>(*m_tuple.get()));
+        }
+#  else
         // 执行调用函数
         void invoke() {
             constexpr auto size = std::tuple_size<typename std::decay<TTuple>::type>::value;
@@ -61,11 +66,6 @@ namespace BTool
         template<std::size_t... Index>
         decltype(auto) invoke_impl(std::index_sequence<Index...>) {
             return m_fun_cbk(std::get<Index>(std::forward<TTuple>(*m_tuple.get()))...);
-        }
-#  else
-        // 执行调用函数
-        void invoke() {
-            std::apply(std::forward<TFunction>(m_fun_cbk), std::forward<TTuple>(*m_tuple.get()));
         }
 #  endif
 
@@ -297,7 +297,12 @@ namespace BTool
 
         ~TupleTimerTask() {}
 
-#  if (!defined _MSC_VER) || (_MSC_VER < 1920) // C++17版本才开始支持std::apply
+#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+        // 执行调用函数
+        void invoke(const system_time_point& time_point) {
+            std::apply(std::forward<TFunction>(m_fun_cbk), get_id(), time_point, std::forward<TTuple>(*m_tuple.get()));
+        }
+#  else
         // 执行调用函数
         void invoke(const system_time_point& time_point) {
             constexpr auto size = std::tuple_size<typename std::decay<TTuple>::type>::value;
@@ -307,11 +312,6 @@ namespace BTool
         template<std::size_t... Index>
         decltype(auto) invoke_impl(const system_time_point& time_point, std::index_sequence<Index...>) {
             return m_fun_cbk(get_id(), time_point, std::get<Index>(std::forward<TTuple>(*m_tuple.get()))...);
-        }
-#  else
-        // 执行调用函数
-        void invoke(const system_time_point& time_point) {
-            std::apply(std::forward<TFunction>(m_fun_cbk), get_id(), time_point, std::forward<TTuple>(*m_tuple.get()));
         }
 #  endif
 
