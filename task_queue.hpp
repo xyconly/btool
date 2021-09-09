@@ -4,6 +4,7 @@ Author:     AChar
 Version:
 Date:
 Description:    提供各类任务队列,避免外界重复创建
+                类不采用继承的形式,本身改动较少,可加快速度
 
 Note:  condition_variable使用注意:在进行wait时会首先
        1.执行判断,为true则退出
@@ -20,75 +21,51 @@ Note:  condition_variable使用注意:在进行wait时会首先
 #include <condition_variable>
 #include "rwmutex.hpp"
 #include "atomic_switch.hpp"
-#include "task_item.hpp"
 
 namespace BTool
 {
     /*************************************************
-               任务线程队列基类
+    Description:提供基于函数的FIFO任务队列
     *************************************************/
-
-    class TaskQueueBaseVirtual {
-        // 禁止拷贝
-        TaskQueueBaseVirtual(const TaskQueueBaseVirtual&) = delete;
-        TaskQueueBaseVirtual& operator=(const TaskQueueBaseVirtual&) = delete;
-
-    protected:
-        TaskQueueBaseVirtual() {}
-
+    class TaskQueue {
     public:
-        // 当前队列是否为空
-        virtual bool empty() const = 0;
-        // 清空当前队列
-        virtual void clear() = 0;
-        // 重新开启当前当前
-        virtual void start() = 0;
-        // 终止当前
-        // bwait: 是否强制等待当前所有队列执行完毕后才结束
-        virtual void stop(bool bwait = false) = 0;
-        // 移除一个顶层非当前执行属性任务,队列为空时存在阻塞
-        virtual void pop_task() = 0;
-    };
-
-    template<typename TTaskType>
-    class TaskQueueBase : public TaskQueueBaseVirtual {
+        typedef std::function<void()> TaskItem;
     public:
-        TaskQueueBase(size_t max_task_count = 0)
+        TaskQueue(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
             , m_bstop(false)
         {}
 
-        virtual ~TaskQueueBase() {
-            //clear();
+        virtual ~TaskQueue() {
             stop();
         }
 
-        bool empty() const override {
+        bool empty() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return !not_empty();
         }
 
-        void clear() override {
+        void clear() {
             std::unique_lock<std::mutex> locker(m_mtx);
-            std::queue<TTaskType> empty;
+            std::queue<TaskItem> empty;
             m_queue.swap(empty);
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
 
-        void start() override {
+        void start() {
             // 复位已终止标志符
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
                 return;
             }
 
-            std::unique_lock<std::mutex> locker(this->m_mtx);
+            std::unique_lock<std::mutex> locker(m_mtx);
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
 
-        void stop(bool bwait = false) override {
+        void stop(bool bwait = false) {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -96,7 +73,7 @@ namespace BTool
             }
 
             if (bwait) {
-                std::unique_lock<std::mutex> locker(this->m_mtx);
+                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -104,27 +81,40 @@ namespace BTool
             clear();
         }
 
-        void pop_task() override {
-            TTaskType pop_task(nullptr);
-            {
-                std::unique_lock<std::mutex> locker(this->m_mtx);
-                this->m_cv_not_empty.wait(locker, [this] { return this->m_bstop.load() || this->not_empty(); });
+        template<typename AsTFunction>
+        bool add_task(AsTFunction&& func) {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-                if (this->m_bstop.load() && !not_empty())
+            if (m_bstop.load())
+                return false;
+
+            m_queue.push(std::forward<AsTFunction>(func));
+            m_cv_not_empty.notify_one();
+            return true;
+        }
+
+        void pop_task() {
+            TaskItem pop_task(nullptr);
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+
+                if (m_bstop.load() && !not_empty())
                     return;
 
-                pop_task = std::move(this->m_queue.front());
-                this->m_queue.pop();
+                pop_task = std::move(m_queue.front());
+                m_queue.pop();
                 // queue不会主动释放已开辟空间,当任务清空时则释放一下,若实际环境中,可自己定义为list来避免queue长期占用的问题,但这会导致性能的略微下降,根据实际情况决定
-                if (this->m_queue.empty()) {
-                    std::queue<TTaskType> empty;
-                    this->m_queue.swap(empty);
+                if (m_queue.empty()) {
+                    std::queue<TaskItem> empty;
+                    m_queue.swap(empty);
                 }
-                this->m_cv_not_full.notify_one();
+                m_cv_not_full.notify_one();
             }
 
             if (pop_task) {
-                invoke(pop_task);
+                pop_task();
             }
         }
 
@@ -149,9 +139,6 @@ namespace BTool
             return !m_queue.empty();
         }
 
-        // 执行任务
-        virtual void invoke(TTaskType& task) = 0;
-
     protected:
         // 是否已终止标识符
         std::atomic<bool>           m_bstop;
@@ -159,7 +146,7 @@ namespace BTool
         mutable std::mutex          m_mtx;
 
         // 总待执行任务队列,包含所有的待执行任务
-        std::queue<TTaskType>       m_queue;
+        std::queue<TaskItem>       m_queue;
         // 最大任务个数,当为0时表示无限制
         size_t                      m_max_task_count;
 
@@ -170,108 +157,30 @@ namespace BTool
     };
 
     /*************************************************
-    Description:提供基于函数的FIFO任务队列
+    Description:提供按属性划分的,仅保留最新状态的FIFO任务队列
+                当某一属性正在队列中时,同属性的其他任务新增时,原任务会被覆盖
     *************************************************/
-    class TaskQueue : public TaskQueueBase<std::function<void()>>
+    template<typename TPropType>
+    class LastTaskQueue
     {
-        typedef std::function<void()> TaskType;
     public:
-        TaskQueue(size_t max_task_count = 0)
-            : TaskQueueBase<TaskType>(max_task_count)
-        {}
-
-        virtual ~TaskQueue() {}
-
-        template<typename AsTFunction>
-        bool add_task(AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
-
-            if (m_bstop.load())
-                return false;
-
-            m_queue.push(std::forward<AsTFunction>(func));
-            m_cv_not_empty.notify_one();
-            return true;
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task();
-        }
-    };
-
-    /*************************************************
-    Description:提供FIFO任务队列,将调用函数转为元祖对象存储
-    *************************************************/
-    class TupleTaskQueue : public TaskQueueBase<std::shared_ptr<TaskVirtual>>
-    {
-        typedef std::shared_ptr<TaskVirtual>  TaskType;
-    public:
-        TupleTaskQueue(size_t max_task_count = 0)
-            : TaskQueueBase<TaskType>(max_task_count)
-        {}
-
-        virtual ~TupleTaskQueue() {}
-
-        template<typename TFunction, typename... Args>
-        bool add_task(TFunction&& func, Args&&... args) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
-
-            if (m_bstop.load())
-                return false;
-
-//             return add_task_tolist(std::make_shared<PackagedTask>(std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
-            // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
-            // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
-            typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
-            return add_task_tolist(std::make_shared<TupleTask<TFunction, TTuple>>(std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task->invoke();
-        }
-
-      private:
-        // 新增任务至队列
-        bool add_task_tolist(TaskType&& new_task_item)
-        {
-            if (!new_task_item)
-                return false;
-
-            this->m_queue.push(std::forward<TaskType>(new_task_item));
-            this->m_cv_not_empty.notify_one();
-            return true;
-        }
-    };
-
-
-
-    template<typename TPropType, typename TTaskType>
-    class LastTaskQueueBase : public TaskQueueBaseVirtual
-    {
+        typedef std::function<void()> TaskItem;
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        LastTaskQueueBase(size_t max_task_count = 0)
+        LastTaskQueue(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
             , m_bstop(false)
         {}
-        virtual ~LastTaskQueueBase() {
-            //clear();
+        virtual ~LastTaskQueue() {
             stop();
         }
 
-        bool empty() const override {
+        bool empty() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return !not_empty();
         }
 
-        void clear() override {
+        void clear() {
             std::unique_lock<std::mutex> locker(m_mtx);
             m_wait_tasks.clear();
             m_wait_props.clear();
@@ -279,7 +188,7 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void start() override {
+        void start() {
             // 复位已终止标志符
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
@@ -291,14 +200,14 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void stop(bool bwait = false) override {
+        void stop(bool bwait = false) {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
             }
             if (bwait) {
-                std::unique_lock<std::mutex> locker(this->m_mtx);
+                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -306,8 +215,24 @@ namespace BTool
             clear();
         }
 
-        void pop_task() override {
-            TTaskType pop_task(nullptr);
+        template<typename AsTPropType, typename AsTFunction>
+        bool add_task(AsTPropType&& prop, AsTFunction&& func) {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+
+            if (m_bstop.load())
+                return false;
+
+            auto iter = m_wait_tasks.find(prop);
+            if (iter == m_wait_tasks.end())
+                m_wait_props.push_back(prop);
+            m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
+            m_cv_not_empty.notify_one();
+            return true;
+        }
+
+        void pop_task() {
+            TaskItem pop_task(nullptr);
             TPropType pop_type;
 
             {
@@ -336,7 +261,7 @@ namespace BTool
             }
 
             if (pop_task) {
-                invoke(pop_task);
+                pop_task();
 
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cur_pop_props.erase(pop_type);
@@ -374,9 +299,6 @@ namespace BTool
             return !m_wait_props.empty();
         }
 
-        // 执行任务
-        virtual void invoke(TTaskType& task) = 0;
-
     protected:
         // 是否已终止标识符
         std::atomic<bool>                m_bstop;
@@ -386,7 +308,7 @@ namespace BTool
         // 总待执行任务属性顺序队列,用于判断执行队列顺序
         std::list<TPropType>             m_wait_props;
         // 总待执行任务队列属性及其对应任务,其个数必须始终与m_wait_tasks个数同步
-        std::map<TPropType, TTaskType>   m_wait_tasks;
+        std::map<TPropType, TaskItem>   m_wait_tasks;
         // 当前正在pop任务属性
         std::set<TPropType>              m_cur_pop_props;
         // 最大任务个数,当为0时表示无限制
@@ -399,103 +321,16 @@ namespace BTool
     };
 
     /*************************************************
-    Description:提供按属性划分的,仅保留最新状态的FIFO任务队列,将调用函数转为元祖对象存储
-                当某一属性正在队列中时,同属性的其他任务新增时,原任务会被覆盖
+    Description:提供按属性划分的,保留所有任务的FIFO任务队列,将调用函数转为元祖对象存储
+                当某一属性正在队列中时,同属性的其他任务新增时,会追加至原任务之后执行
+                当某一任务正在执行时,同属性其他任务将不被执行,同一属性之间的任务均按照FIFO串行执行完毕
     *************************************************/
     template<typename TPropType>
-    class LastTaskQueue : public LastTaskQueueBase<TPropType, std::function<void()>>
+    class SerialTaskQueue
     {
-        typedef std::function<void()> TaskType;
     public:
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        LastTaskQueue(size_t max_task_count = 0)
-            : LastTaskQueueBase<TPropType, TaskType>(max_task_count)
-        {}
-        ~LastTaskQueue() {}
+        typedef std::function<void()> TaskItem;
 
-        template<typename AsTPropType, typename AsTFunction>
-        bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(this->m_mtx);
-            this->m_cv_not_full.wait(locker, [this] { return this->m_bstop.load() || this->not_full(); });
-
-            if (this->m_bstop.load())
-                return false;
-
-            auto iter = this->m_wait_tasks.find(prop);
-            if (iter == this->m_wait_tasks.end())
-                this->m_wait_props.push_back(prop);
-            this->m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
-            this->m_cv_not_empty.notify_one();
-            return true;
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task();
-        }
-    };
-
-    /*************************************************
-    Description:提供按属性划分的,仅保留最新状态的FIFO任务队列,将调用函数转为元祖对象存储
-                当某一属性正在队列中时,同属性的其他任务新增时,原任务会被覆盖
-    *************************************************/
-    template<typename TPropType>
-    class LastTupleTaskQueue : public LastTaskQueueBase<TPropType, std::shared_ptr<PropTaskVirtual<TPropType>>>
-    {
-        typedef std::shared_ptr<PropTaskVirtual<TPropType>> TaskType;
-
-    public:
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        LastTupleTaskQueue(size_t max_task_count = 0)
-            : LastTaskQueueBase<TPropType, TaskType>(max_task_count)
-        {}
-        ~LastTupleTaskQueue() {}
-
-        template<typename AsTPropType, typename TFunction, typename... Args>
-        bool add_task(AsTPropType&& prop, TFunction&& func, Args&&... args) {
-            std::unique_lock<std::mutex> locker(this->m_mtx);
-            this->m_cv_not_full.wait(locker, [this] { return this->m_bstop.load() || this->not_full(); });
-
-            if (this->m_bstop.load())
-                return false;
-
-//             return add_task_tolist(std::make_shared<PropPackagedTask<TPropType>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
-            // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
-            // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
-            typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
-            return add_task_tolist(std::make_shared<PropTupleTask<TPropType, TFunction, TTuple>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task->invoke();
-        }
-
-    private:
-        // 新增任务至队列
-        bool add_task_tolist(TaskType&& new_task_item)
-        {
-            if (!new_task_item)
-                return false;
-
-            auto& prop_type = new_task_item->get_prop_type();
-            auto iter = this->m_wait_tasks.find(prop_type);
-            if (iter == this->m_wait_tasks.end())
-                this->m_wait_props.push_back(prop_type);
-            this->m_wait_tasks[prop_type] = std::forward<TaskType>(new_task_item);
-
-            this->m_cv_not_empty.notify_one();
-            return true;
-        }
-    };
-
-
-    template<typename TPropType, typename TTaskType>
-    class SerialTaskQueueBase : public TaskQueueBaseVirtual
-    {
     protected:
         // 连续属性双向链表,用于存储同一属性上下位置,及FIFO顺序
         // 非线程安全
@@ -701,22 +536,21 @@ namespace BTool
 
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        SerialTaskQueueBase(size_t max_task_count = 0)
+        SerialTaskQueue(size_t max_task_count = 0)
             : m_max_task_count(max_task_count)
             , m_bstop(false)
         {}
 
-        virtual ~SerialTaskQueueBase() {
-            //clear();
+        virtual ~SerialTaskQueue() {
             stop();
         }
 
-        bool empty() const override {
+        bool empty() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return m_wait_tasks.empty();
         }
 
-        void clear() override {
+        void clear() {
             std::unique_lock<std::mutex> locker(m_mtx);
             m_wait_props.clear();
             m_wait_tasks.clear();
@@ -725,7 +559,7 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void start() override {
+        void start() {
             // 复位已终止标志符
             bool target(true);
             if (!m_bstop.compare_exchange_strong(target, false)) {
@@ -736,14 +570,14 @@ namespace BTool
             m_cv_not_empty.notify_all();
         }
 
-        void stop(bool bwait = false) override {
+        void stop(bool bwait = false) {
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
                 return;
             }
             if (bwait) {
-                std::unique_lock<std::mutex> locker(this->m_mtx);
+                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -751,8 +585,23 @@ namespace BTool
             clear();
         }
 
-        void pop_task() override {
-            TTaskType next_task(nullptr);
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        template<typename AsTPropType, typename AsTFunction>
+        bool add_task(AsTPropType&& prop, AsTFunction&& func) {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+
+            if (m_bstop.load())
+                return false;
+
+            m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
+            m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
+            m_cv_not_empty.notify_one();
+            return true;
+        }
+
+        void pop_task() {
+            TaskItem next_task(nullptr);
             TPropType prop_type;
 
             {
@@ -772,7 +621,7 @@ namespace BTool
             }
 
             if (next_task) {
-                invoke(next_task);
+                next_task();
                 std::unique_lock<std::mutex> locker(m_mtx);
                 auto wait_task_iter = m_wait_tasks.find(prop_type);
                 if (wait_task_iter != m_wait_tasks.end()) {
@@ -828,9 +677,6 @@ namespace BTool
             return !m_wait_tasks.empty() && m_cur_props.size() < m_wait_tasks.size();
         }
 
-        // 执行任务
-        virtual void invoke(TTaskType& task) = 0;
-
     protected:
         // 是否已终止标识符
         std::atomic<bool>                           m_bstop;
@@ -840,7 +686,7 @@ namespace BTool
         // 总待执行任务属性顺序队列,用于判断执行队列顺序
         PropCountNodeList                           m_wait_props;
         // 总待执行任务队列属性及其对应任务
-        std::map<TPropType, std::list<TTaskType>>   m_wait_tasks;
+        std::map<TPropType, std::list<TaskItem>>    m_wait_tasks;
         // 最大任务个数,当为0时表示无限制
         size_t                                      m_max_task_count;
 
@@ -852,99 +698,5 @@ namespace BTool
         // 当前正在执行中的任务属性
         std::set<TPropType>                         m_cur_props;
 
-    };
-
-    /*************************************************
-    Description:提供按属性划分的,保留所有任务的FIFO任务队列,将调用函数转为元祖对象存储
-                当某一属性正在队列中时,同属性的其他任务新增时,会追加至原任务之后执行
-                当某一任务正在执行时,同属性其他任务将不被执行,同一属性之间的任务均按照FIFO串行执行完毕
-    *************************************************/
-    template<typename TPropType>
-    class SerialTaskQueue : public SerialTaskQueueBase<TPropType, std::function<void()>>
-    {
-        typedef std::function<void()> TaskType;
-    public:
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        SerialTaskQueue(size_t max_task_count = 0)
-            : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
-        {}
-
-        ~SerialTaskQueue() {}
-
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename AsTPropType, typename AsTFunction>
-        bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(this->m_mtx);
-            this->m_cv_not_full.wait(locker, [this] { return this->m_bstop.load() || this->not_full(); });
-
-            if (this->m_bstop.load())
-                return false;
-
-            this->m_wait_props.push_back(prop, this->m_cur_props.find(prop) == this->m_cur_props.end() && this->m_wait_tasks.find(prop) == this->m_wait_tasks.end());
-            this->m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
-            this->m_cv_not_empty.notify_one();
-            return true;
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task();
-        }
-
-    };
-
-    /*************************************************
-    Description:提供按属性划分的,保留所有任务的FIFO任务队列,将调用函数转为元祖对象存储
-                当某一属性正在队列中时,同属性的其他任务新增时,会追加至原任务之后执行
-                当某一任务正在执行时,同属性其他任务将不被执行,同一属性之间的任务均按照FIFO串行执行完毕
-    *************************************************/
-    template<typename TPropType>
-    class SerialTupleTaskQueue : public SerialTaskQueueBase<TPropType, std::shared_ptr<PropTaskVirtual<TPropType>>>
-    {
-        typedef std::shared_ptr<PropTaskVirtual<TPropType>> TaskType;
-    public:
-        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        SerialTupleTaskQueue(size_t max_task_count = 0)
-            : SerialTaskQueueBase<TPropType, TaskType>(max_task_count)
-        {}
-
-        ~SerialTupleTaskQueue() {}
-
-        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
-        template<typename AsTPropType, typename TFunction, typename... Args>
-        bool add_task(AsTPropType&& prop, TFunction&& func, Args&&... args) {
-            std::unique_lock<std::mutex> locker(this->m_mtx);
-            this->m_cv_not_full.wait(locker, [this] { return this->m_bstop.load() || this->not_full(); });
-
-            if (this->m_bstop.load())
-                return false;
-
-//             return add_task_tolist(std::make_shared<PropPackagedTask<TPropType>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::forward<Args>(args)...));
-            // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
-            // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
-            // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
-            typedef decltype(std::make_tuple(std::forward<Args>(args)...)) TTuple;
-            return add_task_tolist(std::make_shared<PropTupleTask<TPropType, TFunction, TTuple>>(std::forward<AsTPropType>(prop), std::forward<TFunction>(func), std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...))));
-        }
-
-    protected:
-        // 执行任务
-        void invoke(TaskType& task) override {
-            task->invoke();
-        }
-
-    private:
-        // 新增任务至队列
-        bool add_task_tolist(TaskType&& new_task_item)
-        {
-            if (!new_task_item)
-                return false;
-            auto& prop = new_task_item->get_prop_type();
-            this->m_wait_props.push_back(prop, this->m_cur_props.find(prop) == this->m_cur_props.end() && this->m_wait_tasks.find(prop) == this->m_wait_tasks.end());
-            this->m_wait_tasks[prop].push_back(std::forward<TaskType>(new_task_item));
-            this->m_cv_not_empty.notify_one();
-            return true;
-        }
     };
 }

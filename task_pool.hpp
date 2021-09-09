@@ -17,6 +17,7 @@ namespace BTool
     /*************************************************
                    任务线程池基类
     *************************************************/
+    template<typename TQueueType>
     class TaskPoolBase
     {
         enum {
@@ -24,13 +25,8 @@ namespace BTool
         };
 
     public:
-        TaskPoolBase() : m_cur_thread_ver(0), m_task_queue(nullptr) {}
-        virtual ~TaskPoolBase() { }
-
-    protected:
-        void set_queue_ptr(TaskQueueBaseVirtual* task_queue) {
-            m_task_queue = task_queue;
-        }
+        TaskPoolBase(size_t max_task_count = 0) : m_cur_thread_ver(0), m_task_queue(max_task_count) {}
+        virtual ~TaskPoolBase() { stop(); }
 
         virtual void pop_task_inner() = 0;
 
@@ -41,7 +37,7 @@ namespace BTool
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
 
-            m_task_queue->start();
+            m_task_queue.start();
             std::lock_guard<std::mutex> lck(m_threads_mtx);
             create_thread(thread_num);
         }
@@ -54,7 +50,7 @@ namespace BTool
             if (!m_atomic_switch.stop())
                 return;
 
-            m_task_queue->stop(bwait);
+            m_task_queue.stop(bwait);
 
             std::vector<SafeThread*> tmp_threads;
             {
@@ -73,7 +69,7 @@ namespace BTool
 
         // 清空任务队列,不会阻塞
         void clear() {
-            m_task_queue->clear();
+            m_task_queue.clear();
         }
 
         // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
@@ -103,7 +99,7 @@ namespace BTool
         // 线程池线程
         void thread_fun(size_t thread_ver) {
             while (true) {
-                if (m_atomic_switch.has_stoped() && m_task_queue->empty()) {
+                if (m_atomic_switch.has_stoped() && m_task_queue.empty()) {
                     break;
                 }
 
@@ -118,7 +114,7 @@ namespace BTool
         // 原子启停标志
         AtomicSwitch                m_atomic_switch;
         // 队列指针,不同线程池只需替换不同队列指针即可
-        TaskQueueBaseVirtual*       m_task_queue;
+        TQueueType                  m_task_queue;
 
         std::mutex                  m_threads_mtx;
         // 线程队列
@@ -135,19 +131,17 @@ namespace BTool
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
     class ParallelTaskPool
-        : public TaskPoolBase
+        : public TaskPoolBase<TaskQueue>
         , private boost::noncopyable
     {
     public:
         // 根据新增任务顺序并行有序执行的线程池
         // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
-        ParallelTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
-            set_queue_ptr(&m_task_queue);
-        }
+        ParallelTaskPool(size_t max_task_count = 0)
+            : TaskPoolBase<TaskQueue>(max_task_count)
+        { }
 
-        virtual ~ParallelTaskPool() {
-            stop();
-        }
+        virtual ~ParallelTaskPool() {}
 
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
@@ -155,18 +149,15 @@ namespace BTool
         // add_task(std::bind(&func, param1, param2))
         template<typename TFunction>
         bool add_task(TFunction&& func) {
-            if (!m_atomic_switch.has_started())
+            if (!this->m_atomic_switch.has_started())
                 return false;
-            return m_task_queue.add_task(std::forward<TFunction>(func));
+            return this->m_task_queue.add_task(std::forward<TFunction>(func));
         }
 
     protected:
         virtual void pop_task_inner() override {
             m_task_queue.pop_task();
         }
-
-    protected:
-        TaskQueue               m_task_queue;
     };
 
     /*************************************************
@@ -214,21 +205,18 @@ namespace BTool
     *************************************************/
     template<typename TPropType>
     class LastTaskPool
-        : public TaskPoolBase
+        : public TaskPoolBase<LastTaskQueue<TPropType>>
         , private boost::noncopyable
     {
     public:
         // 具有相同属性任务执行最新状态的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         LastTaskPool(size_t max_task_count = 0)
-            : m_task_queue(max_task_count)
+            : TaskPoolBase<LastTaskQueue<TPropType>>(max_task_count)
         {
-            set_queue_ptr(&m_task_queue);
         }
 
-        ~LastTaskPool() {
-            stop();
-        }
+        ~LastTaskPool() {}
 
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
@@ -236,24 +224,20 @@ namespace BTool
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
         bool add_task(AsTPropType&& prop, TFunction&& func) {
-            if (!m_atomic_switch.has_started())
+            if (!this->m_atomic_switch.has_started())
                 return false;
-            return m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
+            return this->m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
         }
 
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-            m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
+            this->m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
 
     protected:
         void pop_task_inner() override {
-            m_task_queue.pop_task();
+            this->m_task_queue.pop_task();
         }
-
-    private:
-        // 待执行任务队列
-        LastTaskQueue<TPropType>        m_task_queue;
     };
 
     /*************************************************
@@ -266,19 +250,18 @@ namespace BTool
     *************************************************/
     template<typename TPropType>
     class SerialTaskPool
-        : public TaskPoolBase
+        : public TaskPoolBase<SerialTaskQueue<TPropType>>
         , private boost::noncopyable
     {
     public:
         // 具有相同属性任务串行有序执行的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        SerialTaskPool(size_t max_task_count = 0) : m_task_queue(max_task_count) {
-            set_queue_ptr(&m_task_queue);
+        SerialTaskPool(size_t max_task_count = 0)
+            : TaskPoolBase<SerialTaskQueue<TPropType>>(max_task_count)
+        {
         }
 
-        ~SerialTaskPool() {
-            stop();
-        }
+        ~SerialTaskPool() {}
 
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
@@ -286,24 +269,20 @@ namespace BTool
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
         bool add_task(AsTPropType&& prop, TFunction&& func) {
-            if (!m_atomic_switch.has_started())
+            if (!this->m_atomic_switch.has_started())
                 return false;
-            return m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
+            return this->m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
         }
 
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-            m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
+            this->m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
 
     protected:
         void pop_task_inner() override {
-            m_task_queue.pop_task();
+            this->m_task_queue.pop_task();
         }
-
-    private:
-        // 待执行任务队列
-        SerialTaskQueue<TPropType>          m_task_queue;
     };
 
 }
