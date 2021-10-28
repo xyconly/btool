@@ -1,6 +1,6 @@
 /*************************************************
 File name:  aes.hpp
-Author:     
+Author:
 Date:
 Description:    基于openssl提供的aes算法支持进行封装
 NOTE: 密码生成
@@ -15,8 +15,10 @@ NOTE: 密码生成
 *************************************************/
 #pragma once
 
+#include <string>
 #include <openssl/aes.h>
 #include "encrypt_base.hpp"
+#include "../scope_guard.hpp"
 
 namespace BTool {
     class AES : public EncryptBase
@@ -39,13 +41,6 @@ namespace BTool {
             CTR,    // CounTeR, 计数器模式
         };
 
-        // 填充方式
-        enum class Padding : int {
-            ZeroPadding = 0,    // Electronic Code Book, 电子密码本模式
-            PKCS5Padding,       // Cipher Block Chaining, 密码块链模式
-            PKCS7Padding,       // Cipher FeedBack, 密文反馈模式
-        };
-
         /************************************************************************
          *功能: AES加密
          *参数: key: 密钥,长度为 128/192/256 bit(部分java不支持256)
@@ -57,14 +52,29 @@ namespace BTool {
                 iv:       ECB模式无需此值
           返回是否正确加密
          ************************************************************************/
-        static bool encrypt(const unsigned char* key
-            , const unsigned char* src_buff, size_t src_len
-            , unsigned char* out_buff, size_t& out_len
-            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
+        static std::string EncryptToHex(const char* key
+            , const char* data, size_t data_len
+            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128
+            , const char* iv = nullptr)
         {
-            return encrypt_and_decrypt(key, src_buff, src_len, out_buff, out_len, mode, pad, bits, iv, AES_ENCRYPT);
+            size_t padding_len = GetPaddingLen(data_len, pad, get_blocksize());
+            size_t src_len = data_len + padding_len;
+
+            unsigned char* src_buff = new unsigned char[src_len] {0};
+            unsigned char* out_buff = new unsigned char[src_len] {0};
+            ScopeGuard ext([&] {
+                delete[] out_buff;
+                delete[] src_buff;
+                });
+
+            PaddingData(data, data_len, src_buff, pad, padding_len);
+
+            if (!encrypt_and_decrypt(key, src_buff, src_len, out_buff, get_blocksize(), mode, pad, bits, iv, AES_ENCRYPT)) {
+                return "";
+            }
+            return std::string((const char*)out_buff, src_len);
         }
-        
+
         /************************************************************************
          *功能: AES加密 + base64加密
          *目的: 为实现字符串传输,对AES加密后的内存数据进行base64加密,改为可识别字符串进行传输
@@ -74,27 +84,25 @@ namespace BTool {
                 iv:   ECB模式无需此值
           返回加密数据,失败则返回空数据
          ************************************************************************/
-        static std::string encrypt_base64(const unsigned char* key
-            , const std::string& data, Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
+        static std::string EncryptToBase64(const char* key, const std::string& data
+            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128
+            , const char* iv = nullptr)
         {
-            size_t src_len = data.length();
-            size_t blocksize = get_blocksize(bits, pad);
-            src_len += blocksize - src_len % blocksize;
-
-            unsigned char* out_buf = new unsigned char[src_len] {0};
-            size_t out_len(0);
-            if (!encrypt(key, (const unsigned char*)data.c_str(), data.length(), out_buf, out_len, mode, pad, bits, iv)) {
-                delete[] out_buf;
+            return EncryptToBase64(key, data.c_str(), data.length(), mode, pad, bits, iv);
+        }
+        static std::string EncryptToBase64(const char* key
+            , const char* data, size_t data_len
+            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128
+            , const char* iv = nullptr)
+        {
+            std::string hex = EncryptToHex(key, data, data_len, mode, pad, bits, iv);
+            if (hex.empty()) {
                 return "";
             }
-
             std::string rslt;
-            if (!base64_encode(out_buf, src_len, rslt)) {
-                delete[] out_buf;
+            if (!ToBase64(hex.c_str(), hex.length(), rslt)) {
                 return "";
             }
-
-            delete[] out_buf;
             return rslt;
         }
         /************************************************************************
@@ -108,12 +116,24 @@ namespace BTool {
                 iv:       ECB模式无需此值
           返回是否正确解密
          ************************************************************************/
-        static bool decrypt(const unsigned char* key
+        static std::string DecryptFromHex(const char* key
             , const unsigned char* src_buff, size_t src_len
-            , unsigned char* out_buff, size_t& out_len
-            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
+            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128
+            , const char* iv = nullptr)
         {
-            return encrypt_and_decrypt(key, src_buff, src_len, out_buff, out_len, mode, pad, bits, iv, AES_DECRYPT);
+            //size_t blocksize = get_blocksize(/*bits, pad*/);
+
+            unsigned char* out_buff = new unsigned char[src_len];
+            ScopeGuard ext([&] {
+                delete[] out_buff;
+                });
+
+            if (!encrypt_and_decrypt(key, src_buff, src_len, out_buff, get_blocksize(), mode, pad, bits, iv, AES_DECRYPT)) {
+                return "";
+            }
+
+            size_t out_len = ClearDataPadding(out_buff, src_len, pad, get_blocksize());
+            return std::string((const char*)out_buff, out_len);
         }
         /************************************************************************
          *功能: base64解密 + AES解密
@@ -124,35 +144,32 @@ namespace BTool {
                 iv:   ECB模式无需此值
           返回解密数据,失败则返回空数据
          ************************************************************************/
-        static std::string decrypt_base64(const unsigned char* key
-            , const std::string& data, Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128, const unsigned char iv[AES_BLOCK_SIZE] = { 0 })
+        static std::string DecryptFromBase64(const char* key
+            , const std::string& data
+            , Mode mode = Mode::CTR, Padding pad = Padding::ZeroPadding, AESBit bits = AESBit::AES128
+            , const char* iv = nullptr)
         {
-            size_t out_len(data.length());
-            unsigned char* out_buf = new unsigned char[out_len];
-            if (!base64_decode(data, out_buf, out_len)) {
-                delete[] out_buf;
+            size_t src_len(data.length());
+            unsigned char* src_buff = new unsigned char[src_len];
+            ScopeGuard ext([&] {
+                delete[] src_buff;
+                });
+            if (!FromBase64(data, src_buff, src_len)) {
                 return "";
             }
-            size_t rslt_len(out_len);
-            unsigned char* rslt_buf = new unsigned char[rslt_len];
-            if (!decrypt(key, out_buf, out_len, rslt_buf, rslt_len, mode, pad, bits, iv)) {
-                delete[] out_buf;
-                delete[] rslt_buf;
-                return "";
-            }
-            std::string rslt((const char*)rslt_buf, rslt_len);
-            delete[] out_buf;
-            delete[] rslt_buf;
-            return rslt;
+            return DecryptFromHex(key, src_buff, src_len, mode, pad, bits, iv);
         }
 
     private:
         // 校验密钥长度
-        static inline bool check_len_valid(const unsigned char* key, Mode mode, AESBit bits, const unsigned char* iv, unsigned char*& tmp_iv) {
-            if (!check_len(strlen((const char*)key), bits))
+        static inline bool check_len_valid(const char* key, Mode mode, AESBit bits, const char* iv, unsigned char*& tmp_iv) {
+            if (!check_len(strlen(key), bits))
                 return false;
 
-            if (mode != Mode::ECB && strlen((const char*)iv) != AES_BLOCK_SIZE)
+            if (mode == Mode::ECB)
+                return true;
+
+            if (!iv /*|| strlen(iv) > AES_BLOCK_SIZE*/)
                 return false;
 
             tmp_iv = new unsigned char[AES_BLOCK_SIZE];
@@ -163,136 +180,79 @@ namespace BTool {
             return len >= (bits / 8);
         }
 
-        static inline size_t get_blocksize(AESBit bits, Padding pad) {
-            if (pad == Padding::PKCS5Padding)
-                return AES_BLOCK_SIZE;
-            return bits / 8;
-            //return AES_BLOCK_SIZE;
+        static constexpr inline size_t get_blocksize(/*AESBit bits, Padding pad*/) {
+            return AES_BLOCK_SIZE;
+            // CryptoJS采用下方注释的算法
+            //if (pad == Padding::PKCS5Padding)
+            //    return AES_BLOCK_SIZE;
+
+            //// 取AES_BLOCK_SIZE倍数
+            //if (bits == BTool::AES::AES192)
+            //    return AES_BLOCK_SIZE * 2;
+            //
+            //return bits / 8;
         }
 
-        static void calculation_padding(Padding pad, size_t blocksize, size_t src_len, size_t& padding_len, int& padding_chr) {
-            padding_len = blocksize - src_len % blocksize;
-            if(pad == Padding::ZeroPadding)
-                padding_chr = 0;
-            else
-                padding_chr = padding_len;
-        }
-
-        struct raii_st {
-            raii_st(unsigned char* tmp_iv, unsigned char* inData) :tmp_iv_(tmp_iv), inData_(inData) {}
-            ~raii_st() {
-                delete[] tmp_iv_;
-                delete[] inData_;
-            }
-            unsigned char* tmp_iv_;
-            unsigned char* inData_;
-        };
-        static bool encrypt_and_decrypt(const unsigned char* key
+        static bool encrypt_and_decrypt(const char* key
             , const unsigned char* src_buff, size_t src_len
-            , unsigned char* out_buff, size_t& out_len
-            , Mode mode, Padding pad, AESBit bits, const unsigned char* iv, const int enc)
+            , unsigned char* out_buff, size_t blocksize
+            , Mode mode, Padding pad, AESBit bits, const char* iv, const int enc)
         {
-            out_len = 0;
             unsigned char* tmp_iv(nullptr);
+            ScopeGuard ext([&] {
+                if (tmp_iv)
+                    delete[] tmp_iv;
+                });
             if (!check_len_valid(key, mode, bits, iv, tmp_iv))
                 return false;
 
-            size_t blocksize = get_blocksize(bits, pad);
-            size_t padding_len(0);
-            int padding_chr(0);
+            AES_KEY aes;
             if (enc == AES_ENCRYPT) {
-                calculation_padding(pad, blocksize, src_len, padding_len, padding_chr);
-                out_len = src_len + padding_len;
+                if (AES_set_encrypt_key((const unsigned char*)key, bits, &aes) < 0)
+                    return false;
             }
             else {
-                out_len = src_len;
+                if (AES_set_decrypt_key((const unsigned char*)key, bits, &aes) < 0)
+                    return false;
             }
-
-            unsigned char* inData = new unsigned char[out_len];
-            memcpy(inData, src_buff, src_len);
-            memset(inData + src_len, padding_chr, out_len - src_len);
-            
-            raii_st auto_st(tmp_iv, inData);
-
-            AES_KEY aes;
 
             switch (mode)
             {
             case Mode::ECB:
-                if (enc == AES_ENCRYPT) {
-                    if (AES_set_encrypt_key(key, bits, &aes) < 0)
-                        return false;
+                for (size_t i = 0; i < src_len; i += AES_BLOCK_SIZE) {
+                    AES_ecb_encrypt(src_buff + i, out_buff + i, &aes, enc);
                 }
-                else {
-                    if (AES_set_decrypt_key(key, bits, &aes) < 0)
-                        return false;
-                }
-
-                for (size_t i = 0; i < out_len;) {
-                    AES_ecb_encrypt(inData + i, out_buff + i, &aes, enc);
-                    i += AES_BLOCK_SIZE;
-                }
-
                 break;
             case Mode::CBC:
-                if (enc == AES_ENCRYPT) {
-                    if (AES_set_encrypt_key(key, bits, &aes) < 0)
-                        return false;
-                }
-                else {
-                    if (AES_set_decrypt_key(key, bits, &aes) < 0)
-                        return false;
-                }
-
-
-                AES_cbc_encrypt(inData, out_buff, out_len, &aes, tmp_iv, enc);
-
+                AES_cbc_encrypt(src_buff, out_buff, src_len, &aes, tmp_iv, enc);
                 break;
             case Mode::CFB:
-                if (AES_set_encrypt_key(key, bits, &aes) < 0)
-                    return false;
-
                 if (bits != AES128)
                     return false;
-
                 {
                     int number(0);
-                    AES_cfb128_encrypt(inData, out_buff, out_len, &aes, tmp_iv, (int*)&number, enc);
+                    AES_cfb128_encrypt(src_buff, out_buff, src_len, &aes, tmp_iv, (int*)&number, enc);
                 }
                 break;
             case Mode::OFB:
-                if (AES_set_encrypt_key(key, bits, &aes) < 0)
-                    return false;
-
                 if (bits != AES128)
                     return false;
-
                 {
                     int number(0);
-                    AES_ofb128_encrypt(inData, out_buff, out_len, &aes, tmp_iv, (int*)&number);
+                    AES_ofb128_encrypt(src_buff, out_buff, src_len, &aes, tmp_iv, (int*)&number);
                 }
                 break;
-            case Mode::CTR:
+            //case Mode::CTR:
             default:
-                if (AES_set_encrypt_key(key, bits, &aes) < 0)
-                    return false;
-
                 if (bits != AES128)
                     return false;
-
                 {
                     unsigned char ecount_buf[AES_BLOCK_SIZE] = { 0 };
                     int number(0);
 
-                    AES_ctr128_encrypt(inData, out_buff, out_len, &aes, tmp_iv, ecount_buf, (unsigned int*)&number);
+                    //AES_ctr128_encrypt(src_buff, out_buff, src_len, &aes, tmp_iv, ecount_buf, (unsigned int*)&number);
                 }
                 break;
-            }
-
-            // 解密需要去除后面冗余
-            if (enc == AES_DECRYPT && mode != Mode::ECB) {
-                unsigned char padding_value = out_buff[out_len - 1];
-                out_len -= padding_value;
             }
 
             return true;
