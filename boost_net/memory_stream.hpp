@@ -29,10 +29,6 @@ namespace BTool {
         template <typename ...T> struct is_tuple<const std::tuple<T...>&> : std::true_type {};
         template <typename ...T> struct is_tuple<std::tuple<T...>&&> : std::true_type {};
 
-        MemoryStream(MemoryStream&& rhs) = delete;
-        MemoryStream(const MemoryStream& rhs) = delete;
-        MemoryStream& operator=(const MemoryStream& rhs) = delete;
-
     public:
         // 内存管理流,此后将自动管理内存释放
         MemoryStream()
@@ -43,7 +39,30 @@ namespace BTool {
             , m_auto_delete(true)
         {
         }
-
+		
+		MemoryStream(const MemoryStream& rhs)
+            : m_buffer_size(rhs.m_buffer_size)
+            , m_offset(rhs.m_offset)
+            , m_capacity(rhs.m_capacity)
+            , m_buffer(rhs.m_buffer)
+            , m_auto_delete(rhs.m_auto_delete)
+        {
+			if(rhs.m_auto_delete) {
+				m_buffer = (char*)malloc(rhs.m_capacity);
+				memcpy(m_buffer, rhs.m_buffer, m_buffer_size);
+			}
+        }
+		
+		MemoryStream(MemoryStream&& rhs)
+            : m_buffer_size(rhs.m_buffer_size)
+            , m_offset(rhs.m_offset)
+            , m_capacity(rhs.m_capacity)
+            , m_buffer(rhs.m_buffer)
+            , m_auto_delete(rhs.m_auto_delete)
+        {
+			rhs.m_auto_delete = false;
+        }
+		
         MemoryStream(size_t capacity)
             : m_buffer_size(0)
             , m_offset(0)
@@ -187,46 +206,29 @@ namespace BTool {
         void append(Type&& src) {
             append(&src, sizeof(Type));
         }
-        template<>
-        void append<const std::string&>(const std::string& data) {
+        void append(const std::string& data) {
             append(uint32_t(data.length() + 1)); // 一般不会超过该数值
             append(data.c_str(), data.length() + 1);
         }
-        template<>
-        void append<std::string&>(std::string& data) {
-            append(uint32_t(data.length() + 1));
-            append(data.c_str(), data.length() + 1);
-        }
-        template<>
-        void append<std::string>(std::string&& data) {
+        void append(std::string&& data) {
             append(uint32_t(data.length() + 1));
             append(data.c_str(), data.length() + 1);
         }
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
-        template<>
-        void append<const std::string_view&>(const std::string_view& data) {
+        void append(const std::string_view& data) {
             append(uint32_t(data.length()));
             append(data.data(), data.length());
         }
-        template<>
-        void append<std::string_view&>(std::string_view& data) {
-            append(uint32_t(data.length()));
-            append(data.data(), data.length());
-        }
-        template<>
-        void append<std::string_view>(std::string_view&& data) {
+        void append(std::string_view&& data) {
             append(uint32_t(data.length()));
             append(data.data(), data.length());
         }
 #endif
-
-        template<>
-        void append<MemoryStream&>(MemoryStream& data) {
+        void append(const MemoryStream& data) {
             append(uint32_t(data.size()));
             append(data.data(), data.size());
         }
-        template<>
-        void append<const MemoryStream&>(const MemoryStream& data) {
+        void append(MemoryStream&& data) {
             append(uint32_t(data.size()));
             append(data.data(), data.size());
         }
@@ -261,8 +263,7 @@ namespace BTool {
         void read(Type* pDst, bool offset_flag) {
             read(pDst, sizeof(Type), offset_flag);
         }
-        template<>
-        void read<MemoryStream>(MemoryStream* pDst, bool offset_flag) {
+        void read(MemoryStream* pDst, bool offset_flag) {
             uint32_t length = 0;
             read(&length, sizeof(length), true);
 
@@ -272,8 +273,7 @@ namespace BTool {
             if (!offset_flag)
                 m_offset -= sizeof(length);
         }
-        template<>
-        void read<std::string>(std::string* pDst, bool offset_flag) {
+        void read(std::string* pDst, bool offset_flag) {
             uint32_t length = 0;
             read(&length, sizeof(length), true);
 
@@ -284,8 +284,7 @@ namespace BTool {
                 m_offset += length;
         }
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
-        template<>
-        void read<std::string_view>(std::string_view* pDst, bool offset_flag) {
+        void read(std::string_view* pDst, bool offset_flag) {
             uint32_t length = 0;
             read(&length, sizeof(length), true);
 
@@ -302,17 +301,14 @@ namespace BTool {
         void read(Type* pDst) {
             read(pDst, true);
         }
-        template<>
-        void read<MemoryStream>(MemoryStream* pDst) {
+        void read(MemoryStream* pDst) {
             read(pDst, true);
         }
-        template<>
-        void read<std::string>(std::string* pDst) {
+        void read(std::string* pDst) {
             read(pDst, true);
         }
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
-        template<>
-        void read<std::string_view>(std::string_view* pDst) {
+        void read(std::string_view* pDst) {
             read(pDst, true);
         }
 #endif
@@ -323,7 +319,7 @@ namespace BTool {
         typename std::enable_if<is_tuple<Type>::value, Type >::type
             read_args(bool offset_flag = true) {
             size_t cur_offset(m_offset);
-            auto rslt = tuple_map_r<std::decay<Type>::type>();
+            auto rslt = tuple_map_r<Type>();
             if (!offset_flag)
                 m_offset = cur_offset;
             return rslt;
@@ -410,7 +406,7 @@ namespace BTool {
             get_args_sizeof() { return sizeof(Type); }
         template <typename Type>
         static typename std::enable_if<is_tuple<Type>::value, size_t>::type
-            get_args_sizeof() { 
+            get_args_sizeof() {
             return get_args_sizeof_impl<Type>(typename std::make_index_sequence<std::tuple_size<Type>::value>{});
         }
         template <typename Type, typename...Args>
@@ -438,7 +434,7 @@ namespace BTool {
             return std::forward_as_tuple(std::forward<Args>(std::get<Indexes>(tp))..., std::forward<Type>(type));
         }
 
-        // read tuple        
+        // read tuple
         template<class Tuple, std::size_t... Indexes>
         Tuple tuple_map_r(std::index_sequence<Indexes...>) {
             return read_args<typename std::tuple_element<Indexes, Tuple>::type...>();

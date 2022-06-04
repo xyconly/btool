@@ -32,8 +32,8 @@ namespace BTool
         typedef std::function<void()> TaskItem;
     public:
         TaskQueue(size_t max_task_count = 0)
-            : m_max_task_count(max_task_count)
-            , m_bstop(false)
+            : m_bstop(false)
+            , m_max_task_count(max_task_count)
         {}
 
         virtual ~TaskQueue() {
@@ -168,8 +168,8 @@ namespace BTool
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         LastTaskQueue(size_t max_task_count = 0)
-            : m_max_task_count(max_task_count)
-            , m_bstop(false)
+            : m_bstop(false)
+            , m_max_task_count(max_task_count)
         {}
         virtual ~LastTaskQueue() {
             stop();
@@ -537,8 +537,8 @@ namespace BTool
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         SerialTaskQueue(size_t max_task_count = 0)
-            : m_max_task_count(max_task_count)
-            , m_bstop(false)
+            : m_bstop(false)
+            , m_max_task_count(max_task_count)
         {}
 
         virtual ~SerialTaskQueue() {

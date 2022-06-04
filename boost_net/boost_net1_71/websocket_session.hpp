@@ -42,7 +42,7 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 #include "../../atomic_switch.hpp"
 
 // 启用自定义beast中的websocket目录下impl目录下的accept.hpp文件
-#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
+//#define USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
 
 namespace BTool
 {
@@ -73,24 +73,24 @@ namespace BTool
             WebsocketSession(boost::asio::ip::tcp::socket&& socket, size_t max_wbuffer_size, size_t max_rbuffer_size)
                 : m_resolver(socket.get_executor())
                 , m_socket(std::move(socket))
-                , m_max_wbuffer_size(max_wbuffer_size)
-                , m_max_rbuffer_size(max_rbuffer_size)
-                , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
+                , m_max_rbuffer_size(max_rbuffer_size)
                 , m_current_send_msg(nullptr)
+                , m_max_wbuffer_size(max_wbuffer_size)
+                , m_connect_port(0)
             {
                 m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
             }
 
             WebsocketSession(boost::asio::io_context& ioc, size_t max_wbuffer_size = MAX_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_socket(boost::asio::make_strand(ioc))
-                , m_resolver(boost::asio::make_strand(ioc))
-                , m_max_wbuffer_size(max_wbuffer_size)
-                , m_max_rbuffer_size(max_rbuffer_size)
-                , m_connect_port(0)
+                : m_resolver(boost::asio::make_strand(ioc))
+                , m_socket(boost::asio::make_strand(ioc))
                 , m_session_id(GetNextSessionID())
+                , m_max_rbuffer_size(max_rbuffer_size)
                 , m_current_send_msg(nullptr)
+                , m_max_wbuffer_size(max_wbuffer_size)
+                , m_connect_port(0)
             {
                 m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
@@ -180,7 +180,7 @@ namespace BTool
                             std::string(BOOST_BEAST_VERSION_STRING) + " websocket-server-async");
                     }));
 
-                
+
 #ifdef USE_SELF_BEAST_WEBSOCKET_ACCEPT_HPP
                 m_socket.async_accept_ex(
                     [this](boost::beast::http::response<boost::beast::http::string_body>& res, const boost::beast::http::request<boost::beast::http::empty_body>& req) {
@@ -325,7 +325,7 @@ namespace BTool
                 m_socket.set_option(
                     boost::beast::websocket::stream_base::timeout::suggested(
                         boost::beast::role_type::client));
-                
+
                 m_socket.set_option(boost::beast::websocket::stream_base::decorator(
                     [](boost::beast::websocket::request_type& req) {
                         req.set(boost::beast::http::field::user_agent,

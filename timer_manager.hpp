@@ -12,7 +12,7 @@ Note:     插入时间复杂度: O(logN)
           workers==1情况下,间隔1s执行操作A,但是A本身耗时2秒,
           那么此时,间隔10秒后执行erase,则依旧会执行10次操作A,
           故而在执行时,应该自身确保异步函数执行时间不得高于间隔时间,或使用stop/clear函数终止
-/************************************************************************/
+************************************************************************/
 #pragma once
 
 #include <set>
@@ -21,6 +21,7 @@ Note:     插入时间复杂度: O(logN)
 #include <mutex>
 #include <memory>
 #include <boost/asio.hpp>
+#include "task_item.hpp"
 #include "task_pool.hpp"
 #include "io_context_pool.hpp"  // 便于启停,可直接使用boost::asio::io_context
 #include "atomic_switch.hpp"
@@ -85,14 +86,14 @@ namespace BTool {
 //                 , const system_time_point& time_point, TFunction&& func, Args&&... args) {
 //                 if (id == TimerTaskVirtual::INVALID_TID)
 //                     return nullptr;
-// 
+//
 //                 if (m_all_timer_map.find(id) != m_all_timer_map.end())
 //                     return nullptr;
-// 
+//
 // //                 auto pItem = std::make_shared<PackagedTimerTask>(interval_ms, loop_count, id, time_point
 // //                     , std::forward<TFunction>(func)
 // //                     , std::forward<Args>(args)...);
-// 
+//
 //                 // 此处TTuple不可采用std::forward_as_tuple(std::forward<Args>(args)...)
 //                 // 假使agrs中含有const & 时,会导致tuple中存储的亦为const &对象,从而外部释放对象后导致内部对象无效
 //                 // 采用std::make_shared<TTuple>则会导致存在一次拷贝,由std::make_tuple引起(const&/&&)
@@ -100,10 +101,10 @@ namespace BTool {
 //                 auto pItem = std::make_shared<TupleTimerTask<TFunction, TTuple>>(interval_ms, loop_count, id, time_point
 //                     , std::forward<TFunction>(func)
 //                     , std::make_shared<TTuple>(std::forward_as_tuple(std::forward<Args>(args)...)));
-// 
+//
 //                 if (!pItem || pItem->get_id() == TimerTaskVirtual::INVALID_TID)
 //                     return nullptr;
-// 
+//
 //                 m_all_timer_map[pItem->get_id()] = pItem;
 //                 m_timer_part_queue[pItem->get_time_point()][pItem->get_id()] = pItem;
 //                 return pItem;
@@ -236,9 +237,9 @@ namespace BTool {
         TimerManager(unsigned long long space_millsecond, int workers)
             : m_space_millsecond(space_millsecond)
             , m_ioc_pool(1)
+            , m_timer(nullptr)
             , m_cur_task(nullptr)
             , m_next_id(INVALID_TID)
-            , m_timer(nullptr)
             , m_timer_queue(workers)
         {
         }
@@ -314,7 +315,7 @@ namespace BTool {
 //         TimerId insert_once(const system_time_point& time_point, TFunction&& func, Args&&... args) {
 //             return insert(0, 1, time_point, std::forward<TFunction>(func), std::forward<Args>(args)...);
 //         }
-        
+
         // interval_ms: 循环间隔时间,单位毫秒(注意该值会被时间轮间隔时间下取整,例如时间轮设定最小切片时间50ms,那么interval_ms设定为80时,实际interval_ms为100)
         // loop_count: 循环次数,0 表示无限循环
         // time_point: 首次触发时间点
@@ -357,14 +358,14 @@ namespace BTool {
 //         {
 //             if (!m_atomic_switch.has_started())
 //                 return INVALID_TID;
-// 
+//
 //             std::lock_guard<std::mutex> locker(m_queue_mtx);
 //             auto pItem = m_timer_queue.insert(interval_ms, loop_count, get_next_timer_id(), time_point
 //                 , std::forward<TFunction>(func) , std::forward<Args>(args)...);
-// 
+//
 //             if (!pItem)
 //                 return INVALID_TID;
-// 
+//
 //             if (!m_cur_task)
 //             {
 //                 m_cur_task = pItem;
@@ -374,7 +375,7 @@ namespace BTool {
 //             {
 //                 m_timer->cancel();
 //             }
-// 
+//
 //             return pItem->get_id();
 //         }
 
@@ -443,7 +444,7 @@ namespace BTool {
                 start(m_cur_task);
             }
        }
-       
+
         TimerId get_next_timer_id() {
             return ++m_next_id;
         }

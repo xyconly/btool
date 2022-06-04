@@ -26,10 +26,10 @@ namespace BTool
         // io_context的对象池
         // pool_size 缺省时,服务对象数是机器里cpu数
         AsioContextPool(int pool_size = 0)
-            : m_bstart(false)
-            , m_pool_size(pool_size)
+            : m_pool_size(pool_size)
             , m_io_context(nullptr)
             , m_io_work(nullptr)
+            , m_bstart(false)
         {
             if (m_pool_size <= 0)
                 m_pool_size = boost::thread::hardware_concurrency();
@@ -97,7 +97,7 @@ namespace BTool
 
             m_io_context = new ioc_type(pool_size);
             m_io_work = new work_type(*m_io_context);
-            for (size_t i = 0; i < pool_size; i++) {
+            for (int i = 0; i < pool_size; i++) {
                 m_threads.create_thread(boost::bind(&ioc_type::run, boost::ref(*m_io_context)));
             }
         }

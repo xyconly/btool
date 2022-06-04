@@ -63,14 +63,14 @@ namespace BTool
             // max_buffer_size: 最大写缓冲区大小
             // max_rbuffer_size: 单次读取最大缓冲区大小
             TcpSession(ioc_type& ioc, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
-                : m_io_context(ioc)
-                , m_socket(ioc)
-                , m_overtime_timer(ioc)
-                , m_max_wbuffer_size(max_wbuffer_size)
-                , m_max_rbuffer_size(max_rbuffer_size)
-                , m_connect_port(0)
+                : m_socket(ioc)
+                , m_io_context(ioc)
                 , m_session_id(GetNextSessionID())
+                , m_overtime_timer(ioc)
+                , m_max_rbuffer_size(max_rbuffer_size)
                 , m_current_send_msg(nullptr)
+                , m_max_wbuffer_size(max_wbuffer_size)
+                , m_connect_port(0)
             {
             }
 

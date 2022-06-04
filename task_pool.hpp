@@ -25,7 +25,7 @@ namespace BTool
         };
 
     public:
-        TaskPoolBase(size_t max_task_count = 0) : m_cur_thread_ver(0), m_task_queue(max_task_count) {}
+        TaskPoolBase(size_t max_task_count = 0) : m_task_queue(max_task_count), m_cur_thread_ver(0) {}
         virtual ~TaskPoolBase() { stop(); }
 
         virtual void pop_task_inner() = 0;

@@ -14,8 +14,8 @@ Note:    目前文本类型仅支持标准北京时间(DTK_Local)
 # include <stdexcept> // for std::domain_error
 #endif
 
-namespace BTool
-{
+namespace BTool {
+	
     class DateTimeConvert
     {
         // 后期仿JAVA扩展时使用
@@ -28,7 +28,7 @@ namespace BTool
 //         "gmt", "ut", "utc", "est", "edt", "cst", "cdt",
 //         "mst", "mdt", "pst", "pdt"
 //         };
-// 
+//
 //         static int DateTimeConvert::ttb[32] = {
 //         14, 1, 0, 0, 0, 0, 0, 0, 0,
 //         2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -83,8 +83,8 @@ namespace BTool
         };
 
         DateTimeConvert()
-            : m_isvalid(false)
-            , m_style(DTS_Invlid)
+            : m_style(DTS_Invlid)
+            , m_isvalid(false)
             , m_day_of_week(UNDEFINE)
             , m_year(0)
             , m_month(1)
@@ -100,8 +100,8 @@ namespace BTool
         // 按字符形式转换,格式参考DateTimeKind
         // 目前仅支持DTK_Local以及DTK_KLine
         explicit DateTimeConvert(const char* dt, DateTimeStyle style = DTS_YMDHMS, DateTimeKind kind = DTK_Local)
-            : m_isvalid(style != DTS_Invlid)
-            , m_style(style)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week(UNDEFINE)
             , m_year(0)
             , m_month(1)
@@ -194,8 +194,8 @@ namespace BTool
 
         // 按年月日时分秒的顺序,依据DateTimeStyle进行赋值,参数为int型
         explicit DateTimeConvert(DateTimeStyle style, int date_time, ...)
-            : m_isvalid(style != DTS_Invlid)
-            , m_style(style)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week(UNDEFINE)
             , m_year(0)
             , m_month(1)
@@ -255,8 +255,8 @@ namespace BTool
         }
 
         explicit DateTimeConvert(std::time_t dt, DateTimeStyle style = DTS_YMDHMS)
-            : m_isvalid(style != DTS_Invlid)
-            , m_style(style)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
             , m_year(0)
             , m_month(1)
             , m_day(1)
@@ -283,8 +283,8 @@ namespace BTool
         }
 
         explicit DateTimeConvert(const std::tm& dt, DateTimeStyle style = DTS_YMDHMS)
-            : m_isvalid(style != DTS_Invlid)
-            , m_style(style)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week((DayOfWeek)dt.tm_wday)
             , m_year(dt.tm_year + 1900)
             , m_month(dt.tm_mon + 1)
@@ -305,8 +305,8 @@ namespace BTool
         }
 
         explicit DateTimeConvert(const std::chrono::system_clock::time_point& dt, DateTimeStyle style = DTS_ALL)
-            : m_isvalid(style != DTS_Invlid)
-            , m_style(style)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
         {
             std::time_t time = std::chrono::system_clock::to_time_t(dt);
 #ifdef __linux
@@ -700,14 +700,14 @@ namespace BTool
             std::time_t ltime = to_time_t();
 
             ltime = ltime + secs;
-			
+
 #ifdef __linux
             std::tm tmcur;
            localtime_r(&ltime, &tmcur);
 #else
 	        std::tm tmcur;
             localtime_s(&tmcur, &ltime);
-#endif          
+#endif
             DateTimeConvert rslt(tmcur, m_style);
             if (m_style & DTS_mSec)
             {
@@ -742,7 +742,7 @@ namespace BTool
 #else
             std::tm tmcur;
             localtime_s(&tmcur, &ltime);
-#endif          
+#endif
             DateTimeConvert rslt(tmcur, m_style);
             if (m_style & DTS_mSec)
             {
@@ -947,11 +947,11 @@ namespace BTool
         // 格式:d MMM yyyy HH:mm:ss 'GMT'
         // 无效返回空
         std::string to_gmt_string() const;
-   
+
         // 返回unix时间戳
         // 无效返回-1
         long to_unix_stamp() const;
-        /***********************************/
+        ***********************************/
 
         // 获取星期几字段
         DayOfWeek day_of_week() const

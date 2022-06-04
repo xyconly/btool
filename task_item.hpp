@@ -80,7 +80,7 @@ namespace BTool
 //     {
 //     public:
 //         typedef  std::future<void>    future_type;
-// 
+//
 //         template<typename TFunction, typename... Args>
 //         PackagedInvoke(TFunction&& func, Args&&... args) {
 //             typedef typename std::result_of<TFunction(Args&&...)>::type  result_type;
@@ -90,11 +90,11 @@ namespace BTool
 //             m_invoke = std::async(std::launch::deferred, [task] {(*task)(); });
 //         }
 //         ~PackagedInvoke() {}
-// 
+//
 //         void invoke() {
 //             m_invoke.get();
 //         }
-// 
+//
 //     private:
 //         future_type m_invoke;
 //     };
@@ -162,11 +162,11 @@ namespace BTool
 //             , m_invoke(std::forward<TFunction>(func), std::forward<Args>(args)...)
 //         {
 //         }
-// 
+//
 //         void invoke() override {
 //             m_invoke.invoke();
 //         }
-// 
+//
 //     private:
 //         PackagedInvoke  m_invoke;
 //     };
@@ -200,17 +200,17 @@ namespace BTool
 
         TimerTaskVirtual()
             : m_id(INVALID_TID)
-            , m_loop_index(0)
             , m_loop_count(-1)
+            , m_loop_index(0)
             , m_interval(0)
         {}
 
         TimerTaskVirtual(unsigned int interval_ms, int loop_count, TimerId id, const system_time_point& time_point)
             : m_id(id)
-            , m_time_point(time_point)
-            , m_loop_index(0)
             , m_loop_count(loop_count)
+            , m_loop_index(0)
             , m_interval(interval_ms)
+            , m_time_point(time_point)
         {}
 
         virtual ~TimerTaskVirtual() {}
@@ -329,28 +329,28 @@ namespace BTool
 //         {
 //         public:
 //             typedef  std::function<void(TimerId id, const system_time_point& time_point)>    function_type;
-// 
+//
 //             template<typename TFunction, typename... Args>
 //             PackagedTimerInvoke(TFunction&& func, Args&&... args) {
 //                 typedef typename std::result_of<TFunction(TimerId, const system_time_point&, Args&&...)>::type  result_type;
 //                 auto task = std::make_shared<std::packaged_task<result_type(TimerId, const system_time_point&)>>(
 //                     std::bind(std::forward<TFunction>(func), std::placeholders::_1, std::placeholders::_2, std::forward<Args>(args)...)
 //                     );
-// 
+//
 //                 m_invoke = function_type([task](TimerId id, const system_time_point& time_point) {
 //                     (*task)(id, time_point);
 //                 });
 //             }
 //             ~PackagedTimerInvoke() {}
-// 
+//
 //             void invoke(TimerId id, const system_time_point& time_point) {
 //                 m_invoke(id, time_point);
 //             }
-// 
+//
 //         private:
 //             function_type m_invoke;
 //         };
-// 
+//
 //     public:
 //         template<typename TFunction, typename... Args>
 //         PackagedTimerTask(unsigned int interval_ms, int loop_count, TimerId id
@@ -359,14 +359,14 @@ namespace BTool
 //             : TimerTaskVirtual(interval_ms, loop_count, id, time_point)
 //             , m_invoke(std::forward<TFunction>(func), std::forward<Args>(args)...)
 //         {}
-// 
+//
 //         ~PackagedTimerTask() {}
-// 
+//
 //         // 执行调用函数
 //         void invoke(const system_time_point& time_point) override {
 //             m_invoke.invoke(get_id(), time_point);
 //         }
-// 
+//
 //     private:
 //         PackagedTimerInvoke  m_invoke;
 //     };
