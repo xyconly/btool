@@ -15,7 +15,7 @@ Note:    目前文本类型仅支持标准北京时间(DTK_Local)
 #endif
 
 namespace BTool {
-	
+
     class DateTimeConvert
     {
         // 后期仿JAVA扩展时使用
@@ -84,8 +84,8 @@ namespace BTool {
 
         DateTimeConvert()
             : m_style(DTS_Invlid)
-            , m_isvalid(false)
             , m_day_of_week(UNDEFINE)
+            , m_isvalid(false)
             , m_year(0)
             , m_month(1)
             , m_day(1)
@@ -101,8 +101,8 @@ namespace BTool {
         // 目前仅支持DTK_Local以及DTK_KLine
         explicit DateTimeConvert(const char* dt, DateTimeStyle style = DTS_YMDHMS, DateTimeKind kind = DTK_Local)
             : m_style(style)
-            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week(UNDEFINE)
+            , m_isvalid(style != DTS_Invlid)
             , m_year(0)
             , m_month(1)
             , m_day(1)
@@ -195,8 +195,8 @@ namespace BTool {
         // 按年月日时分秒的顺序,依据DateTimeStyle进行赋值,参数为int型
         explicit DateTimeConvert(DateTimeStyle style, int date_time, ...)
             : m_style(style)
-            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week(UNDEFINE)
+            , m_isvalid(style != DTS_Invlid)
             , m_year(0)
             , m_month(1)
             , m_day(1)
@@ -284,8 +284,8 @@ namespace BTool {
 
         explicit DateTimeConvert(const std::tm& dt, DateTimeStyle style = DTS_YMDHMS)
             : m_style(style)
-            , m_isvalid(style != DTS_Invlid)
             , m_day_of_week((DayOfWeek)dt.tm_wday)
+            , m_isvalid(style != DTS_Invlid)
             , m_year(dt.tm_year + 1900)
             , m_month(dt.tm_mon + 1)
             , m_day(dt.tm_mday)
@@ -732,7 +732,7 @@ namespace BTool {
             std::time_t ltime = to_time_t();
 
             int res_millsec = millsecs % 1000 + m_millsecond;
-            int new_millsec = res_millsec % 1000;
+            //int new_millsec = res_millsec % 1000;
             long long secs(res_millsec / 1000 + millsecs / 1000);
             ltime = ltime + secs;
 
@@ -961,7 +961,7 @@ namespace BTool {
 
             if (m_day_of_week == UNDEFINE && (m_style & DTS_YMD) == DTS_YMD)
                 m_day_of_week = caculate_weekday(m_year, m_month, m_day);
-            
+
             return m_day_of_week;
         }
 

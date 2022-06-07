@@ -216,7 +216,7 @@ namespace BTool
                 if (status == msg_status::no_bind) {
                     return Type();
                 }
-                
+
                 if (msg.get_res_length() < MemoryStream::get_args_sizeof<Type>()) {
                     status = msg_status::unpack_error;
                     return Type();
@@ -248,17 +248,29 @@ namespace BTool
                 msg_.reset_offset(0);
                 head_.content_size_ = msg_.size();
             }
-            ProxyMsg(const std::string& rpc_name, const message_head& head, std::string_view msg)
+            ProxyMsg(const std::string& rpc_name, const message_head& head, const std::string_view& msg)
                 : rpc_name_(rpc_name)
                 , head_(head)
             {
                 msg_.load(msg.data(), msg.size());
             }
-            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, std::string_view msg)
+            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, const std::string_view& msg)
                 : rpc_name_(rpc_name)
                 , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), uint32_t(msg.length()) })
             {
                 msg_.load(msg.data(), msg.size());
+            }
+            ProxyMsg(const std::string& rpc_name, const message_head& head, MemoryStream&& msg)
+                : rpc_name_(rpc_name)
+                , head_(head)
+                , msg_(std::move(msg))
+            {
+            }
+            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, MemoryStream&& msg)
+                : rpc_name_(rpc_name)
+                , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), uint32_t(msg.length()) })
+                , msg_(std::move(msg))
+            {
             }
             virtual ~ProxyMsg() {}
 
@@ -300,44 +312,49 @@ namespace BTool
             MemoryStream    msg_;
             TProxyMsgHandle handle_;
         };
-		
+
         template<typename TProxyMsgHandle>
         class DefaultProxyPkgHandle {
         public:
             typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>> ProxyMsgPtr;
 
+            // 打包消息
+            // 此处默认采用 head + title + content(status + data)的内存直接打包
             template<typename... Args>
             ProxyMsgPtr package_msg(const std::string& rpc_name, comm_model comm_model, rpc_model model, uint32_t req_id, msg_status status, Args&&... args) {
-                BTool::MemoryStream content_buffer;
-                content_buffer.append(status);
-                content_buffer.append_args(std::forward<Args>(args)...);
-
                 uint8_t title_size = (uint8_t)rpc_name.length();
-                message_head head{ comm_model, model, req_id, title_size, (uint32_t)content_buffer.size() };
+                
+                // content长度, content 包含 status + 内容
+                uint32_t content_length = MemoryStream::get_args_length<msg_status, Args...>(status, std::forward<Args>(args)...);
 
-                BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_buffer.size());
+                BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_length);
 
                 // head
+                message_head head{ comm_model, model, req_id, title_size, content_length };
                 write_buffer.append(head);
 
                 // rpc_name
                 write_buffer.append(rpc_name.c_str(), title_size);
 
                 // content
-                write_buffer.append(content_buffer.data(), content_buffer.size());
+                write_buffer.append_args(status, std::forward<Args>(args)...);
 
-                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), std::string_view{ write_buffer.data(), write_buffer.size() });
+                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), std::move(write_buffer));
             }
+            
+            
+            // 解包消息
+            // 此处默认采用 head + title + content(status + data)的内存直接解包
             std::tuple<std::vector<ProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
                 std::vector<ProxyMsgPtr>  resault;
-                BTool::MemoryStream read_buffer(const_cast<char*>(msg), bytes_transferred);
-                while (read_buffer.get_res_length() >= sizeof(struct message_head)) {
+                BTool::MemoryStream read_buffer(msg, bytes_transferred);
+                while (read_buffer.get_res_length() >= sizeof(struct message_head) + sizeof(msg_status)) {
                     // 读取,自带漂移
                     message_head cur_head;
-                    // head
+                    // head 读取, 自带漂移
                     read_buffer.read(&cur_head);
 
-                    // 异常包
+                    // 异常包, 此处可依据端口限制大小设置
                     if (cur_head.title_size_ == 0 || cur_head.content_size_ > (uint32_t)(-1) / 2) {
                         return { std::vector<ProxyMsgPtr>(), 0, error(msg_status::send_error, "异常包") };
                     }
