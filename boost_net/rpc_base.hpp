@@ -248,13 +248,13 @@ namespace BTool
                 msg_.reset_offset(0);
                 head_.content_size_ = msg_.size();
             }
-            ProxyMsg(const std::string& rpc_name, const message_head& head, const std::string_view& msg)
+            ProxyMsg(const std::string& rpc_name, const message_head& head, std::string_view&& msg)
                 : rpc_name_(rpc_name)
                 , head_(head)
             {
                 msg_.load(msg.data(), msg.size());
             }
-            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, const std::string_view& msg)
+            ProxyMsg(const std::string& rpc_name, comm_model comm_model, rpc_model rpc_model, uint32_t req_id, std::string_view&& msg)
                 : rpc_name_(rpc_name)
                 , head_({ comm_model, rpc_model, req_id, uint8_t(rpc_name.length()), uint32_t(msg.length()) })
             {
@@ -339,7 +339,7 @@ namespace BTool
                 // content
                 write_buffer.append_args(status, std::forward<Args>(args)...);
 
-                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, std::move(head), std::move(write_buffer));
+                return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, head, std::move(write_buffer));
             }
             
             
@@ -372,7 +372,7 @@ namespace BTool
                     std::string_view content(msg + read_buffer.get_offset(), cur_head.content_size_);
                     read_buffer.add_offset(cur_head.content_size_);
 
-                    auto item = std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, cur_head, content);
+                    auto item = std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, cur_head, std::move(content));
 
                     resault.push_back(item);
                 }
