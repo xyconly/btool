@@ -1,6 +1,9 @@
 #ifndef __COMM_OS_H__
 #define __COMM_OS_H__
 
+
+
+
 /* C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -60,6 +63,24 @@ extern "C" {
 /* hp-ux */
 #ifdef __COMM_HPUX__
 #define _XOPEN_SOURCE_EXTENDED 1
+#endif
+
+
+#ifndef LIKELY
+# if defined(__COMM_LINUX__)
+#  define LIKELY(x) (__builtin_expect((x), 1))
+# else
+#  define LIKELY(x) (x)
+# endif
+#endif
+
+
+#ifndef UNLIKELY
+# if defined(__COMM_LINUX__)
+#  define UNLIKELY(x) (__builtin_expect((x), 0))
+# else
+#  define UNLIKELY(x) (x)
+# endif
 #endif
 
 #include <stdio.h>

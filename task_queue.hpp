@@ -13,6 +13,7 @@ Note:  condition_variable使用注意:在进行wait时会首先
        然后重复1-3操作,直至达到触发条件后退出,注意此时依旧为1操作中,并未释放锁
 *************************************************/
 #pragma once
+#include <functional>
 #include <queue>
 #include <list>
 #include <map>
@@ -21,6 +22,7 @@ Note:  condition_variable使用注意:在进行wait时会首先
 #include <condition_variable>
 #include "rwmutex.hpp"
 #include "atomic_switch.hpp"
+#include "comm_function_os.hpp"
 
 namespace BTool
 {
@@ -46,9 +48,11 @@ namespace BTool
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            std::queue<TaskItem> empty;
-            m_queue.swap(empty);
+			{
+			    std::unique_lock<std::mutex> locker(m_mtx);
+                std::queue<TaskItem> empty;
+                m_queue.swap(empty);
+			}
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -60,7 +64,6 @@ namespace BTool
                 return;
             }
 
-            std::unique_lock<std::mutex> locker(m_mtx);
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -73,7 +76,6 @@ namespace BTool
             }
 
             if (bwait) {
-                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -83,13 +85,15 @@ namespace BTool
 
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+			{
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-            if (m_bstop.load())
-                return false;
+                if (UNLIKELY(m_bstop.load()))
+                    return false;
 
-            m_queue.push(std::forward<AsTFunction>(func));
+                m_queue.push(std::forward<AsTFunction>(func));
+			}
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -100,7 +104,7 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (m_bstop.load() && !not_empty())
+                if (UNLIKELY(m_bstop.load() && !not_empty()))
                     return;
 
                 pop_task = std::move(m_queue.front());
@@ -110,8 +114,8 @@ namespace BTool
                     std::queue<TaskItem> empty;
                     m_queue.swap(empty);
                 }
-                m_cv_not_full.notify_one();
             }
+            m_cv_not_full.notify_one();
 
             if (pop_task) {
                 pop_task();
@@ -181,9 +185,11 @@ namespace BTool
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_wait_tasks.clear();
-            m_wait_props.clear();
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				m_wait_tasks.clear();
+				m_wait_props.clear();
+			}
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -195,7 +201,6 @@ namespace BTool
                 return;
             }
 
-            std::unique_lock<std::mutex> locker(m_mtx);
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -207,7 +212,6 @@ namespace BTool
                 return;
             }
             if (bwait) {
-                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -217,16 +221,18 @@ namespace BTool
 
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-            if (m_bstop.load())
-                return false;
+				if (UNLIKELY(m_bstop.load()))
+					return false;
 
-            auto iter = m_wait_tasks.find(prop);
-            if (iter == m_wait_tasks.end())
-                m_wait_props.push_back(prop);
-            m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
+				auto iter = m_wait_tasks.find(prop);
+				if (iter == m_wait_tasks.end())
+					m_wait_props.push_back(prop);
+				m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
+			}
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -239,11 +245,11 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (m_bstop.load() && !not_empty())
+                if (UNLIKELY(m_bstop.load() && !not_empty()))
                     return;
 
                 // 是否已无可pop队列
-                if (m_wait_props.empty())
+                if (UNLIKELY(m_wait_props.empty()))
                     return;
 
                 for (auto pop_type_iter = m_wait_props.begin(); pop_type_iter != m_wait_props.end(); pop_type_iter++) {
@@ -263,8 +269,10 @@ namespace BTool
             if (pop_task) {
                 pop_task();
 
-                std::unique_lock<std::mutex> locker(m_mtx);
-                m_cur_pop_props.erase(pop_type);
+				{
+					std::unique_lock<std::mutex> locker(m_mtx);
+					m_cur_pop_props.erase(pop_type);
+				}
                 m_cv_not_full.notify_one();
             }
         }
@@ -272,9 +280,11 @@ namespace BTool
         // 移除所有指定属性任务,当前正在执行除外,可能存在阻塞
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_wait_props.remove_if([prop](const TPropType& value)->bool {return (value == prop); });
-            m_wait_tasks.erase(std::forward<AsTPropType>(prop));
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				m_wait_props.remove_if([prop](const TPropType& value)->bool {return (value == prop); });
+				m_wait_tasks.erase(std::forward<AsTPropType>(prop));
+			}
             m_cv_not_full.notify_one();
         }
 
@@ -551,10 +561,12 @@ namespace BTool
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_wait_props.clear();
-            m_wait_tasks.clear();
-            m_cur_props.clear();
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				m_wait_props.clear();
+				m_wait_tasks.clear();
+				m_cur_props.clear();
+			}
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -565,7 +577,6 @@ namespace BTool
             if (!m_bstop.compare_exchange_strong(target, false)) {
                 return;
             }
-            std::unique_lock<std::mutex> locker(m_mtx);
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -577,7 +588,6 @@ namespace BTool
                 return;
             }
             if (bwait) {
-                std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.notify_all();
                 m_cv_not_empty.notify_all();
                 return;
@@ -588,14 +598,16 @@ namespace BTool
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-            if (m_bstop.load())
-                return false;
+				if (UNLIKELY(m_bstop.load()))
+					return false;
 
-            m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
-            m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
+				m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
+				m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
+			}
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -608,7 +620,7 @@ namespace BTool
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (m_bstop.load() && !not_empty())
+                if (UNLIKELY(m_bstop.load() && !not_empty()))
                     return;
 
                 prop_type = m_wait_props.pop_front();
@@ -622,15 +634,17 @@ namespace BTool
 
             if (next_task) {
                 next_task();
-                std::unique_lock<std::mutex> locker(m_mtx);
-                auto wait_task_iter = m_wait_tasks.find(prop_type);
-                if (wait_task_iter != m_wait_tasks.end()) {
-                    wait_task_iter->second.pop_front();
-                    if (wait_task_iter->second.empty())
-                        m_wait_tasks.erase(wait_task_iter);
-                }
-                remove_cur_prop(prop_type);
-                m_wait_props.reset_prop(prop_type);
+				{
+					std::unique_lock<std::mutex> locker(m_mtx);
+					auto wait_task_iter = m_wait_tasks.find(prop_type);
+					if (wait_task_iter != m_wait_tasks.end()) {
+						wait_task_iter->second.pop_front();
+						if (wait_task_iter->second.empty())
+							m_wait_tasks.erase(wait_task_iter);
+					}
+					remove_cur_prop(prop_type);
+					m_wait_props.reset_prop(prop_type);
+				}
                 m_cv_not_full.notify_one();
             }
         }
@@ -639,12 +653,13 @@ namespace BTool
         // 存在遍历,可能比较耗时
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-            std::unique_lock<std::mutex> locker(m_mtx);
-            auto iter = m_wait_tasks.find(prop);
-            if (iter != m_wait_tasks.end())
-                m_wait_tasks.erase(prop);
-            m_wait_props.remove_prop(prop);
-//             remove_cur_prop(std::forward<AsTPropType>(prop));
+			{
+				std::unique_lock<std::mutex> locker(m_mtx);
+				auto iter = m_wait_tasks.find(prop);
+				if (iter != m_wait_tasks.end())
+					m_wait_tasks.erase(prop);
+				m_wait_props.remove_prop(prop);
+			}
             m_cv_not_full.notify_one();
         }
 

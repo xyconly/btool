@@ -17,18 +17,16 @@ namespace BTool
     /*************************************************
                    任务线程池基类
     *************************************************/
-    template<typename TQueueType>
+    template<typename TCrtpImpl, typename TQueueType>
     class TaskPoolBase
     {
         enum {
             TP_MAX_THREAD = 2000,   // 最大线程数
         };
 
-    public:
+    protected:
         TaskPoolBase(size_t max_task_count = 0) : m_task_queue(max_task_count), m_cur_thread_ver(0) {}
         virtual ~TaskPoolBase() { stop(); }
-
-        virtual void pop_task_inner() = 0;
 
     public:
         // 开启线程池
@@ -83,6 +81,13 @@ namespace BTool
             create_thread(thread_num);
         }
 
+    protected:
+		// crtp实现
+        void pop_task_inner() {
+			static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
+		}
+	    void pop_task_inner_impl(){}
+		
     private:
         // 创建线程
         void create_thread(size_t thread_num) {
@@ -131,14 +136,15 @@ namespace BTool
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
     class ParallelTaskPool
-        : public TaskPoolBase<TaskQueue>
+        : public TaskPoolBase<ParallelTaskPool, TaskQueue>
         , private boost::noncopyable
     {
+		friend class TaskPoolBase<ParallelTaskPool, TaskQueue>;
     public:
         // 根据新增任务顺序并行有序执行的线程池
         // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
         ParallelTaskPool(size_t max_task_count = 0)
-            : TaskPoolBase<TaskQueue>(max_task_count)
+            : TaskPoolBase<ParallelTaskPool, TaskQueue>(max_task_count)
         { }
 
         virtual ~ParallelTaskPool() {}
@@ -149,13 +155,13 @@ namespace BTool
         // add_task(std::bind(&func, param1, param2))
         template<typename TFunction>
         bool add_task(TFunction&& func) {
-            if (!this->m_atomic_switch.has_started())
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
             return this->m_task_queue.add_task(std::forward<TFunction>(func));
         }
 
     protected:
-        virtual void pop_task_inner() override {
+        void pop_task_inner_impl() {
             m_task_queue.pop_task();
         }
     };
@@ -186,8 +192,8 @@ namespace BTool
         }
 
     protected:
-        void pop_task_inner() override {
-            ParallelTaskPool::pop_task_inner();
+        void pop_task_inner_impl() {
+            ParallelTaskPool::pop_task_inner_impl();
             std::this_thread::sleep_for(std::chrono::milliseconds(m_sleep_millseconds));
         }
 
@@ -205,14 +211,15 @@ namespace BTool
     *************************************************/
     template<typename TPropType>
     class LastTaskPool
-        : public TaskPoolBase<LastTaskQueue<TPropType>>
+        : public TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>
         , private boost::noncopyable
     {
+		friend class TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>;
     public:
         // 具有相同属性任务执行最新状态的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         LastTaskPool(size_t max_task_count = 0)
-            : TaskPoolBase<LastTaskQueue<TPropType>>(max_task_count)
+            : TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>(max_task_count)
         {
         }
 
@@ -224,7 +231,7 @@ namespace BTool
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
         bool add_task(AsTPropType&& prop, TFunction&& func) {
-            if (!this->m_atomic_switch.has_started())
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
             return this->m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
         }
@@ -235,7 +242,7 @@ namespace BTool
         }
 
     protected:
-        void pop_task_inner() override {
+        void pop_task_inner_impl() {
             this->m_task_queue.pop_task();
         }
     };
@@ -250,14 +257,15 @@ namespace BTool
     *************************************************/
     template<typename TPropType>
     class SerialTaskPool
-        : public TaskPoolBase<SerialTaskQueue<TPropType>>
+        : public TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>
         , private boost::noncopyable
     {
+		friend class TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>;
     public:
         // 具有相同属性任务串行有序执行的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         SerialTaskPool(size_t max_task_count = 0)
-            : TaskPoolBase<SerialTaskQueue<TPropType>>(max_task_count)
+            : TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>(max_task_count)
         {
         }
 
@@ -269,7 +277,7 @@ namespace BTool
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
         bool add_task(AsTPropType&& prop, TFunction&& func) {
-            if (!this->m_atomic_switch.has_started())
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
             return this->m_task_queue.add_task(std::forward<AsTPropType>(prop), std::forward<TFunction>(func));
         }
@@ -280,7 +288,7 @@ namespace BTool
         }
 
     protected:
-        void pop_task_inner() override {
+        void pop_task_inner_impl() {
             this->m_task_queue.pop_task();
         }
     };
