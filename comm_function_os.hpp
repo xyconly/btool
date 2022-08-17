@@ -1,9 +1,6 @@
 #ifndef __COMM_OS_H__
 #define __COMM_OS_H__
 
-
-
-
 /* C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -13,36 +10,36 @@ extern "C" {
 
 /* Softwares */
 
-#ifdef _AIX	/* IBM AIX OS */
+#ifdef _AIX    /* IBM AIX OS */
 #define __COMM_AIX__
 #endif
 
-#ifdef __hpux	/* HP HP-UX OS */
+#ifdef __hpux    /* HP HP-UX OS */
 #define __COMM_HPUX__
 #endif
 
-#ifdef __SVR4	/* Sun Solaris OS */
+#ifdef __SVR4    /* Sun Solaris OS */
 #define __COMM_SOLARIS__
 #endif
 
-#ifdef __FreeBSD__	/* Berkeley FreeBSD OS */
+#ifdef __FreeBSD__    /* Berkeley FreeBSD OS */
 #define __COMM_FREEBSD__
 #endif
 
-#ifdef __linux	/* GNU Linux OS */
+#ifdef __linux    /* GNU Linux OS */
 #define __COMM_LINUX__
 #endif
 
-#ifdef __APPLE__	/* Apple Mac OS X */
+#ifdef __APPLE__    /* Apple Mac OS X */
 #define __COMM_APPLE__
 #endif
 
-#ifdef _WIN32	/* Microsoft Windows OS */
+#ifdef _WIN32    /* Microsoft Windows OS */
 #define __COMM_WINDOWS__
 #endif
 
 /* Hardwares */
-#ifdef __sparc	/* Sun Sparc Machine */
+#ifdef __sparc    /* Sun Sparc Machine */
 #define __COMM_SPARC__
 #endif
 
@@ -54,11 +51,11 @@ extern "C" {
 #define __COMM_UNIX__
 #endif
 
-#if defined(__COMM_WINDOWS__)	/* windows */
+#if defined(__COMM_WINDOWS__)    /* windows */
 
-#define WIN32_LEAN_AND_MEAN	/* for socket api */
+#define WIN32_LEAN_AND_MEAN    /* for socket api */
 #include <windows.h>
-#elif defined(__COMM_UNIX__)	/* unix */
+#elif defined(__COMM_UNIX__)    /* unix */
 
 /* hp-ux */
 #ifdef __COMM_HPUX__
@@ -109,17 +106,17 @@ extern "C" {
 #include <sys/sem.h>
 #include <sys/shm.h>
 
-#else	/* Unknown OS */
+#else    /* Unknown OS */
 #error Operation System not supported!
-#endif	/* __COMM_WINDOWS__ */
+#endif    /* __COMM_WINDOWS__ */
 
 
 #ifdef __COMM_WINDOWS__
-#define comm_os_sleep(t) Sleep((t)*1000)	/* second */
-#define comm_os_msleep Sleep			/* millisecond */
+#define comm_os_sleep(t) Sleep((t)*1000)    /* second */
+#define comm_os_msleep Sleep            /* millisecond */
 #else
-#define comm_os_sleep sleep			/* second */
-#define comm_os_msleep(t) usleep((t)*1000)			/* millisecond */
+#define comm_os_sleep sleep            /* second */
+#define comm_os_msleep(t) usleep((t)*1000)            /* millisecond */
 #endif
 
 /* C++ */
@@ -322,4 +319,4 @@ public:
 #endif
 
 
-#endif	/* __COMM_OS_H__ */
+#endif    /* __COMM_OS_H__ */
