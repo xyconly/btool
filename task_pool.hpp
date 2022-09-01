@@ -82,12 +82,12 @@ namespace BTool
         }
 
     protected:
-		// crtp实现
+        // crtp实现
         void pop_task_inner() {
-			static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
-		}
-	    void pop_task_inner_impl(){}
-		
+            static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
+        }
+        void pop_task_inner_impl(){}
+
     private:
         // 创建线程
         void create_thread(size_t thread_num) {
@@ -136,15 +136,15 @@ namespace BTool
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
     class ParallelTaskPool
-        : public TaskPoolBase<ParallelTaskPool, TaskQueue>
+        : public TaskPoolBase<ParallelTaskPool, ParallelTaskQueue>
         , private boost::noncopyable
     {
-		friend class TaskPoolBase<ParallelTaskPool, TaskQueue>;
+        friend class TaskPoolBase<ParallelTaskPool, ParallelTaskQueue>;
     public:
         // 根据新增任务顺序并行有序执行的线程池
         // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
         ParallelTaskPool(size_t max_task_count = 0)
-            : TaskPoolBase<ParallelTaskPool, TaskQueue>(max_task_count)
+            : TaskPoolBase<ParallelTaskPool, ParallelTaskQueue>(max_task_count)
         { }
 
         virtual ~ParallelTaskPool() {}
@@ -214,7 +214,7 @@ namespace BTool
         : public TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>
         , private boost::noncopyable
     {
-		friend class TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>;
+        friend class TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>;
     public:
         // 具有相同属性任务执行最新状态的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
@@ -260,7 +260,7 @@ namespace BTool
         : public TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>
         , private boost::noncopyable
     {
-		friend class TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>;
+        friend class TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>;
     public:
         // 具有相同属性任务串行有序执行的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
@@ -291,6 +291,136 @@ namespace BTool
         void pop_task_inner_impl() {
             this->m_task_queue.pop_task();
         }
+    };
+
+    /*************************************************
+    Description:    提供具有相同属性任务串行有序执行的线程池
+                    但是是将任务按属性简单均匀分配至内部单线程线程池
+                    这样做可能带来的后果是, 导致某个线程超负荷而其余线程空闲
+                    且一旦add_task后不可删除属性, 属性一旦确定线程号后不得更改
+                    适用于类似行情这种任务相对均匀的场景
+    1, 每个属性都可以同时添加多个任务;
+    2, 有很多的属性和很多的任务;
+    3, 每个属性添加的任务必须有序串行执行,即在同一时刻不能有同时执行一个用户的两个任务;
+    4, 实时性:该线程池无法确保不同属性间的实时性及均衡性, 仅仅只是按任务属性流转
+    5. 提供可扩展或缩容线程池数量功能。
+    *************************************************/
+    template<typename TPropType>
+    class RotateSerialTaskPool : private boost::noncopyable
+    {
+         enum {
+            TP_MAX_THREAD = 2000,   // 最大线程数
+        };
+
+    public:
+        // 注意: max_task_count:表示单线程池内的最大任务量, 和其余线程池不同
+        RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_task_pool_index(0) {}
+        ~RotateSerialTaskPool() { stop(); }
+
+    public:
+        // 开启线程池
+        // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
+        void start(size_t thread_num = std::thread::hardware_concurrency()) {
+            if (!m_atomic_switch.init() || !m_atomic_switch.start())
+                return;
+            writeLock locker(m_mtx);
+            create_thread(thread_num);
+            for (auto& item : m_task_pools) {
+                item->start(1);
+            }
+        }
+
+        // 终止线程池
+        // 注意此处可能阻塞等待task的回调线程结束,故在task的回调线程中不可调用该函数
+        // bwait: 是否强制等待当前所有队列执行完毕后才结束
+        // 完全停止后方可重新开启
+        void stop(bool bwait = false) {
+            if (!m_atomic_switch.stop())
+                return;
+
+            writeLock locker(m_mtx);
+            if (bwait) {
+                std::vector<SafeThread> tmp_threads(m_task_pools.size());
+                for (size_t i = 0;i < m_task_pools.size(); ++i) {
+                    tmp_threads[i].start([this, i] {
+                        m_task_pools[i]->stop(true);
+                    });
+                }
+                for (auto& item : tmp_threads) {
+                    if (item.joinable()) item.join();
+                }
+            }
+
+            // 删除所有
+            for (auto& item : m_task_pools) {
+                delete item;
+                item = nullptr;
+            }
+
+            m_task_pools.clear();
+            m_next_task_pool_index = 0;
+            m_atomic_switch.reset();
+        }
+
+        // 注意此处可能阻塞
+        void clear() {
+            readLock locker(m_mtx);
+            for (auto& item : m_task_pools) {
+                item->clear();
+            }
+        }
+
+        // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
+        // thread_num: 重置线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
+        // 注意:必须开启线程池后方可生效
+        void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency()) {
+            stop(true);
+            start(thread_num);
+        }
+
+        // 新增任务队列,超出最大任务数时存在阻塞
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // add_task(prop, [param1, param2=...]{...})
+        // add_task(prop, std::bind(&func, param1, param2))
+        template<typename AsTPropType, typename TFunction>
+        bool add_task(AsTPropType&& prop, TFunction&& func) {
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
+                return false;
+
+            writeLock locker(m_mtx);
+            auto [iter, ok] = m_prop_index.emplace(std::forward<AsTPropType>(prop), m_next_task_pool_index);
+            if (ok) {
+                if (++m_next_task_pool_index >= m_task_pools.size())
+                    m_next_task_pool_index = 0;
+            }
+            return m_task_pools[iter->second]->add_task(std::forward<TFunction>(func));
+        }
+
+    private:
+        // 创建线程
+        void create_thread(size_t thread_num) {
+            if (thread_num == 0) {
+                thread_num = std::thread::hardware_concurrency();
+            }
+            thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
+            for (size_t i = 0; i < thread_num; i++) {
+                m_task_pools.emplace_back(new ParallelTaskPool(m_max_task_count));
+            }
+        }
+
+    protected:
+        // 单线程池内的最大任务量
+        size_t                                    m_max_task_count;
+        // 原子启停标志
+        AtomicSwitch                              m_atomic_switch;
+        // 数据安全锁
+        rwMutex                                   m_mtx;
+        // 线程队列
+        std::vector<ParallelTaskPool*>            m_task_pools;
+        // 下一个新增属性的任务队列下标
+        size_t                                    m_next_task_pool_index;
+        // 属性对应队列下标
+        std::unordered_map<TPropType, size_t>     m_prop_index;
     };
 
 }

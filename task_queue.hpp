@@ -11,18 +11,25 @@ Note:  condition_variable使用注意:在进行wait时会首先
        2.释放锁进入(信号量)休眠
        3.接收notify,竞争锁
        然后重复1-3操作,直至达到触发条件后退出,注意此时依旧为1操作中,并未释放锁
+
+Note2:  queue是自己创建的, 可以通过swap等方式快速释放占用内存
+        map/set等是内部创建的, 无法通过swap甚至析构去真实释放实际内存
+               一定要释放的话, 自行在消费完毕后调用malloc_trim(0);
 *************************************************/
 #pragma once
+//#include <malloc.h>
 #include <functional>
 #include <queue>
 #include <list>
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <assert.h>
 #include <condition_variable>
 #include "rwmutex.hpp"
 #include "atomic_switch.hpp"
 #include "comm_function_os.hpp"
+#include "concurrentqueue/concurrentqueue.h"
+//#include "concurrentqueue/blockingconcurrentqueue.h"
 
 namespace BTool
 {
@@ -48,11 +55,11 @@ namespace BTool
         }
 
         void clear() {
-			{
-			    std::unique_lock<std::mutex> locker(m_mtx);
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
                 std::queue<TaskItem> empty;
                 m_queue.swap(empty);
-			}
+            }
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -85,7 +92,7 @@ namespace BTool
 
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
-			{
+            {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
@@ -93,7 +100,7 @@ namespace BTool
                     return false;
 
                 m_queue.push(std::forward<AsTFunction>(func));
-			}
+            }
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -117,9 +124,7 @@ namespace BTool
             }
             m_cv_not_full.notify_one();
 
-            if (pop_task) {
-                pop_task();
-            }
+            if (pop_task) pop_task();
         }
 
         bool full() const {
@@ -161,6 +166,220 @@ namespace BTool
     };
 
     /*************************************************
+    Description:提供基于无锁以及信号量的FIFO任务队列
+    *************************************************/
+    class ParallelTaskQueue {
+    public:
+        typedef std::function<void()> TaskItem;
+    public:
+        ParallelTaskQueue(size_t max_task_count = 0)
+            : m_bstop(false)
+            , m_max_task_count(max_task_count)
+        {}
+
+        virtual ~ParallelTaskQueue() {
+            stop();
+        }
+
+        inline bool empty() const {
+            return !not_empty();
+        }
+
+        void clear() {
+            moodycamel::ConcurrentQueue<TaskItem> empty;
+            m_queue.swap(empty);
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void start() {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void stop(bool bwait = false) {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+
+            if (bwait) {
+                m_cv_not_full.notify_all();
+                m_cv_not_empty.notify_all();
+                return;
+            }
+            clear();
+        }
+
+        template<typename AsTFunction>
+        bool add_task(AsTFunction&& func) {
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+            }
+
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+            m_queue.enqueue(std::forward<AsTFunction>(func));
+            m_cv_not_empty.notify_one();
+            return true;
+        }
+
+        void pop_task() {
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+            }
+
+            if (UNLIKELY(m_bstop.load() && !not_empty()))
+                return;
+
+            TaskItem pop_task(nullptr);
+            if (m_queue.try_dequeue(pop_task)) {
+                // queue不会主动释放已开辟空间,当任务清空时则释放一下,若实际环境中,可自己定义为list来避免queue长期占用的问题,但这会导致性能的略微下降,根据实际情况决定
+                // if (m_queue.empty()) {
+                //     moodycamel::ConcurrentQueue<TaskItem> empty;
+                //     m_queue.swap(empty);
+                // }
+
+                m_cv_not_full.notify_one();
+
+                if (pop_task) pop_task();
+            }
+        }
+
+        inline bool full() const {
+            return !not_full();
+        }
+
+        inline size_t size() const {
+            return m_queue.size_approx();
+        }
+
+    protected:
+        // 是否处于未满状态
+        inline bool not_full() const {
+            return m_max_task_count == 0 || size() < m_max_task_count;
+        }
+
+        // 是否处于空状态
+        inline bool not_empty() const {
+            return size() != 0;
+        }
+
+    protected:
+        // 是否已终止标识符
+        std::atomic<bool>           m_bstop;
+        // 数据安全锁
+        mutable std::mutex          m_mtx;
+
+        // 总待执行任务队列,包含所有的待执行任务
+        moodycamel::ConcurrentQueue<TaskItem>       m_queue;
+        // 最大任务个数,当为0时表示无限制
+        size_t                      m_max_task_count;
+
+        // 不为空的条件变量
+        std::condition_variable     m_cv_not_empty;
+        // 没有满的条件变量
+        std::condition_variable     m_cv_not_full;
+    };
+
+    /*************************************************
+    Description:提供无限制pop的无锁队列, 但是该队列存在cpu过高的问题
+	            并且在linux下单线程也可能出现cpu爆满且性能低的问题
+    *************************************************/
+    class NoBlockingParallelTaskQueue {
+    public:
+        typedef std::function<void()> TaskItem;
+    public:
+        NoBlockingParallelTaskQueue(/*size_t max_task_count = 0*/)
+            : m_bstop(false)
+            //, m_max_task_count(max_task_count)
+        {}
+
+        virtual ~NoBlockingParallelTaskQueue() {
+            stop();
+        }
+
+        inline bool empty() const {
+            return size() == 0;
+        }
+
+        void clear() {
+            moodycamel::ConcurrentQueue<TaskItem> empty;
+            m_queue.swap(empty);
+        }
+
+        void start() {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+        }
+
+        void stop(bool bwait = false) {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+
+            if (bwait) {
+                return;
+            }
+            clear();
+        }
+
+        template<typename AsTFunction>
+        bool add_task(AsTFunction&& func) {
+            // 不做判断处理
+            // while (size() > m_max_task_count)
+            //     std::this_thread::yield();
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+            m_queue.enqueue(std::forward<AsTFunction>(func));
+            return true;
+        }
+
+        void pop_task() {
+            if (UNLIKELY(m_bstop.load() && empty()))
+                return;
+
+            TaskItem pop_task(nullptr);
+            // if(m_queue.wait_dequeue_timed(pop_task, std::chrono::milliseconds(5))) {
+            //     if (pop_task) pop_task();
+            // } else {
+            //     std::this_thread::yield();
+            // }
+            if(m_queue.try_dequeue(pop_task)){
+                if (pop_task) pop_task();
+            }
+        }
+
+        inline size_t size() const {
+            return m_queue.size_approx();
+        }
+
+    protected:
+        // 是否已终止标识符
+        std::atomic<bool>                           m_bstop;
+        // 总待执行任务队列,包含所有的待执行任务
+        moodycamel::ConcurrentQueue<TaskItem>       m_queue;
+        // moodycamel::BlockingConcurrentQueue<TaskItem>       m_queue;
+        // 最大任务个数,当为0时表示无限制
+        // size_t                                      m_max_task_count;
+    };
+
+    /*************************************************
     Description:提供按属性划分的,仅保留最新状态的FIFO任务队列
                 当某一属性正在队列中时,同属性的其他任务新增时,原任务会被覆盖
     *************************************************/
@@ -185,11 +404,11 @@ namespace BTool
         }
 
         void clear() {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				m_wait_tasks.clear();
-				m_wait_props.clear();
-			}
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_wait_tasks.clear();
+                m_wait_props.clear();
+            }
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -221,18 +440,18 @@ namespace BTool
 
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-				if (UNLIKELY(m_bstop.load()))
-					return false;
+                if (UNLIKELY(m_bstop.load()))
+                    return false;
 
-				auto iter = m_wait_tasks.find(prop);
-				if (iter == m_wait_tasks.end())
-					m_wait_props.push_back(prop);
-				m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
-			}
+                auto iter = m_wait_tasks.find(prop);
+                if (iter == m_wait_tasks.end())
+                    m_wait_props.push_back(prop);
+                m_wait_tasks[std::forward<AsTPropType>(prop)] = std::forward<AsTFunction>(func);
+            }
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -269,10 +488,10 @@ namespace BTool
             if (pop_task) {
                 pop_task();
 
-				{
-					std::unique_lock<std::mutex> locker(m_mtx);
-					m_cur_pop_props.erase(pop_type);
-				}
+                {
+                    std::unique_lock<std::mutex> locker(m_mtx);
+                    m_cur_pop_props.erase(pop_type);
+                }
                 m_cv_not_full.notify_one();
             }
         }
@@ -280,11 +499,11 @@ namespace BTool
         // 移除所有指定属性任务,当前正在执行除外,可能存在阻塞
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				m_wait_props.remove_if([prop](const TPropType& value)->bool {return (value == prop); });
-				m_wait_tasks.erase(std::forward<AsTPropType>(prop));
-			}
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_wait_props.remove_if([prop] (const TPropType& value)->bool {return (value == prop); });
+                m_wait_tasks.erase(std::forward<AsTPropType>(prop));
+            }
             m_cv_not_full.notify_one();
         }
 
@@ -318,9 +537,9 @@ namespace BTool
         // 总待执行任务属性顺序队列,用于判断执行队列顺序
         std::list<TPropType>             m_wait_props;
         // 总待执行任务队列属性及其对应任务,其个数必须始终与m_wait_tasks个数同步
-        std::map<TPropType, TaskItem>   m_wait_tasks;
+        std::unordered_map<TPropType, TaskItem>   m_wait_tasks;
         // 当前正在pop任务属性
-        std::set<TPropType>              m_cur_pop_props;
+        std::unordered_set<TPropType>    m_cur_pop_props;
         // 最大任务个数,当为0时表示无限制
         size_t                           m_max_task_count;
 
@@ -541,7 +760,7 @@ namespace BTool
         private:
             PropCountNode*                                  m_begin_node;   // 队列起始节点
             PropCountNode*                                  m_end_node;     // 队列结束节点
-            std::map<TPropType, std::list<PropCountNode*>>  m_all_nodes;    // 所有队列节点
+            std::unordered_map<TPropType, std::list<PropCountNode*>>  m_all_nodes;    // 所有队列节点
         };
 
     public:
@@ -561,12 +780,12 @@ namespace BTool
         }
 
         void clear() {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				m_wait_props.clear();
-				m_wait_tasks.clear();
-				m_cur_props.clear();
-			}
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_wait_props.clear();
+                m_wait_tasks.clear();
+                m_cur_props.clear();
+            }
             m_cv_not_full.notify_all();
             m_cv_not_empty.notify_all();
         }
@@ -598,16 +817,16 @@ namespace BTool
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
 
-				if (UNLIKELY(m_bstop.load()))
-					return false;
+                if (UNLIKELY(m_bstop.load()))
+                    return false;
 
-				m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
-				m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
-			}
+                m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
+                m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
+            }
             m_cv_not_empty.notify_one();
             return true;
         }
@@ -634,17 +853,17 @@ namespace BTool
 
             if (next_task) {
                 next_task();
-				{
-					std::unique_lock<std::mutex> locker(m_mtx);
-					auto wait_task_iter = m_wait_tasks.find(prop_type);
-					if (wait_task_iter != m_wait_tasks.end()) {
-						wait_task_iter->second.pop_front();
-						if (wait_task_iter->second.empty())
-							m_wait_tasks.erase(wait_task_iter);
-					}
-					remove_cur_prop(prop_type);
-					m_wait_props.reset_prop(prop_type);
-				}
+                {
+                    std::unique_lock<std::mutex> locker(m_mtx);
+                    auto wait_task_iter = m_wait_tasks.find(prop_type);
+                    if (wait_task_iter != m_wait_tasks.end()) {
+                        wait_task_iter->second.pop_front();
+                        if (wait_task_iter->second.empty())
+                            m_wait_tasks.erase(wait_task_iter);
+                    }
+                    remove_cur_prop(prop_type);
+                    m_wait_props.reset_prop(prop_type);
+                }
                 m_cv_not_full.notify_one();
             }
         }
@@ -653,13 +872,13 @@ namespace BTool
         // 存在遍历,可能比较耗时
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
-			{
-				std::unique_lock<std::mutex> locker(m_mtx);
-				auto iter = m_wait_tasks.find(prop);
-				if (iter != m_wait_tasks.end())
-					m_wait_tasks.erase(prop);
-				m_wait_props.remove_prop(prop);
-			}
+            {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                auto iter = m_wait_tasks.find(prop);
+                if (iter != m_wait_tasks.end())
+                    m_wait_tasks.erase(prop);
+                m_wait_props.remove_prop(prop);
+            }
             m_cv_not_full.notify_one();
         }
 
@@ -701,7 +920,7 @@ namespace BTool
         // 总待执行任务属性顺序队列,用于判断执行队列顺序
         PropCountNodeList                           m_wait_props;
         // 总待执行任务队列属性及其对应任务
-        std::map<TPropType, std::list<TaskItem>>    m_wait_tasks;
+        std::unordered_map<TPropType, std::list<TaskItem>>    m_wait_tasks;
         // 最大任务个数,当为0时表示无限制
         size_t                                      m_max_task_count;
 
@@ -711,7 +930,7 @@ namespace BTool
         std::condition_variable                     m_cv_not_full;
 
         // 当前正在执行中的任务属性
-        std::set<TPropType>                         m_cur_props;
+        std::unordered_set<TPropType>               m_cur_props;
 
     };
 }
