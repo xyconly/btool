@@ -1,5 +1,5 @@
 /******************************************************************************
-File name:  websocket_callback.hpp
+File name:  net_callback.hpp
 Author:	    AChar
 Purpose:    网络通讯回调接口
 *****************************************************************************/
@@ -37,7 +37,7 @@ namespace BTool
             write_cbk write_cbk_ = nullptr;
         };
 
-        static boost::asio::ip::tcp::endpoint GetEndPointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
+        __attribute__((unused)) static boost::asio::ip::tcp::endpoint GetEndPointByHost(const char* host, unsigned short port, boost::system::error_code& ec) {
             if (host == nullptr) {
                 return boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
             }

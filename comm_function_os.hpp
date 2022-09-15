@@ -247,7 +247,6 @@ public:
         struct ifconf ifMyConf;
         struct ifreq ifMyReq;
         char szBuf[20480] = { 0 };
-        char* ip;
 
         ifMyConf.ifc_len = 2048;
         ifMyConf.ifc_buf = szBuf;
@@ -286,7 +285,6 @@ public:
         struct ifconf ifMyConf;
         struct ifreq ifMyReq;
         char szBuf[20480] = { 0 };
-        char* ip;
 
         ifMyConf.ifc_len = 2048;
         ifMyConf.ifc_buf = szBuf;

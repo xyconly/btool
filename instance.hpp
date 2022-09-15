@@ -14,9 +14,18 @@ Note:    外部使用时直接使用instance()获取
 
 namespace BTool
 {
-    // 单实例公共基类
     template<class _Ty>
     class instance_base {
+    public:
+        static _Ty* instance() {
+            static _Ty s_instance;
+            return &s_instance;
+        }
+    };
+    
+    // 单实例公共基类
+    template<class _Ty>
+    class lazy_instance_base {
     public:
         static _Ty* instance() {
             if (!m_pInstance) {
@@ -39,8 +48,8 @@ namespace BTool
         }
 
     protected:
-        instance_base() {}
-        ~instance_base() {}
+        lazy_instance_base() {}
+        ~lazy_instance_base() {}
 
     private:
         static _Ty* volatile m_pInstance; // Instance
@@ -48,7 +57,7 @@ namespace BTool
     };
 
     template<class _Ty>
-    _Ty* volatile instance_base<_Ty>::m_pInstance = nullptr;
+    _Ty* volatile lazy_instance_base<_Ty>::m_pInstance = nullptr;
     template<class _Ty>
-    std::mutex instance_base<_Ty>::m_mtx_pres;
+    std::mutex lazy_instance_base<_Ty>::m_mtx_pres;
 }

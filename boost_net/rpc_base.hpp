@@ -181,7 +181,7 @@ namespace BTool
                 get_req_params(MemoryStream& msg, msg_status& status) {
                 if (msg.size() < sizeof(msg_status)) {
                     status = msg_status::unpack_error;
-                    return Type();
+                    return;
                 }
                 msg.read(&status);
             }
@@ -201,7 +201,7 @@ namespace BTool
                 get_rsp_params(MemoryStream& msg, msg_status& status) {
                 if (msg.size() < sizeof(msg_status)) {
                     status = msg_status::unpack_error;
-                    return Type();
+                    return;
                 }
                 msg.read(&status);
             }
@@ -296,12 +296,12 @@ namespace BTool
                 return msg_.get_length();
             }
 
-            template<typename Type>
+            template<typename Type = void>
             Type get_req_params(msg_status& status) {
                 return handle_.template get_req_params<Type>(msg_, status);
             }
 
-            template<typename Type>
+            template<typename Type = void>
             Type get_rsp_params(msg_status& status) {
                 return handle_.template get_rsp_params<Type>(msg_, status);
             }
@@ -519,18 +519,18 @@ namespace BTool
             }
 
             template<typename... TRspParams>
-            void proxy(std::function<void(SessionID, msg_status, TRspParams...)>& func, uint32_t req_id,  SessionID session_id, msg_status status, ProxyMsgPtr msg) {
-                using args_type = std::tuple<typename std::decay<TRspParams>::type...>;
-                // 本身发送失败
-                if (status != msg_status::ok || !msg) {
-                    std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
-                    return;
-                }
+            void proxy(std::function<void(SessionID, msg_status, TRspParams...)>& func, uint32_t req_id, SessionID session_id, msg_status status, ProxyMsgPtr msg) {
                 if constexpr (sizeof...(TRspParams) == 0) {
-                    msg->get_rsp_params(status);
+                    msg->template get_rsp_params<void>(status);
                     std::apply(func, std::forward_as_tuple(session_id, status));
                 }
                 else {
+                    using args_type = std::tuple<typename std::decay<TRspParams>::type...>;
+                    // 本身发送失败
+                    if (status != msg_status::ok || !msg) {
+                        std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
+                        return;
+                    }
                     auto comm_rslt = msg->template get_rsp_params<args_type>(status);
                     std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), std::move(comm_rslt)));
                 }
@@ -591,7 +591,7 @@ namespace BTool
                 msg_status status = msg_status::fail;
                 msg->get_req_params(status);
                 if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
                     return;
                 }
                 bind_invoke(bindfunc, session_id, msg->get_message_head());
@@ -602,7 +602,7 @@ namespace BTool
                 msg_status status = msg_status::fail;
                 msg->get_req_params(status);
                 if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
                     return;
                 }
                 bind_invoke(bindfunc, session_id, msg->get_message_head());
@@ -614,7 +614,7 @@ namespace BTool
                 using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TRspParams>::type...>;
                 auto rsp = msg->template get_req_params<args_type>(status);
                 if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status);
                     return;
                 }
                 bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
@@ -626,7 +626,7 @@ namespace BTool
                 using args_type = std::tuple<typename std::decay<TParam0>::type, typename std::decay<TRspParams>::type...>;
                 auto rsp = msg->template get_req_params<args_type>(status);
                 if (status != msg_status::ok) {
-                    rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
+                    m_parent->rsp_bind(rpc_name, session_id, msg->get_req_id(), msg->get_rpc_model(), status, TReturn());
                     return;
                 }
                 bind_invoke(bindfunc, session_id, msg->get_message_head(), std::move(rsp));
@@ -931,7 +931,7 @@ namespace BTool
             BindProxy<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>    m_bind_proxy;
         };
 
-        template<typename TServer, template<typename TProxyMsgHandle> typename TProxyPkgHandle, typename TProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
+        template<typename TServer, template<typename TProxyMsgHandle> typename TProxyPkgHandle = DefaultProxyPkgHandle, typename TProxyMsgHandle = DefaultProxyMsgHandle, size_t DEFAULT_TIMEOUT = 1000>
         class RpcService : public RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> {
             typedef RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT> RpcBaseType;
             typedef typename RpcBaseType::ProxyMsgPtr  ProxyMsgPtr;

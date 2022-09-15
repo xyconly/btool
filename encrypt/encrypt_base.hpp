@@ -1,6 +1,6 @@
 /*************************************************
 File name:  encrypt_base.hpp
-Author:     
+Author:     AChar
 Date:
 Description:    基于openssl提供的aes算法支持进行封装
 *************************************************/
@@ -119,7 +119,6 @@ namespace BTool {
                 是否正确解密
          ************************************************************************/
         static bool FromBase64(std::string str, unsigned char* decode, size_t& buffer_len) {
-            BIO *bmem, *b64;
             if (str.empty()) {
                 return false;
             }
@@ -127,12 +126,12 @@ namespace BTool {
                 str += '\n';
             }
 
-            b64 = BIO_new(BIO_f_base64());
-            bmem = BIO_new_mem_buf((void*)str.c_str(), (int)str.length());
+            BIO* b64 = BIO_new(BIO_f_base64());
+            BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+            BIO* bmem = BIO_new_mem_buf((void*)str.c_str(), (int)str.length());
             bmem = BIO_push(b64, bmem);
             buffer_len = BIO_read(bmem, decode, (int)str.length());
-            decode[buffer_len] = 0;
-            BIO_free_all(bmem);
+            BIO_free_all(b64)
             return true;
         }
 

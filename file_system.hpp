@@ -166,15 +166,14 @@ namespace BTool {
         {
             int beginCmpPath;
             int endCmpPath;
-            int fullPathLen;
             int pathLen = path.length();
             char currentPath[128] = { 0 };
-            char fullPath[128] = { 0 };
             //相对路径
             if ('/' != path[0])
             {
                 //获取当前路径
                 char* tmp = getcwd(currentPath, sizeof(currentPath));
+                if (!tmp) return false;
                 strcat(currentPath, "/");
                 beginCmpPath = strlen(currentPath);
                 strcat(currentPath, path.c_str());

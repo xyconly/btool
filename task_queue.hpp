@@ -360,7 +360,7 @@ namespace BTool
             // } else {
             //     std::this_thread::yield();
             // }
-            if(m_queue.try_dequeue(pop_task)){
+            if (m_queue.try_dequeue(pop_task)) {
                 if (pop_task) pop_task();
             }
         }
