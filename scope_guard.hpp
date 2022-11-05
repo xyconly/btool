@@ -24,7 +24,7 @@ Note:   т╢вт:https://stackoverflow.com/questions/10270328/the-simplest-and-neate
     scope_exit.dismiss();
     scope_fail.dismiss();
     scope_safe_exit.dismiss();
-/************************************************************************/
+************************************************************************/
 
 #pragma once
 

@@ -521,6 +521,11 @@ namespace BTool
             template<typename... TRspParams>
             void proxy(std::function<void(SessionID, msg_status, TRspParams...)>& func, uint32_t req_id, SessionID session_id, msg_status status, ProxyMsgPtr msg) {
                 if constexpr (sizeof...(TRspParams) == 0) {
+                    // 本身发送失败
+                    if (status != msg_status::ok || !msg) {
+                        std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status)));
+                        return;
+                    }
                     msg->template get_rsp_params<void>(status);
                     std::apply(func, std::forward_as_tuple(session_id, status));
                 }
@@ -1127,7 +1132,6 @@ namespace BTool
         public:
 #pragma region tcp回调
             void open_cbk(NetCallBack::SessionID session_id) {
-                m_connecting = true;
                 if (m_cbk.open_cbk_)
                     m_cbk.open_cbk_(session_id);
             }
@@ -1135,8 +1139,13 @@ namespace BTool
                 if (m_cbk.close_cbk_)
                     m_cbk.close_cbk_(session_id);
 
-                if (m_connecting && m_b_auto_reconnect)
-                    m_session->reconnect();
+                if (m_b_auto_reconnect) {
+#ifdef __linux
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    if (m_b_auto_reconnect)
+#endif
+                        m_session->reconnect();
+                }
             }
             void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
@@ -1233,8 +1242,7 @@ namespace BTool
         private:
             AsioContextPool                          m_ioc_pool;
             std::shared_ptr<TSession>                m_session;
-            bool                                     m_b_auto_reconnect = true;
-            bool                                     m_connecting = false;
+            volatile bool                            m_b_auto_reconnect = true;
             NetCallBack                              m_cbk;
         };
     }

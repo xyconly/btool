@@ -1,3 +1,6 @@
-[submodule "concurrentqueue"]
-	path = concurrentqueue
+[submodule "submodule/oneTBB"]
+	path = submodule/oneTBB
+	url = https://github.com/oneapi-src/oneTBB.git
+[submodule "submodule/concurrentqueue"]
+	path = submodule/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git

@@ -28,7 +28,7 @@ Note2:  queue是自己创建的, 可以通过swap等方式快速释放占用内存
 #include "rwmutex.hpp"
 #include "atomic_switch.hpp"
 #include "comm_function_os.hpp"
-#include "concurrentqueue/concurrentqueue.h"
+#include "submodule/concurrentqueue/concurrentqueue.h"
 //#include "concurrentqueue/blockingconcurrentqueue.h"
 
 namespace BTool

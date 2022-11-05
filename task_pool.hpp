@@ -9,6 +9,7 @@ Description:    提供各类任务线程池基类,避免外界重复创建
 #include <mutex>
 #include <vector>
 #include <boost/noncopyable.hpp>
+#include "submodule/oneTBB/include/tbb/concurrent_hash_map.h"
 #include "safe_thread.hpp"
 #include "task_queue.hpp"
 
@@ -311,10 +312,12 @@ namespace BTool
          enum {
             TP_MAX_THREAD = 2000,   // 最大线程数
         };
-
+        
+        using hash_type = typename tbb::concurrent_hash_map<TPropType, size_t>;
+        
     public:
         // 注意: max_task_count:表示单线程池内的最大任务量, 和其余线程池不同
-        RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_task_pool_index(0) {}
+        RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_task_pool_index(-1) {}
         ~RotateSerialTaskPool() { stop(); }
 
     public:
@@ -358,7 +361,7 @@ namespace BTool
             }
 
             m_task_pools.clear();
-            m_next_task_pool_index = 0;
+            m_next_task_pool_index.store(-1);
             m_atomic_switch.reset();
         }
 
@@ -386,14 +389,19 @@ namespace BTool
         bool add_task(AsTPropType&& prop, TFunction&& func) {
             if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
-
-            writeLock locker(m_mtx);
-            auto [iter, ok] = m_prop_index.emplace(std::forward<AsTPropType>(prop), m_next_task_pool_index);
-            if (ok) {
-                if (++m_next_task_pool_index >= m_task_pools.size())
-                    m_next_task_pool_index = 0;
+            
+            size_t index = 0;
+            {
+                typename hash_type::accessor ac;
+                bool ok = m_prop_index.insert(ac, prop);
+                if (ok) {
+                    index = ac->second = ++m_next_task_pool_index % m_task_pools.size();
+                }
+                else {
+                    index = ac->second;
+                }
             }
-            return m_task_pools[iter->second]->add_task(std::forward<TFunction>(func));
+            return m_task_pools[index]->add_task(std::forward<TFunction>(func));
         }
 
     private:
@@ -410,17 +418,17 @@ namespace BTool
 
     protected:
         // 单线程池内的最大任务量
-        size_t                                    m_max_task_count;
+        size_t                              m_max_task_count;
         // 原子启停标志
-        AtomicSwitch                              m_atomic_switch;
+        AtomicSwitch                        m_atomic_switch;
         // 数据安全锁
-        rwMutex                                   m_mtx;
+        rwMutex                             m_mtx;
         // 线程队列
-        std::vector<ParallelTaskPool*>            m_task_pools;
+        std::vector<ParallelTaskPool*>      m_task_pools;
         // 下一个新增属性的任务队列下标
-        size_t                                    m_next_task_pool_index;
+        std::atomic<size_t>                 m_next_task_pool_index;
         // 属性对应队列下标
-        std::unordered_map<TPropType, size_t>     m_prop_index;
+        hash_type                           m_prop_index;
     };
 
 }

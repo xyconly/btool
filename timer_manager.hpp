@@ -394,7 +394,7 @@ namespace BTool {
         void erase(TimerId timer_id) {
             std::lock_guard<std::mutex> locker(m_queue_mtx);
             TimerTaskPtr erase_task = m_timer_queue.erase(timer_id);
-            if (erase_task == m_cur_task)
+            if (erase_task && erase_task == m_cur_task)
                 m_timer->cancel();
         }
 

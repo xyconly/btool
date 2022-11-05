@@ -121,6 +121,7 @@ namespace BTool {
 #include <iostream>
 #include <sys/types.h>
 #include <dirent.h>
+#include <linux/limits.h>
 
 namespace BTool {
 
@@ -137,7 +138,7 @@ namespace BTool {
 
         static std::string GetAppPath()
         {
-            char currentPath[128] = { 0 };
+            char currentPath[PATH_MAX] = { 0 };
             return getcwd(currentPath, sizeof(currentPath));
         }
 
@@ -167,7 +168,7 @@ namespace BTool {
             int beginCmpPath;
             int endCmpPath;
             int pathLen = path.length();
-            char currentPath[128] = { 0 };
+            char currentPath[PATH_MAX] = { 0 };
             //Ïà¶ÔÂ·¾¶
             if ('/' != path[0])
             {
