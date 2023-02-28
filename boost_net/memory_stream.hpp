@@ -8,7 +8,6 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 *************************************************/
 #pragma once
 
-#include <string>
 #include <memory>
 #if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
 # include <string_view>
@@ -16,7 +15,9 @@ Note:    不在内部做线程安全管理,所有操作需在外界确保线程安全
 
 #ifdef _MSC_VER
 # include <stdint.h>
+# include <string>
 #elif defined(__GNUC__)
+# include <string.h>
 // # include <arpa/inet.h>
 #endif
 
@@ -95,8 +96,60 @@ namespace BTool {
         {
         }
 
-        virtual ~MemoryStream() {
+        // 内存管理流, 若无需自动删除则为代管, 此时将不再自动管理内存释放
+        // 若为需要自动删除, 则开辟新的指定大小的内存块, 此时将自动管理内存释放
+        MemoryStream(const char* buffer, size_t len, bool auto_delete)
+            : m_buffer_size(len)
+            , m_offset(0)
+            , m_capacity(len)
+            , m_buffer(const_cast<char*>(buffer))
+            , m_auto_delete(auto_delete)
+        {
+            if (auto_delete) {
+                m_buffer = (char*)malloc(len);
+                memcpy(m_buffer, buffer, len);
+            }
+        }
+
+        ~MemoryStream() {
             clear();
+        }
+
+        MemoryStream& operator=(const MemoryStream& rhs) {
+            if (this == &rhs)
+                return *this;
+
+            if (m_auto_delete)
+                clear();
+
+            m_buffer_size = rhs.m_buffer_size;
+            m_offset = rhs.m_offset;
+            m_capacity = rhs.m_capacity;
+            m_buffer = rhs.m_buffer;
+            m_auto_delete = rhs.m_auto_delete;
+
+            if (rhs.m_auto_delete) {
+                m_buffer = (char*)malloc(rhs.m_capacity);
+                memcpy(m_buffer, rhs.m_buffer, rhs.m_buffer_size);
+            }
+            return *this;
+        }
+
+        MemoryStream& operator=(MemoryStream&& rhs) {
+            if (this == &rhs)
+                return *this;
+
+            if (m_auto_delete)
+                clear();
+
+            m_buffer_size = rhs.m_buffer_size;
+            m_offset = rhs.m_offset;
+            m_capacity = rhs.m_capacity;
+            m_buffer = rhs.m_buffer;
+            m_auto_delete = rhs.m_auto_delete;
+
+            rhs.m_auto_delete = false;
+            return *this;
         }
 
     public:

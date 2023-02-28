@@ -4,3 +4,6 @@
 [submodule "submodule/concurrentqueue"]
 	path = submodule/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git
+[submodule "submodule/libgo"]
+	path = submodule/libgo
+	url = https://github.com/yyzybb537/libgo.git

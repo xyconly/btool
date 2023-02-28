@@ -8,7 +8,6 @@ Description:    提供各类任务线程池基类,避免外界重复创建
 #pragma once
 #include <mutex>
 #include <vector>
-#include <boost/noncopyable.hpp>
 #include "submodule/oneTBB/include/tbb/concurrent_hash_map.h"
 #include "safe_thread.hpp"
 #include "task_queue.hpp"
@@ -24,6 +23,9 @@ namespace BTool
         enum {
             TP_MAX_THREAD = 2000,   // 最大线程数
         };
+        // noncopyable
+        TaskPoolBase(const TaskPoolBase&) = delete;
+        TaskPoolBase& operator=(const TaskPoolBase&) = delete;
 
     protected:
         TaskPoolBase(size_t max_task_count = 0) : m_task_queue(max_task_count), m_cur_thread_ver(0) {}
@@ -87,7 +89,9 @@ namespace BTool
         void pop_task_inner() {
             static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
         }
-        void pop_task_inner_impl(){}
+        void pop_task_inner_impl() {
+            m_task_queue.pop_task();
+        }
 
     private:
         // 创建线程
@@ -138,7 +142,6 @@ namespace BTool
     *************************************************/
     class ParallelTaskPool
         : public TaskPoolBase<ParallelTaskPool, ParallelTaskQueue>
-        , private boost::noncopyable
     {
         friend class TaskPoolBase<ParallelTaskPool, ParallelTaskQueue>;
     public:
@@ -160,10 +163,30 @@ namespace BTool
                 return false;
             return this->m_task_queue.add_task(std::forward<TFunction>(func));
         }
+    };
 
-    protected:
-        void pop_task_inner_impl() {
-            m_task_queue.pop_task();
+    class NoBlockingParallelTaskPool
+        : public TaskPoolBase<NoBlockingParallelTaskPool, NoBlockingParallelTaskQueue>
+    {
+        friend class TaskPoolBase<NoBlockingParallelTaskPool, NoBlockingParallelTaskQueue>;
+    public:
+        // 根据新增任务顺序并行有序执行的线程池
+        // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
+        NoBlockingParallelTaskPool(size_t max_task_count = 0)
+            : TaskPoolBase<NoBlockingParallelTaskPool, NoBlockingParallelTaskQueue>(max_task_count)
+        { }
+
+        virtual ~NoBlockingParallelTaskPool() {}
+
+        // 新增任务队列,超出最大任务数时存在阻塞
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // add_task([param1, param2=...]{...})
+        // add_task(std::bind(&func, param1, param2))
+        template<typename TFunction>
+        bool add_task(TFunction&& func) {
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
+                return false;
+            return this->m_task_queue.add_task(std::forward<TFunction>(func));
         }
     };
 
@@ -213,7 +236,6 @@ namespace BTool
     template<typename TPropType>
     class LastTaskPool
         : public TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>
-        , private boost::noncopyable
     {
         friend class TaskPoolBase<LastTaskPool<TPropType>, LastTaskQueue<TPropType>>;
     public:
@@ -241,11 +263,6 @@ namespace BTool
         void remove_prop(AsTPropType&& prop) {
             this->m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
-
-    protected:
-        void pop_task_inner_impl() {
-            this->m_task_queue.pop_task();
-        }
     };
 
     /*************************************************
@@ -259,7 +276,6 @@ namespace BTool
     template<typename TPropType>
     class SerialTaskPool
         : public TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>
-        , private boost::noncopyable
     {
         friend class TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>;
     public:
@@ -287,11 +303,6 @@ namespace BTool
         void remove_prop(AsTPropType&& prop) {
             this->m_task_queue.remove_prop(std::forward<AsTPropType>(prop));
         }
-
-    protected:
-        void pop_task_inner_impl() {
-            this->m_task_queue.pop_task();
-        }
     };
 
     /*************************************************
@@ -307,7 +318,7 @@ namespace BTool
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
     template<typename TPropType>
-    class RotateSerialTaskPool : private boost::noncopyable
+    class RotateSerialTaskPool
     {
          enum {
             TP_MAX_THREAD = 2000,   // 最大线程数

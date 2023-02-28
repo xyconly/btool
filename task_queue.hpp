@@ -17,7 +17,7 @@ Note2:  queue是自己创建的, 可以通过swap等方式快速释放占用内存
                一定要释放的话, 自行在消费完毕后调用malloc_trim(0);
 *************************************************/
 #pragma once
-//#include <malloc.h>
+#include <malloc.h>
 #include <functional>
 #include <queue>
 #include <list>
@@ -88,6 +88,10 @@ namespace BTool
                 return;
             }
             clear();
+        }
+
+        void wait() {
+            while(!empty()) std::this_thread::yield();
         }
 
         template<typename AsTFunction>
@@ -219,6 +223,10 @@ namespace BTool
             clear();
         }
 
+        void wait() {
+            while(!empty()) std::this_thread::yield();
+        }
+
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
             {
@@ -244,12 +252,9 @@ namespace BTool
 
             TaskItem pop_task(nullptr);
             if (m_queue.try_dequeue(pop_task)) {
-                // queue不会主动释放已开辟空间,当任务清空时则释放一下,若实际环境中,可自己定义为list来避免queue长期占用的问题,但这会导致性能的略微下降,根据实际情况决定
-                // if (m_queue.empty()) {
-                //     moodycamel::ConcurrentQueue<TaskItem> empty;
-                //     m_queue.swap(empty);
-                // }
-
+                if (empty()) {
+                    malloc_trim(0);
+                }
                 m_cv_not_full.notify_one();
 
                 if (pop_task) pop_task();
@@ -300,9 +305,9 @@ namespace BTool
     public:
         typedef std::function<void()> TaskItem;
     public:
-        NoBlockingParallelTaskQueue(/*size_t max_task_count = 0*/)
+        NoBlockingParallelTaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
-            //, m_max_task_count(max_task_count)
+            , m_max_task_count(max_task_count)
         {}
 
         virtual ~NoBlockingParallelTaskQueue() {
@@ -339,11 +344,15 @@ namespace BTool
             clear();
         }
 
+        void wait() {
+            while(!empty()) std::this_thread::yield();
+        }
+
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
             // 不做判断处理
-            // while (size() > m_max_task_count)
-            //     std::this_thread::yield();
+            while (m_max_task_count > 0 && size() > m_max_task_count)
+                 std::this_thread::yield();
             if (UNLIKELY(m_bstop.load()))
                 return false;
             m_queue.enqueue(std::forward<AsTFunction>(func));
@@ -376,7 +385,7 @@ namespace BTool
         moodycamel::ConcurrentQueue<TaskItem>       m_queue;
         // moodycamel::BlockingConcurrentQueue<TaskItem>       m_queue;
         // 最大任务个数,当为0时表示无限制
-        // size_t                                      m_max_task_count;
+        size_t                                      m_max_task_count;
     };
 
     /*************************************************
@@ -398,7 +407,7 @@ namespace BTool
             stop();
         }
 
-        bool empty() const {
+        inline bool empty() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return !not_empty();
         }
@@ -436,6 +445,10 @@ namespace BTool
                 return;
             }
             clear();
+        }
+
+        void wait() {
+            while(!empty()) std::this_thread::yield();
         }
 
         template<typename AsTPropType, typename AsTFunction>
@@ -512,19 +525,19 @@ namespace BTool
             return !not_full();
         }
 
-        size_t size() const {
+        inline size_t size() const {
             std::unique_lock<std::mutex> locker(m_mtx);
             return m_wait_props.size();
         }
 
     protected:
         // 是否处于未满状态
-        bool not_full() const {
+        inline bool not_full() const {
             return m_max_task_count == 0 || m_wait_props.size() < m_max_task_count;
         }
 
         // 是否处于非空状态
-        bool not_empty() const {
+        inline bool not_empty() const {
             return !m_wait_props.empty();
         }
 
@@ -812,6 +825,10 @@ namespace BTool
                 return;
             }
             clear();
+        }
+
+        void wait() {
+            while(!empty()) std::this_thread::yield();
         }
 
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
