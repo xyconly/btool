@@ -190,15 +190,16 @@ public:
                 return create_error(error_t::ftruncate_fail);
             }
             // 开启文件映射并追加写
-            void* map = mmap(NULL, new_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0);
+            off_t pa_offset = m_cur_offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
+            void* map = mmap(NULL, new_file_size - pa_offset, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, pa_offset);
             if (map == MAP_FAILED) {
                 return create_error(error_t::mmap_fail);
             }
-            memcpy((char*)map + m_cur_offset, data.data(), data.length());
+            memcpy((char*)map, data.data(), data.length());
             m_cur_offset += data.length();
 
             // 取消文件映射并关闭文件描述符
-            if (munmap(map, m_cur_offset) == -1) {
+            if (munmap(map, new_file_size - pa_offset) == -1) {
                 return create_error(error_t::munmap_fail);
             }
             return error(error_t::ok);
