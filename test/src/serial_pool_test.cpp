@@ -1,7 +1,7 @@
 
 #include "task_pool.hpp"
 #include <iostream>
-#include "tbb/parallel_for.h"
+#include "submodule/oneTBB/include/tbb/parallel_for.h"
 #include "datetime_convert.hpp"
 
 const int g_count = 2000;
@@ -46,15 +46,15 @@ void test(const std::string& title, TypeN& pool) {
 int main()
 {
     int avg_count = 10;
-    
-    for (int i = 0; i < avg_count; i++) {
-        BTool::SerialTaskPool<int> new_pool;
-        test("SerialTaskPool", new_pool);
-    }
 
     for (int i = 0; i < avg_count; i++) {
         BTool::RotateSerialTaskPool<int> new_pool;
         test("RotateSerialTaskPool", new_pool);
+    }
+
+    for (int i = 0; i < avg_count; i++) {
+        BTool::SerialTaskPool<int> new_pool;
+        test("SerialTaskPool", new_pool);
     }
 
     return 0;

@@ -14,7 +14,6 @@ SET(EXECUTABLE_OUTPUT_PATH ${OUT_DIR})
 
 INCLUDE_DIRECTORIES(/root/workspace/boost_1_71_0)
 INCLUDE_DIRECTORIES(${SOLUTION_DIR})
-INCLUDE_DIRECTORIES(${SOLUTION_DIR}/submodule/oneTBB/include)
 
 LINK_DIRECTORIES(/root/workspace/boost_1_71_0/stage/lib)
 LINK_DIRECTORIES(${SOLUTION_DIR}/submodule/oneTBB/libs/static_release)

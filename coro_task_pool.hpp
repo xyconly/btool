@@ -22,7 +22,7 @@ namespace BTool
     4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
-    template<typename TType, bool NO_LOCK = true>
+    template<typename TPropType, bool NO_LOCK = true>
     class CoroSerialTaskPool {
     public:
         typedef std::function<void()> TaskItem;
@@ -39,13 +39,13 @@ namespace BTool
     public:
         // 需要提前预设属性值集合
         // max_single_task_count: 每个属性最大任务个数,超过该数值会导致阻塞
-        CoroSerialTaskPool(size_t max_single_task_count = 10000)
+        CoroSerialTaskPool(size_t max_single_task_count = 100000)
             : m_scheduler(co::Scheduler::Create())
             , m_max_single_task_count(max_single_task_count)
         {
         }
 
-        CoroSerialTaskPool(const std::set<TType>& props, size_t max_single_task_count = 10000)
+        CoroSerialTaskPool(const std::set<TPropType>& props, size_t max_single_task_count = 100000)
             : m_scheduler(co::Scheduler::Create())
             , m_max_single_task_count(max_single_task_count)
         {
@@ -64,7 +64,7 @@ namespace BTool
         // }
 
         // props: 属性队列
-        void init_props(const TType& prop) {
+        void init_props(const TPropType& prop) {
             if constexpr (NO_LOCK) {
                 start_prop(prop);
             }
@@ -73,7 +73,8 @@ namespace BTool
                 start_prop(prop);
             }
         }
-        void init_props(const std::set<TType>& props) {
+
+        void init_props(const std::set<TPropType>& props) {
             if constexpr (NO_LOCK) {
                 for(auto& prop : props) {
                     start_prop(prop);
@@ -95,7 +96,7 @@ namespace BTool
                 return;
 
             if (min_thread_num == 0) {
-                min_thread_num = std::thread::hardware_concurrency();
+                min_thread_num = 1;
             }
             if (max_thread_num == 0) {
                 max_thread_num = std::thread::hardware_concurrency();
@@ -109,15 +110,15 @@ namespace BTool
         }
 
         // 新增属性任务,注意,当该属性队列已满时,会存在阻塞
-        template<typename Type>
-        bool add_task(Type&& prop, const TaskItem& item) {
+        template<typename TType, typename TFunction>
+        bool add_task(TType&& prop, TFunction&& item) {
             if (!m_atomic_switch.has_started())
                 return false;
 
-            SerialTask task{ false, item };
+            SerialTask task{ false, std::forward<TFunction>(item) };
 
             if constexpr (NO_LOCK) {
-                auto iter = m_go_tasks.find(std::forward<Type>(prop));
+                auto iter = m_go_tasks.find(std::forward<TType>(prop));
                 if(iter == m_go_tasks.end())
                     return false;
 
@@ -125,7 +126,7 @@ namespace BTool
             }
             else {
                 writeLock locker(m_mtx);
-                auto& go_ch = start_prop(std::forward<Type>(prop));
+                auto& go_ch = start_prop(std::forward<TType>(prop));
                 go_ch << task;
             }
 
@@ -164,7 +165,7 @@ namespace BTool
         }
 
     private:
-        void go_func(const TType& prop, GoTaskChanType& go_ch, GoRunFlagChanType& exit_ch) {
+        void go_func(const TPropType& prop, GoTaskChanType& go_ch, GoRunFlagChanType& exit_ch) {
             for (;;) {
                 SerialTask task{ true, nullptr };
                 go_ch.pop(task);
@@ -178,15 +179,15 @@ namespace BTool
             return;
         }
 
-        template<typename Type>
-        GoTaskChanType& start_prop(Type&& prop) {
+        template<typename TType>
+        GoTaskChanType& start_prop(TType&& prop) {
             auto [go_iter, go_ok] = m_go_tasks.try_emplace(prop, GoTaskChanType(m_max_single_task_count));
             if (go_ok) {
                 auto [exit_iter, exit_ok] = m_go_task_exited.try_emplace(prop, GoRunFlagChanType(1));
                 if (!exit_ok) {
                     throw std::runtime_error("exited prop try_emplace error!");
                 }
-                go co_scheduler(m_scheduler) [this, prop = std::forward<Type>(prop), go_ch = std::ref(go_iter->second), exit_ch = std::ref(exit_iter->second)] {
+                go co_scheduler(m_scheduler) [this, prop = std::forward<TType>(prop), go_ch = std::ref(go_iter->second), exit_ch = std::ref(exit_iter->second)] {
                     this->go_func(prop, go_ch, exit_ch);
                 };
             }
@@ -204,8 +205,57 @@ namespace BTool
         // 数据安全锁
         rwMutex                                                 m_mtx;
         // 当前各属性待执行任务
-        std::unordered_map<TType, GoTaskChanType>               m_go_tasks;
+        std::unordered_map<TPropType, GoTaskChanType>           m_go_tasks;
         // 协程子任务退出标志
-        std::unordered_map<TType, GoRunFlagChanType>            m_go_task_exited;
+        std::unordered_map<TPropType, GoRunFlagChanType>        m_go_task_exited;
     };
+
+    template<template<typename TPropType> typename TSerialTaskPool, typename TPropType, bool NO_LOCK = true>
+    class CoroSerialTaskPoolWithThreadPool : public CoroSerialTaskPool<TPropType, NO_LOCK> {
+    public:
+        CoroSerialTaskPoolWithThreadPool(size_t max_single_task_count = 100000)
+            : CoroSerialTaskPool<TPropType, NO_LOCK>(max_single_task_count)
+        {
+        }
+
+        CoroSerialTaskPoolWithThreadPool(const std::set<TPropType>& props, size_t max_single_task_count = 100000)
+            : CoroSerialTaskPool<TPropType, NO_LOCK>(props, max_single_task_count)
+        {
+        }
+
+        ~CoroSerialTaskPoolWithThreadPool(){
+        }
+
+        void start(size_t thread_pool_num = std::thread::hardware_concurrency(), size_t min_coro_thread_num = 0, size_t max_coro_thread_num = 0) {
+            CoroSerialTaskPool<TPropType, NO_LOCK>::start(min_coro_thread_num, max_coro_thread_num);
+            std::unique_lock<co_rwmutex> lock(m_smtx);
+            m_task_pool.start(thread_pool_num);
+        }
+
+        void stop(bool bwait = false) {
+            CoroSerialTaskPool<TPropType, NO_LOCK>::stop();
+            std::unique_lock<co_rwmutex> lock(m_smtx);
+            m_task_pool.stop(bwait);
+        }
+        void clear_threadpool() {
+            std::unique_lock<co_rwmutex> lock(m_smtx);
+            m_task_pool.clear();
+        }
+        void wait_threadpool() {
+            std::unique_lock<co_rwmutex> lock(m_smtx);
+            m_task_pool.wait();
+        }
+
+        // 注意co_rwmutex在协程内才起效
+        template<typename TType, typename TFunction>
+        bool push_threadpool(TType&& prop, TFunction&& item) {
+            std::unique_lock<co_rwmutex> lock(m_smtx);
+            return m_task_pool.add_task(std::forward<TType>(prop), std::forward<TFunction>(item));
+        }
+
+    private:
+        TSerialTaskPool<TPropType>          m_task_pool;
+        co_rwmutex                          m_smtx;
+    };
+
 }

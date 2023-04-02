@@ -12,8 +12,7 @@ Description:    提供各类任务线程池基类,避免外界重复创建
 #include "safe_thread.hpp"
 #include "task_queue.hpp"
 
-namespace BTool
-{
+namespace BTool {
     /*************************************************
                    任务线程池基类
     *************************************************/
@@ -71,6 +70,11 @@ namespace BTool
         // 清空任务队列,不会阻塞
         void clear() {
             m_task_queue.clear();
+        }
+
+        // 等待所有任务执行完毕
+        void wait() {
+            m_task_queue.wait();
         }
 
         // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
@@ -320,12 +324,12 @@ namespace BTool
     template<typename TPropType>
     class RotateSerialTaskPool
     {
-         enum {
+        enum {
             TP_MAX_THREAD = 2000,   // 最大线程数
         };
-        
+
         using hash_type = typename tbb::concurrent_hash_map<TPropType, size_t>;
-        
+
     public:
         // 注意: max_task_count:表示单线程池内的最大任务量, 和其余线程池不同
         RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_task_pool_index(-1) {}
@@ -376,11 +380,20 @@ namespace BTool
             m_atomic_switch.reset();
         }
 
-        // 注意此处可能阻塞
+        // 注意此处可能阻塞, 为了与stop做同步
         void clear() {
             readLock locker(m_mtx);
             for (auto& item : m_task_pools) {
                 item->clear();
+            }
+        }
+        
+        // 等待所有任务执行完毕, 为了与stop做同步
+        void wait() {
+            typename hash_type::accessor ac;
+            readLock locker(m_mtx);
+            for (auto& item : m_task_pools) {
+                item->wait();
             }
         }
 
@@ -398,9 +411,10 @@ namespace BTool
         // add_task(prop, std::bind(&func, param1, param2))
         template<typename AsTPropType, typename TFunction>
         bool add_task(AsTPropType&& prop, TFunction&& func) {
+            readLock locker(m_mtx); // 为了与stop做同步
             if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
-            
+
             size_t index = 0;
             {
                 typename hash_type::accessor ac;
