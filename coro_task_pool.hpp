@@ -28,8 +28,14 @@ namespace BTool
         typedef std::function<void()> TaskItem;
 
     protected:
+        enum ExitFlag : uint8_t {
+            NotExit = 0,    // 不退出
+            ExitForce,      // 立即马上退出
+            ExitWait,       // 退出并全部执行完毕
+        };
+
         struct SerialTask {
-            bool        exit_;  // 是否退出
+            ExitFlag    exit_;  // 是否退出
             TaskItem    task_;
         };
         // 协程启停状态标志
@@ -39,13 +45,13 @@ namespace BTool
     public:
         // 需要提前预设属性值集合
         // max_single_task_count: 每个属性最大任务个数,超过该数值会导致阻塞
-        CoroSerialTaskPool(size_t max_single_task_count = 100000)
+        CoroSerialTaskPool(size_t max_single_task_count = 0)
             : m_scheduler(co::Scheduler::Create())
             , m_max_single_task_count(max_single_task_count)
         {
         }
 
-        CoroSerialTaskPool(const std::set<TPropType>& props, size_t max_single_task_count = 100000)
+        CoroSerialTaskPool(const std::set<TPropType>& props, size_t max_single_task_count = 0)
             : m_scheduler(co::Scheduler::Create())
             , m_max_single_task_count(max_single_task_count)
         {
@@ -115,7 +121,7 @@ namespace BTool
             if (!m_atomic_switch.has_started())
                 return false;
 
-            SerialTask task{ false, std::forward<TFunction>(item) };
+            SerialTask task{ ExitFlag::NotExit, std::forward<TFunction>(item) };
 
             if constexpr (NO_LOCK) {
                 auto iter = m_go_tasks.find(std::forward<TType>(prop));
@@ -135,14 +141,18 @@ namespace BTool
 
         // 终止线程池
         // 注意此处可能阻塞等待task的回调线程结束,故在task的回调线程中不可调用该函数
-        // 强制等待当前所有队列执行完毕后才结束
+        // bwait: 是否强制等待当前所有队列执行完毕后才结束
         // 完全停止后方可重新开启
-        void stop() {
+        void stop(bool bwait = false) {
             if (!m_atomic_switch.stop())
                 return;
 
+            if (m_scheduler->IsCoroutine()) {
+                throw std::runtime_error("when this object is stopping, it should not be whthin a goroutine!");
+            }
+
             auto stop_impl = [&] () {
-                SerialTask task{ true, nullptr };
+                SerialTask task{ bwait ? ExitFlag::ExitWait : ExitFlag::ExitForce, nullptr };
                 for (auto& item : m_go_tasks) {
                     item.second << task;
                     m_go_task_exited[item.first] >> nullptr_t();
@@ -161,20 +171,43 @@ namespace BTool
             //     delete m_scheduler;
             //     m_scheduler = nullptr;
             // }
+
+            if (bwait) {
+                while (!m_scheduler->IsEmpty()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+            }
+
+            m_scheduler->Stop();
             m_atomic_switch.reset();
         }
 
     private:
         void go_func(const TPropType& prop, GoTaskChanType& go_ch, GoRunFlagChanType& exit_ch) {
+            ExitFlag exit_flag = ExitFlag::NotExit;
             for (;;) {
-                SerialTask task{ true, nullptr };
+                SerialTask task{ ExitFlag::ExitForce, nullptr };
                 go_ch.pop(task);
-                if (task.exit_) {
+                if (task.exit_ != ExitFlag::NotExit) {
+                    exit_flag = task.exit_;
                     break;
                 }
                 if(task.task_)
                     task.task_();
             }
+
+            if (exit_flag == ExitFlag::ExitWait) {
+                // 避免后续进入, 由于stop已确保不会重复进入, 此处pop至空即可
+                for(;;) {
+                    SerialTask task{ ExitFlag::ExitForce, nullptr };
+                    if (!go_ch.try_pop(task)) {
+                        break;
+                    }
+                    if (task.task_)
+                        task.task_();
+                }
+            }
+            go_ch.close();
             exit_ch << nullptr_t();
             return;
         }
@@ -213,12 +246,12 @@ namespace BTool
     template<template<typename TPropType> typename TSerialTaskPool, typename TPropType, bool NO_LOCK = true>
     class CoroSerialTaskPoolWithThreadPool : public CoroSerialTaskPool<TPropType, NO_LOCK> {
     public:
-        CoroSerialTaskPoolWithThreadPool(size_t max_single_task_count = 100000)
+        CoroSerialTaskPoolWithThreadPool(size_t max_single_task_count = 0)
             : CoroSerialTaskPool<TPropType, NO_LOCK>(max_single_task_count)
         {
         }
 
-        CoroSerialTaskPoolWithThreadPool(const std::set<TPropType>& props, size_t max_single_task_count = 100000)
+        CoroSerialTaskPoolWithThreadPool(const std::set<TPropType>& props, size_t max_single_task_count = 0)
             : CoroSerialTaskPool<TPropType, NO_LOCK>(props, max_single_task_count)
         {
         }
@@ -233,8 +266,8 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            CoroSerialTaskPool<TPropType, NO_LOCK>::stop();
-            std::unique_lock<co_rwmutex> lock(m_smtx);
+            CoroSerialTaskPool<TPropType, NO_LOCK>::stop(bwait);
+            // std::unique_lock<co_rwmutex> lock(m_smtx);
             m_task_pool.stop(bwait);
         }
         void clear_threadpool() {

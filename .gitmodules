@@ -7,3 +7,6 @@
 [submodule "submodule/libgo"]
 	path = submodule/libgo
 	url = https://github.com/yyzybb537/libgo.git
+[submodule "rmq/rabbitmq-c"]
+	path = rmq/rabbitmq-c
+	url = https://github.com/alanxz/rabbitmq-c.git

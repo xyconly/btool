@@ -1,5 +1,4 @@
-﻿
-#include "coro_task_pool.hpp"
+﻿#include "coro_task_pool.hpp"
 #include "task_pool.hpp"
 #include <iostream>
 #include <stdio.h>
@@ -17,7 +16,7 @@ void test(const std::string& title, TypeN& pool) {
     }
 
     std::atomic<int> runCount{0};
-    pool.start();
+    pool.start(std::thread::hardware_concurrency());
 
     auto start = BTool::DateTimeConvert::GetCurrentSystemTime();
 
@@ -26,6 +25,8 @@ void test(const std::string& title, TypeN& pool) {
             for (int j = 0; j < g_count; j++) {
                 auto ret = pool.add_task(prop, [prop , &s_j, j, &runCount] {
                     assert(s_j[prop] == j -1);
+                    if(s_j[prop] != j -1)
+                        std::runtime_error("err");
                     s_j[prop] = j;
                     ++runCount;
                 });
@@ -35,7 +36,7 @@ void test(const std::string& title, TypeN& pool) {
         }
     });
 
-    pool.stop();
+    pool.stop(true);
 
     auto end = BTool::DateTimeConvert::GetCurrentSystemTime();
     auto time= (end - start)/1000;
