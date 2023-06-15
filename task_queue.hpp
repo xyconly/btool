@@ -55,13 +55,8 @@ namespace BTool
         }
 
         void clear() {
-            {
-                std::unique_lock<std::mutex> locker(m_mtx);
-                std::queue<TaskItem> empty;
-                m_queue.swap(empty);
-            }
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            std::unique_lock<std::mutex> locker(m_mtx);
+            clear_inner();
         }
 
         void start() {
@@ -76,6 +71,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
+            std::unique_lock<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -87,7 +83,7 @@ namespace BTool
                 m_cv_not_empty.notify_all();
                 return;
             }
-            clear();
+            clear_inner();
         }
 
         void wait() {
@@ -96,6 +92,9 @@ namespace BTool
 
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
@@ -113,9 +112,11 @@ namespace BTool
             TaskItem pop_task(nullptr);
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
-                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                if (LIKELY(!m_bstop.load())) {
+                    m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                }
 
-                if (UNLIKELY(m_bstop.load() && !not_empty()))
+                if (UNLIKELY(!not_empty()))
                     return;
 
                 pop_task = std::move(m_queue.front());
@@ -142,6 +143,12 @@ namespace BTool
         }
 
     protected:
+        void clear_inner() {
+            std::queue<TaskItem> empty;
+            m_queue.swap(empty);
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
         // 是否处于未满状态
         bool not_full() const {
             return m_max_task_count == 0 || m_queue.size() < m_max_task_count;
@@ -190,11 +197,8 @@ namespace BTool
         }
 
         void clear() {
-            moodycamel::ConcurrentQueue<TaskItem> empty;
-            m_queue.swap(empty);
-
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            std::unique_lock<std::mutex> locker(m_mtx);
+            clear_inner();
         }
 
         void start() {
@@ -209,6 +213,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
+            std::unique_lock<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -220,7 +225,8 @@ namespace BTool
                 m_cv_not_empty.notify_all();
                 return;
             }
-            clear();
+            
+            clear_inner();
         }
 
         void wait() {
@@ -229,6 +235,9 @@ namespace BTool
 
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
@@ -242,21 +251,17 @@ namespace BTool
         }
 
         void pop_task() {
-            {
+            if (LIKELY(!m_bstop.load())) {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
             }
 
-            if (UNLIKELY(m_bstop.load() && !not_empty()))
+            if (UNLIKELY(empty()))
                 return;
 
             TaskItem pop_task(nullptr);
-            if (m_queue.try_dequeue(pop_task)) {
-                if (empty()) {
-                    malloc_trim(0);
-                }
+            if (m_queue.try_dequeue_non_interleaved(pop_task)) {
                 m_cv_not_full.notify_one();
-
                 if (pop_task) pop_task();
             }
         }
@@ -270,6 +275,13 @@ namespace BTool
         }
 
     protected:
+        void clear_inner() {
+            moodycamel::ConcurrentQueue<TaskItem> empty;
+            m_queue.swap(empty);
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
         // 是否处于未满状态
         inline bool not_full() const {
             return m_max_task_count == 0 || size() < m_max_task_count;
@@ -296,6 +308,141 @@ namespace BTool
         // 没有满的条件变量
         std::condition_variable     m_cv_not_full;
     };
+
+    class SingleThreadParallelTaskQueue {
+    public:
+        typedef std::function<void()> TaskItem;
+    public:
+        SingleThreadParallelTaskQueue(size_t max_task_count = 0)
+            : m_bstop(false)
+            , m_max_task_count(max_task_count)
+            , m_ptok(m_queue)
+            , m_ctok(m_queue)
+        {
+
+        }
+
+        virtual ~SingleThreadParallelTaskQueue() {
+            stop();
+        }
+
+        inline bool empty() const {
+            return !not_empty();
+        }
+
+        void clear() {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            clear_inner();
+        }
+
+        void start() {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
+        void stop(bool bwait = false) {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+
+            if (bwait) {
+                m_cv_not_full.notify_all();
+                m_cv_not_empty.notify_all();
+                return;
+            }
+            clear_inner();
+        }
+
+        void wait() {
+            while(!empty()) std::this_thread::yield();
+        }
+
+        template<typename AsTFunction>
+        bool add_task(AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
+            m_queue.enqueue(m_ptok, std::forward<AsTFunction>(func));
+            m_cv_not_empty.notify_one();
+            return true;
+        }
+
+        void pop_task() {
+            if (LIKELY(!m_bstop.load())) {
+                std::unique_lock<std::mutex> locker(m_mtx);
+                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+            }
+
+            if (UNLIKELY(empty()))
+                return;
+
+            TaskItem pop_task(nullptr);
+            if (m_queue.try_dequeue(m_ctok, pop_task)) {
+                m_cv_not_full.notify_one();
+                if (pop_task) pop_task();
+            }
+        }
+
+        inline bool full() const {
+            return !not_full();
+        }
+
+        inline size_t size() const {
+            return m_queue.size_approx();
+        }
+
+    protected:
+        void clear_inner() {
+            moodycamel::ConcurrentQueue<TaskItem> empty;
+            m_queue.swap(empty);
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+        // 是否处于未满状态
+        inline bool not_full() const {
+            return m_max_task_count == 0 || size() < m_max_task_count;
+        }
+
+        // 是否处于空状态
+        inline bool not_empty() const {
+            return size() != 0;
+        }
+
+    protected:
+        // 是否已终止标识符
+        std::atomic<bool>           m_bstop;
+        // 数据安全锁
+        mutable std::mutex          m_mtx;
+
+        // 总待执行任务队列,包含所有的待执行任务
+        moodycamel::ConcurrentQueue<TaskItem>       m_queue;
+        moodycamel::ProducerToken                   m_ptok;
+        moodycamel::ConsumerToken                   m_ctok;
+        // 最大任务个数,当为0时表示无限制
+        size_t                      m_max_task_count;
+
+        // 不为空的条件变量
+        std::condition_variable     m_cv_not_empty;
+        // 没有满的条件变量
+        std::condition_variable     m_cv_not_full;
+    };
+
 
     /*************************************************
     Description:提供无限制pop的无锁队列, 但是该队列存在cpu过高的问题
@@ -350,6 +497,9 @@ namespace BTool
 
         template<typename AsTFunction>
         bool add_task(AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
             // 不做判断处理
             while (m_max_task_count > 0 && size() > m_max_task_count)
                  std::this_thread::yield();
@@ -413,13 +563,8 @@ namespace BTool
         }
 
         void clear() {
-            {
-                std::unique_lock<std::mutex> locker(m_mtx);
-                m_wait_tasks.clear();
-                m_wait_props.clear();
-            }
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            std::unique_lock<std::mutex> locker(m_mtx);
+            clear_inner();
         }
 
         void start() {
@@ -434,6 +579,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
+            std::unique_lock<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -444,7 +590,8 @@ namespace BTool
                 m_cv_not_empty.notify_all();
                 return;
             }
-            clear();
+            
+            clear_inner();
         }
 
         void wait() {
@@ -453,6 +600,9 @@ namespace BTool
 
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
@@ -472,12 +622,13 @@ namespace BTool
         void pop_task() {
             TaskItem pop_task(nullptr);
             TPropType pop_type;
-
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
-                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                if (LIKELY(!m_bstop.load())) {
+                    m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                }
 
-                if (UNLIKELY(m_bstop.load() && !not_empty()))
+                if (UNLIKELY(!not_empty()))
                     return;
 
                 // 是否已无可pop队列
@@ -531,6 +682,13 @@ namespace BTool
         }
 
     protected:
+        void clear_inner() {
+            m_wait_tasks.clear();
+            m_wait_props.clear();
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
         // 是否处于未满状态
         inline bool not_full() const {
             return m_max_task_count == 0 || m_wait_props.size() < m_max_task_count;
@@ -793,14 +951,8 @@ namespace BTool
         }
 
         void clear() {
-            {
-                std::unique_lock<std::mutex> locker(m_mtx);
-                m_wait_props.clear();
-                m_wait_tasks.clear();
-                m_cur_props.clear();
-            }
-            m_cv_not_full.notify_all();
-            m_cv_not_empty.notify_all();
+            std::unique_lock<std::mutex> locker(m_mtx);
+            clear_inner();
         }
 
         void start() {
@@ -814,6 +966,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
+            std::unique_lock<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -824,7 +977,8 @@ namespace BTool
                 m_cv_not_empty.notify_all();
                 return;
             }
-            clear();
+            
+            clear_inner();
         }
 
         void wait() {
@@ -834,6 +988,9 @@ namespace BTool
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load()))
+                return false;
+
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
                 m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
@@ -853,10 +1010,14 @@ namespace BTool
             TPropType prop_type;
 
             {
+                bool test = false;
                 std::unique_lock<std::mutex> locker(m_mtx);
-                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                if (LIKELY(!m_bstop.load())) {
+                    m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
+                    test = true;
+                }
 
-                if (UNLIKELY(m_bstop.load() && !not_empty()))
+                if (UNLIKELY(!not_empty()))
                     return;
 
                 prop_type = m_wait_props.pop_front();
@@ -910,6 +1071,15 @@ namespace BTool
         }
 
     protected:
+        void clear_inner() {
+            m_wait_props.clear();
+            m_wait_tasks.clear();
+            m_cur_props.clear();
+
+            m_cv_not_full.notify_all();
+            m_cv_not_empty.notify_all();
+        }
+
         // 删除当前运行属性
         template<typename AsTPropType>
         inline void remove_cur_prop(AsTPropType&& prop_type) {

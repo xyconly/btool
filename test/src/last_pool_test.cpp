@@ -31,7 +31,7 @@ void test(const std::string& title, TypeN& pool) {
                     ++runCount;
                 });
                 if(!ret)
-                    std::runtime_error("err");
+                    throw std::runtime_error("err");
             }
         }
     });

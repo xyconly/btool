@@ -194,6 +194,34 @@ namespace BTool {
         }
     };
 
+    // 基于生产者/消费者模式
+    class SingleThreadParallelTaskPool
+        : public TaskPoolBase<SingleThreadParallelTaskPool, SingleThreadParallelTaskQueue>
+    {
+        friend class TaskPoolBase<SingleThreadParallelTaskPool, SingleThreadParallelTaskQueue>;
+    public:
+        // 根据新增任务顺序并行有序执行的线程池
+        // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
+        SingleThreadParallelTaskPool(size_t max_task_count = 0)
+            : TaskPoolBase<SingleThreadParallelTaskPool, SingleThreadParallelTaskQueue>(max_task_count)
+        {
+        }
+
+        virtual ~SingleThreadParallelTaskPool() {}
+
+        // 新增任务队列,超出最大任务数时存在阻塞
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        // add_task([param1, param2=...]{...})
+        // add_task(std::bind(&func, param1, param2))
+        template<typename TFunction>
+        bool add_task(TFunction&& func) {
+            if (UNLIKELY(!this->m_atomic_switch.has_started()))
+                return false;
+            return this->m_task_queue.add_task(std::forward<TFunction>(func));
+        }
+    };
+
+
     /*************************************************
     Description:    专用于CTP,提供并行有序执行的线程池
     1, 可同时添加多个任务;

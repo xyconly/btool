@@ -26,12 +26,12 @@ void test(const std::string& title, TypeN& pool) {
                 auto ret = pool.add_task(prop, [prop , &s_j, j, &runCount] {
                     assert(s_j[prop] == j -1);
                     if(s_j[prop] != j -1)
-                        std::runtime_error("err");
+                        throw std::runtime_error("err");
                     s_j[prop] = j;
                     ++runCount;
                 });
                 if(!ret)
-                    std::runtime_error("err");
+                    throw std::runtime_error("err");
             }
         }
     });
@@ -102,13 +102,6 @@ int main()
         BTool::CoroSerialTaskPoolWithThreadPool<BTool::RotateSerialTaskPool, int> new_pool(props);
         //new_pool.init_props(props);
         test_withthread_pool("CoroSerialTaskPoolWithThreadPool NoLock", new_pool);
-    }
-
-    g_count = 200;
-    g_prop_count = 500;
-    for (int i = 0; i < 1; i++) {
-        BTool::CoroSerialTaskPool<int, false> new_pool;
-        test("CoroSerialTaskPool Lock", new_pool);
     }
     return 0;
 }
