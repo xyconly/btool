@@ -535,6 +535,8 @@ namespace BTool {
                 long long righttm = rightDt.m_hour * 60 * 60 + rightDt.m_minute * 60 + rightDt.m_second;
                 return lefttm * 1000 * 1000 + m_millsecond * 1000 + m_microsecond - righttm * 1000 * 1000 + rightDt.m_millsecond * 1000 + rightDt.m_microsecond;
             }
+            
+            return to_time_t() * 1000 * 1000 + m_millsecond * 1000 + m_microsecond - rightDt.to_time_t() * 1000 * 1000 + rightDt.m_millsecond * 1000 + rightDt.m_microsecond;
         }
 
     public:
