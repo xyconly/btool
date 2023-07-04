@@ -31,11 +31,11 @@ int main() {
         std::atomic<bool>  exit_flag = false;
         RpcClient<BTool::BoostNet1_71::WebsocketSession,  DefaultProxyPkgHandle, DefaultProxyMsgHandle, 100000> client;
         client.register_open_cbk([&](NetCallBack::SessionID session_id) {
-            std::cout << BTool::DateTimeConvert::GetCurrentSystemTime().to_local_string() << "    Á¬½Ó³É¹¦:" << session_id << std::endl;
+            std::cout << BTool::DateTimeConvert::GetCurrentSystemTime().to_local_string() << "    è¿žæŽ¥æˆåŠŸ:" << session_id << std::endl;
             start_flag.store(true);
             });
         client.register_close_cbk([](NetCallBack::SessionID session_id) {
-            std::cout << BTool::DateTimeConvert::GetCurrentSystemTime().to_local_string() << "    Á¬½ÓÒÑ¶Ï¿ª:" << session_id << std::endl;
+            std::cout << BTool::DateTimeConvert::GetCurrentSystemTime().to_local_string() << "    è¿žæŽ¥å·²æ–­å¼€:" << session_id << std::endl;
             });
 
         client.connect("127.0.0.1", 41207, true);
@@ -122,7 +122,7 @@ int main() {
         std::cout << "  3:" << count3.load() << std::endl;
         std::cout << "  4:" << count4.load() << std::endl;
         std::cout << "  5:" << count5.load() << std::endl;
-        std::cout << "×Ü¼Æ:" << (count1.load() + count2.load() + count3.load() + count4.load() + count5.load()) / 10.0 << "ÌõÃ¿Ãë" << std::endl;
+        std::cout << "æ€»è®¡:" << (count1.load() + count2.load() + count3.load() + count4.load() + count5.load()) / 10.0 << "æ¡æ¯ç§’" << std::endl;
 
         std::cout << BTool::DateTimeConvert::GetCurrentSystemTime().to_local_string() << "---------------------------------------------------" << std::endl;
     }

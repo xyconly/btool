@@ -30,16 +30,29 @@ namespace BTool {
         TaskPoolBase(size_t max_task_count = 0) : m_task_queue(max_task_count), m_cur_thread_ver(0) {}
         virtual ~TaskPoolBase() { stop(); }
 
+        static bool BindToCore(int coreId) {
+            cpu_set_t cpuSet;
+            CPU_ZERO(&cpuSet);
+            CPU_SET(coreId, &cpuSet);
+
+            if (sched_setaffinity(0,sizeof(cpuSet), &cpuSet) == -1) {
+                return false;
+            }
+            else {
+                return true;
+            }
+        }
+
     public:
         // 开启线程池
         // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
-        void start(size_t thread_num = std::thread::hardware_concurrency()) {
+        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
 
             m_task_queue.start();
             std::lock_guard<std::mutex> lck(m_threads_mtx);
-            create_thread(thread_num);
+            create_thread(thread_num, is_bind_core, start_core_index);
         }
 
         // 终止线程池
@@ -80,12 +93,12 @@ namespace BTool {
         // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
         // thread_num: 重置线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
         // 注意:必须开启线程池后方可生效
-        void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency()) {
+        void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
             if (!m_atomic_switch.has_started())
                 return;
 
             std::lock_guard<std::mutex> lck(m_threads_mtx);
-            create_thread(thread_num);
+            create_thread(thread_num, is_bind_core, start_core_index);
         }
 
     protected:
@@ -99,19 +112,32 @@ namespace BTool {
 
     private:
         // 创建线程
-        void create_thread(size_t thread_num) {
+        void create_thread(size_t thread_num, bool is_bind_core, int start_core_index) {
+            int core_num = std::thread::hardware_concurrency();
             if (thread_num == 0) {
-                thread_num = std::thread::hardware_concurrency();
+                thread_num = core_num;
             }
             size_t cur_thread_ver = ++m_cur_thread_ver;
             thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
+
+
             for (size_t i = 0; i < thread_num; i++) {
-                m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver)));
+                if (is_bind_core) {
+                    if (start_core_index < core_num) {
+                        m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver, true, start_core_index++)));
+                    }
+                    else {
+                        m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver, false,  start_core_index)));
+                    }
+                }
             }
         }
 
         // 线程池线程
-        void thread_fun(size_t thread_ver) {
+        void thread_fun(size_t thread_ver, bool is_bind_core, int core_index) {
+            if (is_bind_core)
+                BindToCore(core_index);
+ 
             while (true) {
                 if (m_atomic_switch.has_stoped() && m_task_queue.empty()) {
                     break;
@@ -366,13 +392,13 @@ namespace BTool {
     public:
         // 开启线程池
         // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
-        void start(size_t thread_num = std::thread::hardware_concurrency()) {
+        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
             writeLock locker(m_mtx);
             create_thread(thread_num);
             for (auto& item : m_task_pools) {
-                item->start(1);
+                item->start(1, is_bind_core, start_core_index++);
             }
         }
 
@@ -459,7 +485,7 @@ namespace BTool {
 
     private:
         // 创建线程
-        void create_thread(size_t thread_num) {
+        void create_thread(size_t thread_num, bool is_bind_core = false, int start_core_index = 0) {
             if (thread_num == 0) {
                 thread_num = std::thread::hardware_concurrency();
             }

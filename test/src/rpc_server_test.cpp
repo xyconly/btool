@@ -42,7 +42,7 @@ void printSession(NetCallBack::SessionID session_id) {
     std::cout << "  3:" << count3[session_id] << std::endl;
     std::cout << "  4:" << count4[session_id] << std::endl;
     std::cout << "  5:" << count5[session_id] << std::endl;
-    std::cout << "  ×Ü¼Æ:" << (count1[session_id] + count2[session_id] + count3[session_id] + count4[session_id] + count5[session_id]) / 10.0 << "ÌõÃ¿Ãë" << std::endl;
+    std::cout << "  æ€»è®¡:" << (count1[session_id] + count2[session_id] + count3[session_id] + count4[session_id] + count5[session_id]) / 10.0 << "æ¡æ¯ç§’" << std::endl;
     std::cout << "--------------------------------------" << session_id << "-----------------------------------" << std::endl;
 }
 
@@ -61,16 +61,16 @@ int main() {
             if(cur_session_id > 0)
                 printSession(cur_session_id);
             cur_session_id = session_id;
-            std::cout << "·¢ÏÖÐÂµÄÁ¬½Ó:" << session_id << std::endl;
+            std::cout << "å‘çŽ°æ–°çš„è¿žæŽ¥:" << session_id << std::endl;
             });
         service.register_close_cbk([](NetCallBack::SessionID session_id) {
-            std::cout << "Á¬½ÓÒÑ¶Ï¿ª:" << session_id << std::endl;
+            std::cout << "è¿žæŽ¥å·²æ–­å¼€:" << session_id << std::endl;
         });
         if (service.listen("127.0.0.1", 41207)) {
-            std::cout << "¿ªÆô¼àÌý:" << 41207 << std::endl;
+            std::cout << "å¼€å¯ç›‘å¬:" << 41207 << std::endl;
         }
         else {
-            std::cout << "¿ªÆô¼àÌýÊ§°Ü!!!!" << std::endl;
+            std::cout << "å¼€å¯ç›‘å¬å¤±è´¥!!!!" << std::endl;
             system("pause");
             return -1;
         }
@@ -92,7 +92,7 @@ int main() {
             });
 
 
-        std::cout << "ÊäÈësession ID,²é¿´ÇëÇóÊýÁ¿(ctrl + z)ÔòÍË³ö" << std::endl;
+        std::cout << "è¾“å…¥session ID,æŸ¥çœ‹è¯·æ±‚æ•°é‡(ctrl + z)åˆ™é€€å‡º" << std::endl;
         char chr = 0;
         while((chr = getchar()) != EOF) {
             if (chr == '\n')

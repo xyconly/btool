@@ -458,7 +458,7 @@ namespace BTool
             };
 
         public:
-            CallbackProxy() : m_deadline_timer(1000, 0) { m_deadline_timer.start(); }
+            CallbackProxy() : m_deadline_timer(1000, 1) { m_deadline_timer.start(); }
 
             void invoke(const ProxyMsgPtr& msg) {
                 std::unique_lock<std::mutex> lock(m_mtx);
@@ -723,7 +723,7 @@ namespace BTool
             typedef NetCallBack::SessionID                      SessionID;
 
         public:
-            RpcBase():m_bind_proxy(this){}
+            RpcBase() : m_bind_proxy(this){}
             virtual ~RpcBase() {}
 
 #pragma region call_back 请求操作定义
@@ -946,7 +946,7 @@ namespace BTool
         public:
             // max_buffer_size: 最大写缓冲区大小,0表示无限制
             // max_rbuffer_size: 单次读取最大缓冲区大小
-            RpcService(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) {
+            RpcService(int works = 0, size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) : m_ioc_pool(works) {
                 m_service = std::make_shared<TServer>(m_ioc_pool, max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
                 using std::placeholders::_2;
@@ -1087,9 +1087,10 @@ namespace BTool
             typedef typename RpcBaseType::SessionID    SessionID;
 
         public:
+            // works: 回调线程池数
             // max_buffer_size: 最大写缓冲区大小,0表示无限制
             // max_rbuffer_size: 单次读取最大缓冲区大小
-            RpcClient(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) {
+            RpcClient(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) :m_ioc_pool(1) {
                 m_session = std::make_shared<TSession>(m_ioc_pool.get_io_context(), max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
                 using std::placeholders::_2;
