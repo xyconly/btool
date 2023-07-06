@@ -238,10 +238,10 @@ namespace BTool
             if (UNLIKELY(m_bstop.load()))
                 return false;
 
-            {
-                std::unique_lock<std::mutex> locker(m_mtx);
-                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
-            }
+        {
+            std::unique_lock<std::mutex> locker(m_mtx);
+            m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+        }
 
             if (UNLIKELY(m_bstop.load()))
                 return false;
@@ -263,6 +263,9 @@ namespace BTool
             if (m_queue.try_dequeue_non_interleaved(pop_task)) {
                 m_cv_not_full.notify_one();
                 if (pop_task) pop_task();
+            }
+            else {
+                m_cv_not_full.notify_one();
             }
         }
 
@@ -315,9 +318,9 @@ namespace BTool
     public:
         SingleThreadParallelTaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
-            , m_max_task_count(max_task_count)
             , m_ptok(m_queue)
             , m_ctok(m_queue)
+            , m_max_task_count(max_task_count)
         {
 
         }
@@ -395,6 +398,9 @@ namespace BTool
             if (m_queue.try_dequeue(m_ctok, pop_task)) {
                 m_cv_not_full.notify_one();
                 if (pop_task) pop_task();
+            }
+            else{
+                m_cv_not_full.notify_one();
             }
         }
 
@@ -624,11 +630,9 @@ namespace BTool
             TPropType pop_type;
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
-                if (LIKELY(!m_bstop.load())) {
-                    m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
-                }
+                m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
 
-                if (UNLIKELY(!not_empty()))
+                if (UNLIKELY(m_bstop.load() && !not_empty()))
                     return;
 
                 // 是否已无可pop队列
@@ -1010,11 +1014,9 @@ namespace BTool
             TPropType prop_type;
 
             {
-                bool test = false;
                 std::unique_lock<std::mutex> locker(m_mtx);
                 if (LIKELY(!m_bstop.load())) {
                     m_cv_not_empty.wait(locker, [this] { return m_bstop.load() || not_empty(); });
-                    test = true;
                 }
 
                 if (UNLIKELY(!not_empty()))

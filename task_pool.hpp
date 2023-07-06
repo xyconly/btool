@@ -120,16 +120,15 @@ namespace BTool {
             size_t cur_thread_ver = ++m_cur_thread_ver;
             thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
 
-
             for (size_t i = 0; i < thread_num; i++) {
                 if (is_bind_core) {
                     if (start_core_index < core_num) {
                         m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver, true, start_core_index++)));
-                    }
-                    else {
-                        m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver, false,  start_core_index)));
+                        continue;
                     }
                 }
+                
+                m_cur_threads.push_back(new SafeThread(std::bind(&TaskPoolBase::thread_fun, this, cur_thread_ver, false,  0)));
             }
         }
 
