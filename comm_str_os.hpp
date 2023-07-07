@@ -21,13 +21,7 @@
 #ifdef __COMM_LINUX__
 # ifndef __COMM_STR_CPY__
 #   define __COMM_STR_CPY__
-#   define strncpy_s(dest, source, count) strncpy(dest, source, count)
+#   define strncpy_s(dest, source, count) strncpy(dest, source, count + 1) // ”ÎWINDOWS∂‘∆Î
 # endif
 #endif
 
-#ifdef __COMM_LINUX__
-# ifndef __COMM_STR_PRINT__
-#   define __COMM_STR_PRINT__
-#   define sprintf_s(dest, count, format, ...) snprintf(dest, count, format, ##__VA_ARGS__)
-# endif
-#endif

@@ -164,6 +164,9 @@ namespace BTool {
         size_t length() const {
             return m_buffer_size;
         }
+        bool empty() const {
+            return m_buffer_size == 0;
+        }
 
         // 获取内存总容量
         size_t get_capacity() const {
@@ -344,6 +347,15 @@ namespace BTool {
             append_args(Type&& tp, Args&&...srcs) {
             append_args_tp(std::forward<Type>(tp), std::forward<Args>(srcs)...);
         }
+        
+        template<typename Type>
+        Type* get(bool offset_flag = true) {
+            char* buffer =  m_buffer + m_offset;
+            if (offset_flag)
+                m_offset += sizeof(Type);
+            return (Type*)buffer;
+        }
+        
         // 读取数据当前漂移位下参数数值
         // offset_flag : 是否需要漂移当前漂移位
         void read(void* buffer, size_t len, bool offset_flag = true) {

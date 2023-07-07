@@ -6,7 +6,9 @@ Date:
 Description:    windows文件系统操作类,其他系统后期实现
 *************************************************/
 #pragma once
+#include <tuple>
 #include <string>
+#include <vector>
 #define PATH_DELIMITER '/'
 #define PATH_BACKSLASH_DELIMITER '\\'
 
@@ -211,6 +213,28 @@ namespace BTool {
             }
             return true;
         }
+    
+        // 获取文件夹下所有的文件名, 不包含递归获取
+        static std::tuple<bool, std::vector<std::string>> GetDirectFile(const std::string& path)
+        {
+            std::vector<std::string> result;
+            DIR* directory = opendir(path.c_str()); // 打开目录
+            if (directory == nullptr) {
+                return std::forward_as_tuple(false, result);
+            }
+
+            dirent* entry;
+            while ((entry = readdir(directory)) != nullptr) {
+                std::string filename = entry->d_name;
+                if (filename != "." && filename != "..") {
+                    result.emplace_back(filename);
+                }
+            }
+
+            closedir(directory);
+            return std::forward_as_tuple(true, result);
+        }
+    
     };
 
 }
