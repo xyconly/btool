@@ -1,8 +1,9 @@
 /************************************************************************
-* Copyright (C), 2020, AChar
-* Purpose:  受信环境下的rpc通讯
-* Date:     2020-10-27 15:18:11
-* 使用方法:
+ * File name:      rpc_base.hpp
+ * Author:			AChar
+ * Purpose:  受信环境下的rpc通讯
+ * Date:     2020-10-27 15:18:11
+ * 使用方法:
 
     void foo_1(NetCallBack::SessionID session_id) {}
     struct st_1 {
@@ -589,7 +590,7 @@ namespace BTool
             }
 
         protected:
-#pragma region bind_proxy
+   /**************   bind_proxy  ******************/
             template<typename TReturn>
             typename std::enable_if<std::is_void<TReturn>::value, void>::type
                 bind_proxy(std::function<TReturn(SessionID, const message_head&)> bindfunc, const std::string& rpc_name, SessionID session_id, const ProxyMsgPtr& msg) {
@@ -706,7 +707,6 @@ namespace BTool
                 return std::apply(bindfunc, MemoryStream::tuple_merge(session_id, std::forward<ArgsTuple>(args)));
             }
 
-#pragma endregion
             // 绑定模式内部解析函数
             typedef std::function<void(SessionID, const ProxyMsgPtr&)>  bind_function_type;
             // bind函数绑定集合
@@ -726,7 +726,7 @@ namespace BTool
             RpcBase() : m_bind_proxy(this){}
             virtual ~RpcBase() {}
 
-#pragma region call_back 请求操作定义
+   /**************   call_back 请求操作定义  ******************/
             // 回调辅助操作类
             template<size_t TIMEOUT, typename TParam = std::nullptr_t>
             struct callback_req_op {
@@ -790,10 +790,9 @@ namespace BTool
                 SessionID       session_id_;
                 TParam          arg_;
             };
-#pragma endregion
 
         public:
-#pragma region bind && bind_auto
+   /**************   bind && bind_auto  ******************/
             // lambda
             // 函数的执行结果需主动调动rsp_bind
             template<typename TBindFunc>
@@ -850,10 +849,9 @@ namespace BTool
                 return write_impl(session_id, unit->get_package(), unit->get_length());
             }
 
-#pragma endregion
 
         protected:
-#pragma region 异步调用发送信息
+   /**************   异步调用发送信息  ******************/
             template<typename... Args>
             void callback_send(size_t overtime, const std::string& rpc_name, SessionID session_id, uint32_t req_id, Args&&... args) {
                 m_callback_proxy.insert_timer(overtime, session_id, req_id);
@@ -863,9 +861,8 @@ namespace BTool
                     m_callback_proxy.remove(req_id, msg_status::send_error);
                 }
             }
-#pragma endregion
 
-#pragma region 同步调用发送信息, 存在阻塞
+   /**************   同步调用发送信息, 存在阻塞  ******************/
             // 无返回参数 同步调用,存在阻塞
             // 返回参数类型: msg_status,  表示最终状态
             template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
@@ -901,13 +898,12 @@ namespace BTool
                 }
                 return m_sync_proxy.wait_for(req_id, TIMEOUT);
             }
-#pragma endregion
 
         protected:
             virtual bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) = 0;
 
         private:
-#pragma region 函数转换
+   /**************   函数转换  ******************/
             template <typename T> struct function_traits_base {
                 typedef T type;
             };
@@ -927,7 +923,6 @@ namespace BTool
             typename functional_traits<TFunction>::type from_functional(TFunction&& func) {
                 return func;
             }
-#pragma endregion
 
         protected:
             ProxyPkg<TProxyPkgHandle, TProxyMsgHandle>                      m_proxy_deal;
@@ -984,7 +979,7 @@ namespace BTool
             }
 
         public:
-#pragma region tcp回调
+   /**************   tcp回调  ******************/
             void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
                 if (err.status_ != msg_status::ok) {
@@ -1022,10 +1017,9 @@ namespace BTool
 
                 m_service->consume_read_buf(session_id, deal_len);
             }
-#pragma endregion
 
         public:
-#pragma region push
+   /**************   push  ******************/
             template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
             decltype(auto) push(const std::string& rpc_name, SessionID session_id, Args&&... args) {
                 return this->template sync_send<TIMEOUT, TReturn>(rpc_name, session_id, std::forward<Args>(args)...);
@@ -1034,9 +1028,8 @@ namespace BTool
             decltype(auto) push(const std::string& rpc_name, SessionID session_id, Args&&... args) {
                 return this->template sync_send<DEFAULT_TIMEOUT, TReturn>(rpc_name, session_id, std::forward<Args>(args)...);
             }
-#pragma endregion
 
-#pragma region pushback
+   /**************   pushback  ******************/
             // 异步回调
             // decltype(auto) 可推导出引用等原类型
             // 返回参数类型: callback_req_op<...>, 通过其发送异步调用
@@ -1064,7 +1057,6 @@ namespace BTool
             decltype(auto) push_back(const std::string& rpc_name, SessionID session_id, Args&&... args) {
                 return push_back<DEFAULT_TIMEOUT>(rpc_name, session_id, std::forward<Args>(args)...);
             }
-#pragma endregion
 
         private:
 
@@ -1131,7 +1123,7 @@ namespace BTool
             }
 
         public:
-#pragma region tcp回调
+   /**************   tcp回调  ******************/
             void open_cbk(NetCallBack::SessionID session_id) {
                 if (m_cbk.open_cbk_)
                     m_cbk.open_cbk_(session_id);
@@ -1184,10 +1176,9 @@ namespace BTool
 
                 m_session->consume_read_buf(deal_len);
             }
-#pragma endregion
 
         public:
-#pragma region call
+   /**************   call  ******************/
             template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
             decltype(auto) call(const std::string& rpc_name, Args&&... args) {
                 return this->template sync_send<TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
@@ -1196,9 +1187,8 @@ namespace BTool
             decltype(auto) call(const std::string& rpc_name, Args&&... args) {
                 return this->template sync_send<DEFAULT_TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
             }
-#pragma endregion
 
-#pragma region callback
+   /**************   callback  ******************/
             // 异步回调
             // decltype(auto) 可推导出引用等原类型
             // 返回参数类型: callback_req_op<...>, 通过其发送异步调用
@@ -1226,7 +1216,6 @@ namespace BTool
             decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
                 return call_back<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
             }
-#pragma endregion
 
         private:
             SessionID get_session_id() const {

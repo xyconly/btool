@@ -8,7 +8,6 @@ Description:    提供io_context的对象池,提供异步start及同步stop接口
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/thread.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/foreach.hpp>

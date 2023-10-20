@@ -124,6 +124,7 @@ namespace BTool {
 #include <sys/types.h>
 #include <dirent.h>
 #include <linux/limits.h>
+#include "boost_net/memory_stream.hpp"
 
 namespace BTool {
 
@@ -132,6 +133,18 @@ namespace BTool {
     public:
         FileSystem() {}
         ~FileSystem() {}
+
+        static std::string GetAbsolutePath(const std::string& file_name) {
+            if (file_name.empty()) {
+                return file_name;
+            }
+
+            if (file_name[0] != '/') {
+                return GetAppPath() + "/" + file_name;
+            }
+
+            return file_name;
+        }
 
         static bool DeleteFile(const std::string & file_name)
         {
@@ -163,6 +176,14 @@ namespace BTool {
 
             fclose(fp);
             return true;
+        }
+
+        static bool Exists(const std::string& path) {
+            struct stat buffer;
+            if (stat(path.c_str(), &buffer) == 0) {
+                return true;
+            }
+            return false;
         }
 
         static bool CreateDir(const std::string& path)
@@ -237,6 +258,120 @@ namespace BTool {
     
     };
 
+    class BatchWriter {
+    public:
+        // over_write: 是否覆盖原文件
+        BatchWriter(const std::string& filename, bool over_write = true, size_t buffer_size = 8192)
+            : m_file(nullptr)
+            , m_buffer(buffer_size + 1024)
+            , m_buffer_size(buffer_size)
+        {
+            if (over_write) {
+                m_file = std::fopen(filename.c_str(), "w+");
+            }
+            else {
+                m_file = std::fopen(filename.c_str(), "ab");
+                std::fseek(m_file, 0, SEEK_END);
+            }
+
+            if (!m_file) {
+                std::cerr << "Error opening file for writing!" << std::endl;
+            }
+        }
+
+        ~BatchWriter() {
+            if (m_file) {
+                flush();
+                std::fclose(m_file);
+            }
+        }
+
+        // 读取最后 n 个字符
+        static std::string ReadLastByte(const std::string& filename, size_t len)
+        {
+            std::string ret;
+            FILE* file = std::fopen(filename.c_str(), "r"); // 打开文本文件
+            if (file == nullptr) 
+                return ret;
+
+            // 确定文件的大小
+            fseek(file, 0, SEEK_END);
+            long fileSize = ftell(file);
+
+            // 计算要读取的字符的起始位置
+            long startPos = fileSize - len;
+
+            // 检查 startPos 是否为负数，如果是，则设置为 0
+            if (startPos < 0) {
+                startPos = 0;
+            }
+
+            // 设置文件指针到起始位置
+            std::fseek(file, startPos, SEEK_SET);
+            // 读取 n 个字符
+            char* lastNChars = (char*)malloc(len + 1); // +1 用于终止 null 字符
+            if (lastNChars != NULL) {
+                std::fread(lastNChars, 1, len, file);
+                lastNChars[len] = '\0'; // 添加 null 终止符以创建 C 字符串
+                ret = std::string(lastNChars, len);
+                std::free(lastNChars); // 释放内存
+            }
+
+            std::fclose(file); // 关闭文件
+            return ret;
+        }
+
+        template<typename Type>
+        void write(Type&& data) {
+            m_buffer.append(std::forward<Type>(data));
+            if (m_buffer.length() >= m_buffer_size) {
+                flush();
+            }
+        }
+
+        void write_string(const char* data) {
+            write((const void*)data, strlen(data));
+        }
+        void write_string(const std::string& data) {
+            write((const void*)data.data(), data.length());
+        }
+
+        void write_string_line(const char* data) {
+            write((const void*)data, strlen(data));
+            write((const void*)"\n", 1);
+        }
+        void write_string_line(const std::string& data) {
+            write((const void*)data.data(), data.length());
+            write((const void*)"\n", 1);
+        }
+
+        void write(const void* buffer, size_t len) {
+            m_buffer.append(buffer, len);
+            if (m_buffer.length() >= m_buffer_size) {
+                flush();
+            }
+        }
+
+        void flush() {
+            if (!m_buffer.empty()) {
+                std::fwrite(m_buffer.data(), sizeof(char), m_buffer.size(), m_file);
+                m_buffer.clear();
+            }
+        }
+
+        template<typename Type>
+        void write_now(Type&& data) {
+            std::fwrite((const char*)(&data), sizeof(char), sizeof(Type), m_file);
+        }
+
+        void write_now(const void* buffer, size_t len) {
+            std::fwrite((const char*)buffer, sizeof(char), len, m_file);
+        }
+    private:
+        FILE*                   m_file;
+        BTool::MemoryStream     m_buffer;
+        size_t                  m_buffer_size;
+    };
 }
 
 

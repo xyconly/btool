@@ -112,7 +112,7 @@ namespace BTool {
         }
 
         ~MemoryStream() {
-            clear();
+            destroy();
         }
 
         MemoryStream& operator=(const MemoryStream& rhs) {
@@ -120,7 +120,7 @@ namespace BTool {
                 return *this;
 
             if (m_auto_delete)
-                clear();
+                destroy();
 
             m_buffer_size = rhs.m_buffer_size;
             m_offset = rhs.m_offset;
@@ -140,7 +140,7 @@ namespace BTool {
                 return *this;
 
             if (m_auto_delete)
-                clear();
+                destroy();
 
             m_buffer_size = rhs.m_buffer_size;
             m_offset = rhs.m_offset;
@@ -184,6 +184,7 @@ namespace BTool {
         size_t get_offset() const {
             return m_offset;
         }
+
         // 重置当前漂移位至指定位置
         void reset_offset(int offset) {
             m_offset = offset;
@@ -237,8 +238,24 @@ namespace BTool {
             return buffer;
         }
 
-        // 清空数据,此后将自动管理内存释放
+        void clone_to_local() {
+            if (!m_auto_delete) {
+                // 重新赋值
+                char* tmp = m_buffer;
+                m_buffer = (char*)malloc(m_capacity);
+                memcpy(m_buffer, tmp, m_capacity);
+                m_auto_delete = true;
+            }
+        }
+        
+        // 重置当前下标, 注意仅操作下标
         void clear() {
+            if (m_buffer && m_auto_delete)
+                m_buffer_size = 0;
+            m_offset = 0;
+        }
+        // 清空数据,此后将自动管理内存释放
+        void destroy() {
             m_buffer_size = 0;
             m_offset = 0;
             m_capacity = 0;
@@ -377,7 +394,7 @@ namespace BTool {
             uint32_t length = 0;
             read(&length, sizeof(length), true);
 
-            pDst->clear();
+            pDst->destroy();
             pDst->load(m_buffer + m_offset, length);
 
             if (!offset_flag)

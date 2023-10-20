@@ -39,7 +39,7 @@ namespace BTool
                 Err_Other,		// 未知错误
             };
 
-#pragma region 回调信号
+   /**************   回调信号  ******************/
         public:
             typedef std::function<void(const TSessionPtr& session_ptr)>		session_func_t;
             typedef std::function<void(std::string&& err_msg)>				error_func_t;
@@ -58,7 +58,6 @@ namespace BTool
             // 有新的连接回调
             session_func_t		m_connect_cbk;
 
-#pragma endregion
 
         public:
             CoroServer()

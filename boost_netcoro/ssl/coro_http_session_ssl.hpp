@@ -80,7 +80,7 @@ namespace BTool
 
             ~HttpSessionSsl() {}
 
-#pragma region 通用连接信息
+   /**************   通用连接信息  ******************/
         public:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>::lowest_layer_type& socket() {
                 return m_socket.lowest_layer();
@@ -105,9 +105,8 @@ namespace BTool
             unsigned short getPeerPort() const {
                 return m_peer_port;
             }
-#pragma endregion
 
-#pragma region 数据解析与回应
+   /**************   数据解析与回应  ******************/
             // 设置读取消息回调,协程动力
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
@@ -174,9 +173,8 @@ namespace BTool
                     m_disconnect_cbk(shared_from_this());
             }
 
-#pragma endregion
 
-#pragma region 内部函数
+   /**************   内部函数  ******************/
         private:
             // Return a reasonable mime type based on the extension of a file.
             boost::beast::string_view
@@ -346,7 +344,6 @@ namespace BTool
             }
 
 
-#pragma endregion
 
         private:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>	m_socket;
