@@ -47,7 +47,7 @@ namespace BTool
 
             ~WebsocketSessionSsl() {}
 
-#pragma region 通用连接信息
+/**************   通用连接信息  ******************/
         public:
             boost::beast::websocket::stream<boost::asio::ip::tcp::socket>::lowest_layer_type& socket() {
                 return m_socket.lowest_layer();
@@ -86,9 +86,8 @@ namespace BTool
                 }
                 return true;
             }
-#pragma endregion
 
-#pragma region 数据解析与回应
+/**************   数据解析与回应  ******************/
             // 设置读取消息回调,协程动力
             void setReadMsgCbk(const read_msg_func_t& cbk) {
                 m_read_cbk = cbk;
@@ -135,9 +134,8 @@ namespace BTool
                 return true;
             }
 
-#pragma endregion
 
-#pragma region 内部函数
+/**************   内部函数  ******************/
         private:
             bool coro_read()
             {
@@ -167,7 +165,6 @@ namespace BTool
                 if (m_disconnect_cbk)
                     m_disconnect_cbk(shared_from_this());
             }
-#pragma endregion
 
         private:
             boost::beast::websocket::stream<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> >	m_socket;

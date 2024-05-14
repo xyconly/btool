@@ -79,21 +79,21 @@ namespace BTool
             HttpSession(socket_type&& socket)
                 : m_resolver(socket.get_executor())
                 , m_stream(std::move(socket))
+                , m_session_id(GetNextSessionID())
+                , m_handler(nullptr)
                 , m_started_flag(false)
                 , m_stop_flag(true)
-                , m_handler(nullptr)
                 , m_connect_port(0)
-                , m_session_id(GetNextSessionID())
             {
             }
             HttpSession(boost::asio::io_context& ioc)
                 : m_resolver(boost::asio::make_strand(ioc))
                 , m_stream(boost::asio::make_strand(ioc))
+                , m_session_id(GetNextSessionID())
+                , m_handler(nullptr)
                 , m_started_flag(false)
                 , m_stop_flag(true)
-                , m_handler(nullptr)
                 , m_connect_port(0)
-                , m_session_id(GetNextSessionID())
             {
             }
 
@@ -208,9 +208,19 @@ namespace BTool
             static send_msg_type GetSendGetRequest(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
                 return GetSendRequest(boost::beast::http::verb::get, target, content_type, version);
             }
-
+            static void SetSendMsgHead(send_msg_type& send_msg, const std::string& name, const std::string& val) {
+                send_msg.set(name, val);
+            }
+            static void SetSendMsgBody(send_msg_type& send_msg, const std::string& body) {
+                send_msg.body() = body;
+                send_msg.set(boost::beast::http::field::content_length, std::to_string(body.length()));
+            }
             // 使用ip+port(port为0则为host解析)同步发送,仅用于客户端,非线程安全
             static std::tuple<bool, read_msg_type> SyncWrite(const char* host, unsigned short port, send_msg_type&& send_msg)
+            {
+                return SyncWrite(host, port, send_msg);
+            }
+            static std::tuple<bool, read_msg_type> SyncWrite(const char* host, unsigned short port, send_msg_type& send_msg)
             {
                 if (port == 0)
                     return SyncWrite(host, std::forward<send_msg_type>(send_msg));
@@ -233,7 +243,7 @@ namespace BTool
 
                     // 读取应答
                     read_buffer_type read_buf;
-                    auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
+                    /*auto read_len =*/ boost::beast::http::read(stream, read_buf, read_msg);
 
                     boost::beast::error_code ec;
                     stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
@@ -297,6 +307,10 @@ namespace BTool
             // 使用域名同步发送,仅用于客户端,非线程安全
             static std::tuple<bool, read_msg_type> SyncWrite(const char* host, send_msg_type&& send_msg)
             {
+                return SyncWrite(host, send_msg);
+            }
+            static std::tuple<bool, read_msg_type> SyncWrite(const char* host, send_msg_type& send_msg)
+            {
                 boost::asio::io_context ioc;
                 boost::asio::ip::tcp::resolver resolver(ioc);
                 boost::beast::tcp_stream stream(ioc);
@@ -314,7 +328,7 @@ namespace BTool
 
                     // 读取应答
                     read_buffer_type read_buf;
-                    auto read_len = boost::beast::http::read(stream, read_buf, read_msg);
+                    /*auto read_len =*/ boost::beast::http::read(stream, read_buf, read_msg);
 
                     boost::beast::error_code ec;
                     stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);

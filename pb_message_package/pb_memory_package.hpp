@@ -18,7 +18,7 @@
 namespace NPPbMemoryPackage
 {
 #pragma pack(push)
-#pragma pack(2) 
+#pragma pack(1) 
     // °üÍ·
     struct PackHeader {
         uint16_t command_;

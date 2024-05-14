@@ -339,6 +339,7 @@ namespace BTool
             void handle_handshake(const boost::beast::error_code& ec)
             {
                 if (ec) {
+                    std::string err = ec.message();
                     close();
                     return;
                 }
@@ -366,6 +367,7 @@ namespace BTool
             // 处理读回调
             void handle_read(const boost::beast::error_code& error, size_t bytes_transferred) {
                 if (error) {
+                    std::string msd = error.message();
                     shutdown();
                     return;
                 }
@@ -418,6 +420,7 @@ namespace BTool
                 {
                     std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                     m_write_buf.clear();
+                    m_current_send_msg.reset();
                 }
 
                 m_atomic_switch.reset();

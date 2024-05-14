@@ -53,7 +53,7 @@ namespace BTool {
             ECB
         };
 
-#pragma region DES加密/解密
+/**************   DES加密/解密  ******************/
         /************************************************************************
          *功能: DES加密
          *参数: key: 8byte密钥,如: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
@@ -174,9 +174,8 @@ namespace BTool {
             }
             return DecryptFromHex(key, out_buff, out_len, mode, pad, iv);
         }
-#pragma endregion
 
-#pragma region 3DES加密/解密
+/**************   3DES加密/解密  ******************/
         /************************************************************************
          *功能: 3DES加密
          *参数: key: 8/16/24byte密钥,如: 0xAA 0xBB 0xCC 0xDD 0xAA 0xBB 0xCC 0xDD
@@ -294,7 +293,6 @@ namespace BTool {
             }
             return TripleDesDecryptFromHex(key, out_buff, out_len, mode, pad, iv);
         }
-#pragma endregion
 
     private:
         static bool des_encrypt_and_decrypt(const char* key

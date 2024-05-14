@@ -21,7 +21,7 @@
 #ifdef __COMM_LINUX__
 # ifndef __COMM_STR_CPY__
 #   define __COMM_STR_CPY__
-#   define strncpy_s(dest, source, count) strncpy(dest, source, count + 1) // ”ÎWINDOWS∂‘∆Î
+#   define strncpy_s(dest, source, count) strncpy((dest), (source), (count))
 # endif
 #endif
 

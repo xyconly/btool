@@ -177,7 +177,7 @@ namespace BTool
     class TimerTaskVirtual
     {
     public:
-#pragma region ID定义
+/**************   ID定义  ******************/
 
 #if defined(_MSC_VER)
         typedef unsigned __int64			        TimerId;
@@ -194,7 +194,6 @@ namespace BTool
         enum {
             INVALID_TID = 0, // 无效定时器ID
         };
-#pragma endregion
 
         typedef std::chrono::system_clock::time_point	system_time_point;
 

@@ -196,6 +196,13 @@ namespace BTool
             static send_msg_type GetSendGetRequest(const std::string& target, const std::string& content_type = "application/json", int version = 11) {
                 return GetSendRequest(boost::beast::http::verb::get, target, content_type, version);
             }
+            static void SetSendMsgHead(send_msg_type& send_msg, const std::string& name, const std::string& val) {
+                send_msg.set(name, val);
+            }
+            static void SetSendMsgBody(send_msg_type& send_msg, const std::string& body) {
+                send_msg.body() = body;
+                send_msg.set(boost::beast::http::field::content_length, std::to_string(body.length()));
+            }
 
             // 异步写,开启异步写之前先确保开启异步连接
             bool async_write(send_msg_type&& msg)
@@ -214,6 +221,10 @@ namespace BTool
 
             // 使用ip+port(port为0则为host解析)同步发送,仅用于客户端,非线程安全
             static std::tuple<bool, read_msg_type> SyncWrite(const char* host, unsigned short port, send_msg_type&& send_msg, boost::asio::ssl::context& ctx)
+            {
+                return SyncWrite(host, port, send_msg, ctx);
+            }
+            static std::tuple<bool, read_msg_type> SyncWrite(const char* host, unsigned short port, send_msg_type& send_msg, boost::asio::ssl::context& ctx)
             {
                 if (port == 0)
                     return SyncWrite(host, std::forward<send_msg_type>(send_msg), ctx);
@@ -318,6 +329,10 @@ namespace BTool
             }
             // 使用域名同步发送,仅用于客户端,非线程安全
             static std::tuple<bool, read_msg_type> SyncWrite(const char* host, send_msg_type&& send_msg, boost::asio::ssl::context& ctx)
+            {
+                return SyncWrite(host, send_msg, ctx);
+            }
+            static std::tuple<bool, read_msg_type> SyncWrite(const char* host, send_msg_type& send_msg, boost::asio::ssl::context& ctx)
             {
                 read_msg_type read_msg = {};
                 boost::asio::io_context ioc;

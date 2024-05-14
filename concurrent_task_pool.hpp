@@ -9,6 +9,7 @@ Note:      特别注意!!!!
            故而不能用于属性过多的情况, 避免出现远大于cpu核心数的情况!!!
 *************************************************/
 #pragma once
+#include <stdexcept>
 #include <map>
 #include <vector>
 #include <set>

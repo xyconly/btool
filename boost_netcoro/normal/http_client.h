@@ -24,7 +24,7 @@ public:
 
 	void stop();
 
-#pragma region https://github.com/boostorg/beast/issues/731#ref-issue-249622270中所写方法
+   /**************   https://github.com/boostorg/beast/issues/731#ref-issue-249622270中所写方法  ******************/
 protected:
 	std::string ReadResponse(const std::string& input);
 
@@ -40,7 +40,6 @@ private:
 	/*! White space characters will be removed and the the strings will be converted to lowercase letters.
 	*/
 	std::vector<std::string> SplitAndStripString(const std::string& str, char c);
-#pragma endregion
 
 private:
 	std::string				m_host;

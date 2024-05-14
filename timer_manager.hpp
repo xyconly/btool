@@ -44,7 +44,7 @@ namespace BTool {
         typedef std::shared_ptr<TimerTask>      TimerTaskPtr;
 //         typedef std::shared_ptr<TimerTaskVirtual>      TimerTaskPtr;
 
-#pragma region 定时器队列
+/**************   定时器队列  ******************/
         /*************************************************
         Description:定时器队列,用于存储当前定时器排序,内部无锁,非线程安全!!!
         *************************************************/
@@ -228,7 +228,6 @@ namespace BTool {
             std::map<system_time_point, TimerMap>     m_timer_part_queue; // 对所有定时器的定时时间做切分,所有同一时刻定时任务置于同一timer_map中
             ParallelTaskPool                          m_task_pool;        // 定时器回调执行线程池
         };
-#pragma endregion
 
     public:
         // 执行回调时的线程池数

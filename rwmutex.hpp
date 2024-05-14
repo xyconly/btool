@@ -4,12 +4,17 @@
 */
 # pragma once
 
-#if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
-#include <shared_mutex>
+#ifdef __NO_LOCK__
+struct rwMutex{};
+struct readLock{readLock(rwMutex&) {}};
+struct writeLock{writeLock(rwMutex&) {}};
+#else
+# if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
+# include <shared_mutex>
     typedef std::shared_timed_mutex                     rwMutex;
     typedef std::shared_lock<std::shared_timed_mutex>   readLock;
     typedef std::unique_lock<std::shared_timed_mutex>   writeLock;
-#else
+# else
     #if defined(_WIN32) || defined(_WIN64) || defined(WIN32) || defined(WIN64)
     # include <concrt.h>
         typedef Concurrency::reader_writer_lock                     rwMutex;
@@ -22,4 +27,5 @@
         typedef boost::unique_lock<rwMutex>    writeLock;
         typedef boost::shared_lock<rwMutex>    readLock;
     #endif
+# endif
 #endif

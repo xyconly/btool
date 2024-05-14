@@ -16,6 +16,7 @@ Purpose: 字符类,用于各类字符转换
 # include <windows.h>
 #endif
 
+#include <vector>
 #include <algorithm>
 #include <iterator>
 #include <cctype>
@@ -25,7 +26,7 @@ namespace BTool
 {
     class StringConvert
     {
-#pragma region 内部类型定义
+/**************   内部类型定义  ******************/
         class AsciiToWideChar {
             AsciiToWideChar(void) = delete;
             AsciiToWideChar(AsciiToWideChar&) = delete;
@@ -60,7 +61,7 @@ namespace BTool
                 wchar_t *wstr = new wchar_t[unilen];
                 wchar_t *pOut = wstr;
                 size_t ret = iconv(cd, (char **) &str, &srclen, (char **) &pOut, &unilen);
-                if(ret == -1){
+                if(ret == (size_t)-1){
                     delete[] wstr;
                     wstr = nullptr;
                 }
@@ -106,7 +107,7 @@ namespace BTool
                 char *str = new char[asciilen];
                 char *pOut = str;
                 size_t ret = iconv(cd, (char **) &wstr, &wsrclen, (char **) &pOut, &asciilen);
-                if(ret == -1){
+                if(ret == (size_t)-1){
                     delete[] str;
                     str = nullptr;
                 }
@@ -152,7 +153,7 @@ namespace BTool
                 char *str = new char[utf8len];
                 char *pOut = str;
                 size_t ret = iconv(cd, (char **) &wstr, &wsrclen, (char **) &pOut, &utf8len);
-                if(ret == -1){
+                if(ret == (size_t)-1){
                     delete[] str;
                     str = nullptr;
                 }
@@ -206,7 +207,7 @@ namespace BTool
                 char *utf8 = new char[utf8len];
                 char *pOut = utf8;
                 size_t ret = iconv(cd, (char **) &str, &srclen, &pOut, &utf8len);
-                if(ret == -1){
+                if(ret == (size_t)-1){
                     delete[] utf8;
                     utf8 = nullptr;
                 }
@@ -299,7 +300,7 @@ namespace BTool
                 char *ascii = new char[asciilen];
                 char *pOut = ascii;
                 size_t ret = iconv(cd, (char **) &utf8, &srclen, &pOut, &asciilen);
-                if(ret == -1){
+                if(ret == (size_t)-1){
                     delete[] ascii;
                     ascii = nullptr;
                 }
@@ -315,10 +316,9 @@ namespace BTool
             char* ascii_;
 #endif
         };
-#pragma endregion
 
 
-#pragma region 字符校验
+/**************   字符校验  ******************/
 //         static bool isNumber(const std::string& value) {
 //             return 
 //         }
@@ -326,29 +326,28 @@ namespace BTool
 // 
 //         }
 
-#pragma endregion
 
-#pragma region 字符比对
+/**************   字符比对  ******************/
     public:
         // 检测大小写
         // lvalue < rvalue:返回-1; lvalue = rvalue:返回0; lvalue > rvalue:返回1
-        static int compare(const std::string& lvalue, const std::string& rvalue) {
+        static int Compare(const std::string& lvalue, const std::string& rvalue) {
             return lvalue.compare(rvalue);
         }
-        static int compare(const char* lvalue, const char* rvalue) {
+        static int Compare(const char* lvalue, const char* rvalue) {
             return strcmp(lvalue, rvalue);
         }
 
         // 不检测大小写,忽略大小写差异
         // lvalue < rvalue:返回-1; lvalue = rvalue:返回0; lvalue > rvalue:返回1
-        static int compareNonCase(const std::string& lvalue, const std::string& rvalue) {
+        static int CompareNonCase(const std::string& lvalue, const std::string& rvalue) {
             std::string ltmp = lvalue;
             std::transform(lvalue.begin(), lvalue.end(), ltmp.begin(), ::tolower);
             std::string rtmp = rvalue;
             std::transform(rvalue.begin(), rvalue.end(), rtmp.begin(), ::tolower);
             return ltmp.compare(rtmp);
         }
-        static int compareNonCase(const char* lvalue, const char* rvalue) {
+        static int CompareNonCase(const char* lvalue, const char* rvalue) {
             auto myToLow = [](const char* chr)->char* {
                 size_t len = strlen(chr);
                 char* rslt = new char[len + 1];
@@ -371,9 +370,104 @@ namespace BTool
             return rslt;
         }
 
-#pragma endregion
+        static std::string Trim(const std::string& str)
+        {
+            size_t start = 0;
+            size_t end = str.length() - 1;
 
-#pragma region 字符转换
+            // 找到第一个非空格和制表符的字符位置
+            while (start <= end && (str[start] == ' ' || str[start] == '\t')) {
+                start++;
+            }
+            // 找到最后一个非空格和制表符的字符位置
+            while (end >= start && (str[end] == ' ' || str[end] == '\t')) {
+                end--;
+            }
+
+            // 提取子字符串
+            if (start <= end) {
+                return str.substr(start, end - start + 1);
+            }
+            // 如果字符串全为空格或制表符，返回空字符串
+            return "";
+        }
+
+        static std::vector<std::string> Split(const std::string& input, const std::string& delimiter, bool trim = true) {
+            std::vector<std::string> result;
+            size_t start = 0, end = 0;
+
+            while ((end = input.find(delimiter, start)) != std::string::npos) {
+                std::string token = input.substr(start, end - start);
+                if (trim) {
+                    token = Trim(token);
+                }
+                if (!trim || !token.empty())
+                    result.push_back(token);
+                start = end + delimiter.length();
+            }
+
+            // 处理最后一个子字符串（如果有的话）
+            if (start < input.length()) {
+                std::string token = input.substr(start);
+                if (trim) {
+                    token = Trim(token);
+                }
+                if (!trim || !token.empty())
+                    result.push_back(token);
+            }
+
+            return result;
+        }
+
+        static std::vector<std::string> SplitAny(const std::string& input, const std::string& delimiter, bool trim = true) {
+            std::vector<std::string> result;
+            std::string token;
+            size_t start = 0, end = 0;
+
+            while ((end = input.find_first_of(delimiter, start)) != std::string::npos) {
+                token = input.substr(start, end - start);
+                if (trim) {
+                    token = Trim(token);
+                }
+                if (!trim || !token.empty())
+                    result.push_back(token);
+                start = end + 1;
+            }
+
+            // 处理最后一个子字符串（如果有的话）
+            if (start < input.length()) {
+                token = input.substr(start);
+                if (trim) {
+                    token = Trim(token);
+                }
+                if (!trim || !token.empty())
+                    result.push_back(token);
+            }
+
+            return result;
+        }
+
+        static std::string ReplaceAll(const std::string& str, const std::string& src, const std::string& dest) {
+            std::string ret = str;
+            size_t pos = 0;
+            while ((pos = ret.find(src, pos)) != std::string::npos) {
+                ret.replace(pos, src.length(), dest);
+                pos += src.length();
+            }
+            return ret;
+        }
+        static std::string ReplaceAny(const std::string& str, const std::string& src, const std::string& dest) {
+            std::string ret;
+            for(auto& item : str){
+                if (src.find(item) == std::string::npos)
+                    ret += item;
+                else 
+                    ret += dest;
+            }
+            return ret;
+        }
+
+/**************   字符转换  ******************/
     public:
         static std::string AnsiiToUtf8(const char* chr) {
             if (!chr || strlen(chr) == 0)
@@ -422,9 +516,8 @@ namespace BTool
                 return L"";
             return std::wstring(AsciiToWideChar(chr).wchar_rep());
         }
-#pragma endregion
 
-#pragma region 字符转换安全模式
+/**************   字符转换安全模式  ******************/
     public:
         static std::string AnsiiToUtf8_Safe(const char* chr) try {
             return AnsiiToUtf8(chr);
@@ -462,7 +555,6 @@ namespace BTool
         catch (...) {
             return L"";
         }
-#pragma endregion
 
     };
 }

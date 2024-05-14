@@ -7,7 +7,8 @@ Note:    目前文本类型仅支持标准北京时间(DTK_Local)
 #pragma once
 
 #include <stdarg.h>
-#include <codecvt>
+#include <locale>
+//#include <codecvt>
 #include <chrono>
 #ifdef __linux
 #include <string.h>  // for memcpy
@@ -222,6 +223,53 @@ namespace BTool {
             va_end(args);
             
             m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+        }
+
+        explicit DateTimeConvert(int date, int time, DateTimeStyle style = DTS_YMDHMS)
+            : m_style(style)
+            , m_isvalid(style != DTS_Invlid)
+        {
+            if (style & DTS_Year) {
+                m_year = date / 10000;
+            }
+            if (style & DTS_Month) {
+                m_month = (date % 10000) / 100;
+            }
+            if (style & DTS_Day) {
+                m_day = date % 100;
+            }
+
+            if (style & DTS_Hour) {
+                m_hour = time / 10000000;
+            }
+            if (style & DTS_Min) {
+                m_minute = (time % 10000000) / 100000;
+            }
+            if (style & DTS_Sec) {
+                m_second = (time % 100000) / 1000;
+            }
+            if (style & DTS_mSec) {
+                m_millsecond = time % 1000;
+            }
+            
+            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+        }
+
+        explicit DateTimeConvert(int date, DateTimeStyle style = DTS_YMD)
+            : m_style(style)
+            , m_day_of_week(UNDEFINE)
+            , m_isvalid(style != DTS_Invlid)
+        {
+           if (style & DTS_Year) {
+                m_year = date / 10000;
+            }
+            if (style & DTS_Month) {
+                m_month = (date % 10000) / 100;
+            }
+            if (style & DTS_Day) {
+                m_day = date % 100;
+            }
+            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0;
         }
 
         explicit DateTimeConvert(std::time_t dt, DateTimeStyle style = DTS_YMDHMS)
@@ -626,7 +674,7 @@ namespace BTool {
         // 增加秒数
         // 无效或不包含DTS_YMDHMS时,无变化
         void add_second(long long secs) {
-            if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
+            if (!isvalid())
                 return;
             *this = get_add_second(secs);
             m_day_of_week = UNDEFINE;
@@ -638,16 +686,16 @@ namespace BTool {
             if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
                 return DateTimeConvert();
 
-            if ((m_style & DTS_YMDHMS) == DTS_YMDHMS)
+            if ((m_style & DTS_YMD) == DTS_YMD)
                 return get_add_second(days * 24 * 60 * 60);
 
-            return DateTimeConvert(DTS_YMDHMS, year(), month(), day(), 0, 0, 0).get_add_second(days * 24 * 60 * 60);
+            return DateTimeConvert(m_style, year(), month(), day(), hour(), minute(), second()).get_add_second(days * 24 * 60 * 60);
         }
 
         // 返回漂移秒数后时间
         // style必须包含DTS_YMDHMS,否则无效
         DateTimeConvert get_add_second(long long secs) const {
-            if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
+            if (!isvalid())
                 return DateTimeConvert();
 
             std::time_t ltime = to_time_t();
@@ -676,7 +724,7 @@ namespace BTool {
         // 返回漂移毫秒数后时间
         // style必须包含DTS_YMDHMS,否则无效
         DateTimeConvert get_add_millsecond(long long millsecs) const {
-            if (!isvalid() || (m_style & DTS_YMDHMS) != DTS_YMDHMS)
+            if (!isvalid())
                 return DateTimeConvert();
 
             std::time_t ltime = to_time_t();
@@ -841,6 +889,16 @@ namespace BTool {
             if (!isvalid() || (m_style & DTS_HMS) != DTS_HMS)
                 return -1;
             return m_hour * 10000 + m_minute * 100 + m_second;
+        }
+
+        // 返回当前时间
+        // 格式:yyyymmddhhmmssmmm
+        // 无效返回-1
+        // style必须包含DTS_YMDHMS_M,否则无效
+        long long to_ll_datetime() const {
+            if (!isvalid() || (m_style & DTS_YMDHMS_M) != DTS_YMDHMS_M)
+                return -1;
+            return (long long)m_year * 10000000000000 + (long long)m_month * 100000000000 + (long long)m_day * 1000000000 + m_hour * 10000000 + m_minute * 100000 + m_second * 1000 + m_millsecond;
         }
 
         // 返回当前时间

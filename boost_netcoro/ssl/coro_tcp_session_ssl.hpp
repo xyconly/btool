@@ -64,7 +64,7 @@ namespace BTool
 
             ~TCPSessionSsl() {}
 
-#pragma region 通用TCP连接信息
+/**************   通用TCP连接信息  ******************/
         public:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>::lowest_layer_type& socket() {
                 return m_tcp_ssl_socket.lowest_layer();
@@ -153,9 +153,8 @@ namespace BTool
 #endif
                 return true;
             }
-#pragma endregion
 
-#pragma region 数据解析与回应
+/**************   数据解析与回应  ******************/
 
             void coro_start()
             {
@@ -218,7 +217,6 @@ namespace BTool
                     m_disconnect_cbk(shared_from_this());
             }
 
-#pragma endregion
 
         private:
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>	 m_tcp_ssl_socket;

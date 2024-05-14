@@ -74,7 +74,6 @@ namespace BTool {
             }
         }
 
-#pragma region Base64加密/解密
         /************************************************************************
          *功能: Base64加密
          *参数: str:     待转换数组
@@ -135,8 +134,6 @@ namespace BTool {
             return true;
         }
 
-#pragma endregion
-
         // 填充方式
         enum class Padding : int {
             NonePadding = 0,    // 无padding
@@ -145,7 +142,7 @@ namespace BTool {
             PKCS7Padding,       // Cipher FeedBack, 密文反馈模式
         };
 
-#pragma region Padding
+/**************   Padding  ******************/
         static size_t GetPaddingLen(size_t src_len, Padding padding, size_t blocksize) {
             size_t padding_len = blocksize - src_len % blocksize;
             if (padding == Padding::NonePadding 
@@ -184,7 +181,5 @@ namespace BTool {
             }
             return src_len - (size_t)src_buff[src_len - 1];
         }
-#pragma endregion
 
-    };
 };

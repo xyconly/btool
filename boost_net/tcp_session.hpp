@@ -345,6 +345,7 @@ namespace BTool
                 {
                     std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                     m_write_buf.clear();
+                    m_current_send_msg.reset();
                 }
 
                 m_atomic_switch.reset();
