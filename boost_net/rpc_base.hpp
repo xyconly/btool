@@ -1,8 +1,9 @@
 /************************************************************************
-* Copyright (C), 2020, AChar
-* Purpose:  受信环境下的rpc通讯
-* Date:     2020-10-27 15:18:11
-* 使用方法:
+ * File name:      rpc_base.hpp
+ * Author:			AChar
+ * Purpose:  受信环境下的rpc通讯
+ * Date:     2020-10-27 15:18:11
+ * 使用方法:
 
     void foo_1(NetCallBack::SessionID session_id) {}
     struct st_1 {

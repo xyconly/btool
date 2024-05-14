@@ -181,5 +181,4 @@ namespace BTool {
             }
             return src_len - (size_t)src_buff[src_len - 1];
         }
-
 };
