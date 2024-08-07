@@ -76,8 +76,9 @@ namespace BTool {
 
             DTS_YMD = DTS_Year | DTS_Month | DTS_Day,    // 年月日
             DTS_HMS = DTS_Hour | DTS_Min | DTS_Sec,      // 时分秒
+            DTS_HMS_M = DTS_Hour | DTS_Min | DTS_Sec | DTS_mSec,      // 时分秒毫秒
             DTS_YMDHMS = DTS_YMD | DTS_HMS,              // 年月日时分秒
-            DTS_YMDHMS_M = DTS_YMD | DTS_HMS | DTS_mSec, // 年月日时分秒毫秒
+            DTS_YMDHMS_M = DTS_YMD | DTS_HMS_M, // 年月日时分秒毫秒
             DTS_ALL = 0xFF,
         };
 

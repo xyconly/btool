@@ -119,7 +119,9 @@ namespace BTool {
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <iostream>
 #include <sys/types.h>
 #include <dirent.h>
@@ -263,7 +265,36 @@ namespace BTool {
             closedir(directory);
             return std::forward_as_tuple(true, result);
         }
-    
+
+        // 定义一个递归函数，用于获取指定路径下的所有文件和目录
+        static bool GetFilesRecursively(const std::string& path, std::vector<std::string>& fileList) {
+            DIR* dir = opendir(path.c_str());
+            if (dir == nullptr) {
+                // std::cerr << "Error opening directory: " << path << std::endl;
+                return false;
+            }
+
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != nullptr) {
+                std::string entryName = entry->d_name;
+                if (entryName != "." && entryName != "..") {
+                    std::string fullPath = path + "/" + entryName;
+                    struct stat statbuf;
+                    if (stat(fullPath.c_str(), &statbuf) != -1) {
+                        if (S_ISDIR(statbuf.st_mode)) {
+                            // 如果是目录，则递归遍历
+                            GetFilesRecursively(fullPath, fileList);
+                        } else {
+                            // 如果是文件，则添加到文件列表中
+                            fileList.push_back(fullPath);
+                        }
+                    }
+                }
+            }
+            closedir(dir);
+            return true;
+        }
+        
     };
 
     class BatchWriter {
@@ -398,6 +429,196 @@ namespace BTool {
         BTool::MemoryStream     m_buffer;
         size_t                  m_buffer_size;
     };
+
+    class ShmReaderWriter {
+    public:
+        enum RWType { READER = O_RDONLY, WRITER = O_RDWR, READER_WRITER = WRITER };
+
+        // exit_unlink: 退出时自动关闭共享内存
+        ShmReaderWriter(RWType type, bool exit_unlink = false)
+            : m_type(type)
+            , m_shm_size(0)
+            , m_exit_unlink(exit_unlink)
+            , m_shm_fd(-1)
+            , m_shm_ptr(MAP_FAILED)
+        {
+            switch (type)
+            {
+            case RWType::READER:
+                m_mmap_type = PROT_READ;
+                break;
+            case RWType::READER_WRITER:
+                m_mmap_type = PROT_READ | PROT_WRITE;
+                break;
+            default:
+                throw std::invalid_argument("Invalid RWType");
+            }
+        }
+
+        ~ShmReaderWriter() {
+            close_and_unmap();
+            if (m_exit_unlink) {
+                unlink();
+            }
+        }
+
+        // 初始化
+        // shm_name: 共享内存名
+        // force_create: 当不存在时是否强制创建
+        // shm_size 为0 表示重新读取共享内存大小
+        // shm_size 不为0则直接改变大小
+        // default_value: 不存在时的默认内存
+        bool init(const std::string& shm_name, bool force_create = false, size_t shm_size = 0, const void* default_value = nullptr) {
+            m_shm_fd = shm_open(shm_name.c_str(), m_type, 0666);
+            if (m_shm_fd == -1) {
+                // 非强制创建则直接退出
+                if (!force_create || shm_size == 0)
+                    return false;
+
+                // 创建共享内存并设置初始大小
+                m_shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
+                if (m_shm_fd == -1) {
+                    // std::cerr << "Failed to create shared memory\n";
+                    return false;
+                }
+                if (ftruncate(m_shm_fd, shm_size) == -1) {
+                    close(m_shm_fd);
+                    m_shm_fd = -1;
+                    return false;
+                }
+                // 映射共享内存并写入默认值
+                void* ptr = mmap(0, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_shm_fd, 0);
+                if (ptr == MAP_FAILED) {
+                    close(m_shm_fd);
+                    m_shm_fd = -1;
+                    // std::cerr << "Failed to map shared memory\n";
+                    return false;
+                }
+                if (default_value) {
+                    memcpy(ptr, default_value, shm_size);
+                } else {
+                    memset(ptr, 0, shm_size);
+                }
+                munmap(ptr, shm_size);
+            }
+            else if (shm_size > 0) {
+                // 重新映射共享内存用现在的shm_size
+                size_t existing_size = get_shared_memory_size(m_shm_fd);
+                if (shm_size != existing_size) {
+                    if (ftruncate(m_shm_fd, shm_size) == -1) {
+                        close(m_shm_fd);
+                        m_shm_fd = -1;
+                        return false;
+                    }
+                }
+            }
+
+            m_shm_name = shm_name;
+            
+            if (shm_size == 0) {
+                shm_size = get_shared_memory_size(m_shm_fd);
+            }
+            m_shm_size = shm_size;
+
+            m_shm_ptr = mmap(0, m_shm_size, m_mmap_type, MAP_SHARED, m_shm_fd, 0);
+            if (m_shm_ptr == MAP_FAILED) {
+                // std::cerr << "Failed to map shared memory\n";
+                close(m_shm_fd);
+                m_shm_fd = -1;
+                return false;
+            }
+            return true;
+        }
+
+        // shm_size 为0 表示重新读取共享内存大小
+        // shm_size 不为0则直接改变大小
+        bool resize(size_t shm_size = 0) {
+            if (shm_size == 0) {
+                shm_size = get_shared_memory_size(m_shm_fd);
+            }
+
+            if (shm_size == m_shm_size) {
+                return true;
+            }
+
+            if (ftruncate(m_shm_fd, shm_size) == -1) {
+                // std::cerr << "Failed to resize shared memory\n";
+                return false;
+            }
+            if (munmap(m_shm_ptr, m_shm_size) == -1) {
+                // std::cerr << "Failed to unmap shared memory\n";
+                return false;
+            }
+            m_shm_ptr = mmap(0, shm_size, m_mmap_type, MAP_SHARED, m_shm_fd, 0);
+            if (m_shm_ptr == MAP_FAILED) {
+                // std::cerr << "Failed to map shared memory\n";
+                throw std::runtime_error("Failed to map shared memory!");
+                return false;
+            }
+            m_shm_size = shm_size;
+            return true;
+        }
+
+        void* read() {
+            if (m_shm_fd == -1 || m_shm_ptr == MAP_FAILED)
+                return nullptr;
+
+            return m_shm_ptr;
+        }
+
+        bool write(const void* data, size_t size) {
+            if (m_type == READER || m_shm_fd == -1 || m_shm_ptr == MAP_FAILED) return false;
+            if (size > m_shm_size) return false;
+            memcpy(m_shm_ptr, data, size);
+            return true;
+        }
+
+        void unlink() {
+            if (!m_shm_name.empty())
+                shm_unlink(m_shm_name.c_str());
+        }
+
+        void close_and_unmap() {
+            if (m_shm_ptr != MAP_FAILED) {
+                munmap(m_shm_ptr, m_shm_size);
+                m_shm_ptr = MAP_FAILED;
+            }
+            if (m_shm_fd != -1) {
+                close(m_shm_fd);
+                m_shm_fd = -1;
+            }
+        }
+        
+    private:
+        static size_t get_shared_memory_size(int shm_fd) {
+            struct stat shm_stat;
+            if (fstat(shm_fd, &shm_stat) == -1) {
+                // std::cerr << "Failed to get shared memory size\n";
+                return 0;
+            }
+            return shm_stat.st_size;
+        }
+
+
+    private:
+        // 读写类型
+        RWType              m_type;
+        // mmap映射格式
+        int                 m_mmap_type;
+        // 共享内存名
+        std::string         m_shm_name;
+        // 共享内存大小
+        size_t              m_shm_size;
+        // 退出时自动关闭共享内存
+        bool                m_exit_unlink;
+        // 共享内存文件句柄
+        int                 m_shm_fd;
+        // 共享内存指针
+        void*               m_shm_ptr;
+
+        char*               m_buffer = nullptr;
+    };
+
 }
 
 

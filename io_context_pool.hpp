@@ -26,7 +26,7 @@ namespace BTool
 
         // io_context的对象池
         // pool_size 缺省时,服务对象数是机器里cpu数
-        AsioContextPool(int pool_size = 0)
+        AsioContextPool(int pool_size = 0, bool auto_start = true)
             : m_pool_size(pool_size)
             , m_next_ioc_index(0)
             , m_bstart(false)
@@ -34,7 +34,8 @@ namespace BTool
             if (m_pool_size <= 0)
                 m_pool_size = boost::thread::hardware_concurrency();
 
-            start();
+            if (auto_start)
+                start();
         }
 
         ~AsioContextPool() {

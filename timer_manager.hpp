@@ -56,12 +56,16 @@ namespace BTool {
             // workers: 工作线程数,为0时默认系统核数
             // max_task_count: 最大任务缓存个数,超过该数量将产生阻塞;0则表示无限制
             TimerQueue(size_t workers = 0, size_t max_task_count = 0)
-                : m_task_pool(max_task_count) {
-                m_task_pool.start(workers);
+                : m_workers(workers)
+                , m_task_pool(max_task_count) {
             }
 
             ~TimerQueue() {
                 clear();
+            }
+            
+            void start() {
+                m_task_pool.start(m_workers);
             }
 
             template<typename TFunction>
@@ -224,6 +228,7 @@ namespace BTool {
             }
 
         private:
+            size_t                                    m_workers;
             TimerMap                                  m_all_timer_map;    // 存储所有定时器任务,牺牲新增时的些许性能,提高查询速度
             std::map<system_time_point, TimerMap>     m_timer_part_queue; // 对所有定时器的定时时间做切分,所有同一时刻定时任务置于同一timer_map中
             ParallelTaskPool                          m_task_pool;        // 定时器回调执行线程池
@@ -235,7 +240,7 @@ namespace BTool {
         // workers: 回调执行工作线程数,为0时默认系统核数;注意此线程数并非定时器线程数,定时器线程始终只有一个
         TimerManager(unsigned long long space_millsecond, int workers)
             : m_space_millsecond(space_millsecond)
-            , m_ioc_pool(1)
+            , m_ioc_pool(1, false)
             , m_timer(nullptr)
             , m_cur_task(nullptr)
             , m_next_id(INVALID_TID)
@@ -250,7 +255,7 @@ namespace BTool {
         void start() {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
-
+            m_timer_queue.start();
             m_ioc_pool.start();
             m_timer = std::make_shared<my_system_timer>(m_ioc_pool.get_io_context());
         }

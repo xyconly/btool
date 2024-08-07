@@ -76,11 +76,11 @@ namespace BTool
             WebsocketSslSession(boost::asio::ip::tcp::socket&& socket, ssl_context_type& ctx, size_t max_wbuffer_size = NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_resolver(socket.get_executor())
                 , m_socket(std::move(socket), ctx)
-				, m_max_wbuffer_size(max_wbuffer_size)
-                , m_max_rbuffer_size(max_rbuffer_size)
-                , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
+                , m_max_rbuffer_size(max_rbuffer_size)
+				, m_max_wbuffer_size(max_wbuffer_size)
                 , m_current_send_msg(nullptr)
+                , m_connect_port(0)
             {
                 m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
@@ -89,11 +89,11 @@ namespace BTool
             WebsocketSslSession(boost::asio::io_context& ioc, ssl_context_type& ctx, size_t max_wbuffer_size = MAX_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = MAX_READSINGLE_BUFFER_SIZE)
                 : m_resolver(boost::asio::make_strand(ioc))
                 , m_socket(boost::asio::make_strand(ioc), ctx)
-                , m_max_wbuffer_size(max_wbuffer_size)
-                , m_max_rbuffer_size(max_rbuffer_size)
-                , m_connect_port(0)
                 , m_session_id(GetNextSessionID())
+                , m_max_rbuffer_size(max_rbuffer_size)
+                , m_max_wbuffer_size(max_wbuffer_size)
                 , m_current_send_msg(nullptr)
+                , m_connect_port(0)
             {
                 m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
@@ -167,9 +167,9 @@ namespace BTool
             }
 
             // 客户端重连
-            //void reconnect() {
-            //    connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
-            //}
+            void reconnect() {
+               connect(m_connect_ip.c_str(), m_connect_port, m_hand_addr.c_str());
+            }
 
             // 服务端开启连接,同时开启读取
             void start() {
@@ -333,6 +333,7 @@ namespace BTool
                 boost::beast::get_lowest_layer(m_socket).expires_never();
                 
                 if (ec) {
+                    auto err = ec.message();
                     close();
                     return;
                 }
@@ -479,10 +480,10 @@ namespace BTool
             std::recursive_mutex    m_write_mtx;
             // 写缓冲
             WriteBufferType         m_write_buf;
-            // 当前正在发送的缓存
-            WriteMemoryStreamPtr    m_current_send_msg;
             // 最大写缓冲区大小
             size_t                  m_max_wbuffer_size;
+            // 当前正在发送的缓存
+            WriteMemoryStreamPtr    m_current_send_msg;
 
             // 回调操作
             BoostNet::NetCallBack  m_handler;
