@@ -12,6 +12,9 @@ Description:    提供io_context的对象池,提供异步start及同步stop接口
 #include <boost/functional/factory.hpp>
 #include <boost/foreach.hpp>
 #include <boost/asio.hpp>
+#include <atomic>
+#include <vector>
+#include "comm_function_os.hpp"
 
 namespace BTool
 {
@@ -26,10 +29,11 @@ namespace BTool
 
         // io_context的对象池
         // pool_size 缺省时,服务对象数是机器里cpu数
-        AsioContextPool(int pool_size = 0, bool auto_start = true)
+        AsioContextPool(int pool_size = 0, bool auto_start = true, const std::vector<int>& bind_cores = {})
             : m_pool_size(pool_size)
             , m_next_ioc_index(0)
             , m_bstart(false)
+            , m_bind_cores(bind_cores)
         {
             if (m_pool_size <= 0)
                 m_pool_size = boost::thread::hardware_concurrency();
@@ -51,13 +55,51 @@ namespace BTool
             init(m_pool_size);
         }
 
-        void restart(int pool_size = 0) {
+        void start(int pool_size, const std::vector<int>& bind_cores) {
+            bool expected = false;
+            if (!m_bstart.compare_exchange_strong(expected, true))  // 已启动则退出
+                return;
+
+            if (pool_size <= 0)
+                pool_size = boost::thread::hardware_concurrency();
+
+            assert (pool_size <= (int)bind_cores.size());
+
+            m_pool_size = pool_size;
+            m_bind_cores = bind_cores;
+
+            init(m_pool_size);
+        }
+
+        bool restart(const std::vector<int>& bind_cores, int pool_size = 0) {
             m_bstart.exchange(true);
             if (pool_size == 0)
                 pool_size = boost::thread::hardware_concurrency();
 
+            if (pool_size > (int)bind_cores.size()) {
+                return false;
+            }
+
             m_pool_size = pool_size;
+            m_bind_cores = bind_cores;
+
             init(m_pool_size);
+            return true;
+        }
+
+        bool restart(int pool_size = 0) {
+            m_bstart.exchange(true);
+            if (pool_size == 0)
+                pool_size = boost::thread::hardware_concurrency();
+
+            if (pool_size > (int)m_bind_cores.size()) {
+                return false;
+            }
+
+            m_pool_size = pool_size;
+            
+            init(m_pool_size);
+            return true;
         }
 
         // 阻塞式启动服务,使用join_all等待
@@ -93,6 +135,11 @@ namespace BTool
         }
 
     private:
+        void run_io_context(ioc_type& ioc, int core_id) {
+            CommonOS::BindCore(core_id);
+            ioc.run();
+        }
+
         void init(int pool_size) {
             reset_sync();
 
@@ -100,7 +147,13 @@ namespace BTool
                 auto new_ioc = std::make_shared<ioc_type>();
                 m_io_contexts.emplace_back(new_ioc);
                 m_io_works.emplace_back(std::make_shared<work_type>(*new_ioc));
-                m_threads.create_thread(boost::bind(&ioc_type::run, boost::ref(*new_ioc)));
+                
+                if ((int)m_bind_cores.size() > i) {
+                    m_threads.create_thread(boost::bind(&AsioContextPool::run_io_context, this, boost::ref(*new_ioc), m_bind_cores[i]));
+                }
+                else {
+                    m_threads.create_thread(boost::bind(&ioc_type::run, boost::ref(*new_ioc)));
+                }
             }
         }
 
@@ -127,6 +180,8 @@ namespace BTool
         boost::thread_group         m_threads;
         // 是否已开启
         std::atomic<bool>           m_bstart;
+        // 绑核
+        std::vector<int>            m_bind_cores;
     };
 
 
@@ -140,16 +195,18 @@ namespace BTool
 
         // io_context的对象池
         // pool_size 缺省时,服务对象数是机器里cpu数
-        AsioSingleContextPool(int pool_size = 0)
+        AsioSingleContextPool(int pool_size = 0, bool auto_start = true, const std::vector<int>& bind_cores = {})
             : m_pool_size(pool_size)
             , m_io_context(nullptr)
             , m_io_work(nullptr)
             , m_bstart(false)
+            , m_bind_cores(bind_cores)
         {
             if (m_pool_size <= 0)
                 m_pool_size = boost::thread::hardware_concurrency();
 
-            start();
+            if (auto_start)
+                start();
         }
 
         ~AsioSingleContextPool() {
@@ -165,13 +222,51 @@ namespace BTool
             init(m_pool_size);
         }
 
-        void restart(int pool_size = 0) {
+        void start(int pool_size, const std::vector<int>& bind_cores) {
+            bool expected = false;
+            if (!m_bstart.compare_exchange_strong(expected, true))  // 已启动则退出
+                return;
+
+            if (pool_size <= 0)
+                pool_size = boost::thread::hardware_concurrency();
+
+            assert (pool_size <= (int)bind_cores.size());
+
+            m_pool_size = pool_size;
+            m_bind_cores = bind_cores;
+
+            init(m_pool_size);
+        }
+
+        bool restart(const std::vector<int>& bind_cores, int pool_size = 0) {
             m_bstart.exchange(true);
             if (pool_size == 0)
                 pool_size = boost::thread::hardware_concurrency();
 
+            if (pool_size > (int)bind_cores.size()) {
+                return false;
+            }
+
             m_pool_size = pool_size;
+            m_bind_cores = bind_cores;
+
             init(m_pool_size);
+            return true;
+        }
+
+        bool restart(int pool_size = 0) {
+            m_bstart.exchange(true);
+            if (pool_size == 0)
+                pool_size = boost::thread::hardware_concurrency();
+
+            if (pool_size > (int)m_bind_cores.size()) {
+                return false;
+            }
+
+            m_pool_size = pool_size;
+
+            init(m_pool_size);
+            return true;
         }
 
         // 阻塞式启动服务,使用join_all等待
@@ -207,13 +302,23 @@ namespace BTool
         }
 
     private:
+        void run_io_context(ioc_type& ioc, int core_id) {
+            CommonOS::BindCore(core_id);
+            ioc.run();
+        }
+
         void init(int pool_size) {
             reset_sync();
 
             m_io_context = new ioc_type(pool_size);
             m_io_work = new work_type(*m_io_context);
             for (int i = 0; i < pool_size; i++) {
-                m_threads.create_thread(boost::bind(&ioc_type::run, boost::ref(*m_io_context)));
+                if ((int)m_bind_cores.size() > i) {
+                    m_threads.create_thread(boost::bind(&AsioSingleContextPool::run_io_context, this, boost::ref(*m_io_context), m_bind_cores[i]));
+                }
+                else {
+                    m_threads.create_thread(boost::bind(&ioc_type::run, boost::ref(*m_io_context)));
+                }
             }
         }
 
@@ -243,5 +348,7 @@ namespace BTool
         boost::thread_group     m_threads;
         // 是否已开启
         std::atomic<bool>       m_bstart;
+        // 绑核
+        std::vector<int>        m_bind_cores;
     };
 }

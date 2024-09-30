@@ -11,6 +11,7 @@ struct writeLock{writeLock(rwMutex&) {}};
 #else
 # if defined(_HAS_CXX17) || (__cplusplus >= 201703L)
 # include <shared_mutex>
+# include <mutex>
     typedef std::shared_timed_mutex                     rwMutex;
     typedef std::shared_lock<std::shared_timed_mutex>   readLock;
     typedef std::unique_lock<std::shared_timed_mutex>   writeLock;

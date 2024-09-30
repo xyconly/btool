@@ -16,10 +16,10 @@ namespace BTool
         {
         public:
             typedef unsigned long long  SessionID;
-            typedef std::function<void(SessionID session_id)> open_cbk;
-            typedef std::function<void(SessionID session_id)> close_cbk;
-            typedef std::function<void(SessionID session_id, const char* const msg, size_t bytes_transferred)> read_cbk;
-            typedef std::function<void(SessionID session_id, const char* const msg, size_t bytes_transferred)> write_cbk;
+            typedef std::function<void(const SessionID& session_id)> open_cbk;
+            typedef std::function<void(const SessionID& session_id, const char* const msg, size_t bytes_transferred)> close_cbk;
+            typedef std::function<void(const SessionID& session_id, const char* const msg, size_t bytes_transferred)> read_cbk;
+            typedef std::function<void(const SessionID& session_id, const char* const msg, size_t bytes_transferred)> write_cbk;
 
             typedef std::function<void()> server_error_cbk;
 

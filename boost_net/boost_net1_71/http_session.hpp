@@ -99,7 +99,7 @@ namespace BTool
 
             ~HttpSession() {
                 m_handler = nullptr;
-                close();
+                close(boost::beast::error_code{});
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -171,7 +171,7 @@ namespace BTool
             }
 
             // 同步关闭
-            void shutdown()
+            void shutdown(const boost::beast::error_code& ec = {})
             {
                 bool expected = false;
                 if (!m_stop_flag.compare_exchange_strong(expected, true)) {
@@ -179,7 +179,8 @@ namespace BTool
                 }
 
                 m_read_buf.consume(m_read_buf.size());
-                close();
+
+                close(ec);
                 m_started_flag.exchange(false);
             }
 
@@ -406,14 +407,14 @@ namespace BTool
                 return send_req;
             }
 
-            void close()
+            void close(const boost::beast::error_code& ec)
             {
                 boost::beast::error_code ignored_ec;
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 get_socket().close(ignored_ec);
 
                 if (m_handler) {
-                    m_handler->on_close_cbk(m_session_id);
+                    m_handler->on_close_cbk(m_session_id, ec.message());
                 }
             }
 
@@ -441,7 +442,7 @@ namespace BTool
             void handle_resolve(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
             {
                 if (ec)
-                    return close();
+                    return close(ec);
 
                 m_stream.expires_after(std::chrono::seconds(30));
 
@@ -453,7 +454,7 @@ namespace BTool
             void handle_connect(const boost::beast::error_code& ec)
             {
                 if (ec) {
-                    close();
+                    close(ec);
                     return;
                 }
 
@@ -464,11 +465,8 @@ namespace BTool
             // 处理读回调
             void handle_read(bool close, const boost::beast::error_code& ec, size_t bytes_transferred)
             {
-                boost::ignore_unused(bytes_transferred);
-
                 if (ec) {
-                    std::string tmp = ec.message();
-                    shutdown();
+                    shutdown(ec);
                     return;
                 }
 
@@ -483,7 +481,7 @@ namespace BTool
             void handle_write(bool close, const boost::beast::error_code& ec, size_t /*bytes_transferred*/)
             {
                 if (ec) {
-                    return shutdown();
+                    return shutdown(ec);
                 }
 
                 if (m_handler)

@@ -7,17 +7,22 @@ Note:       为了外部尽可能的无缓存,外部操作读取数据后需要主动调用consume_read_bu
 
 Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放ios对象
             这就导致外部单独使用使用需要先声明ios对象,然后声明该对象,例如:
-                class WebsocketClient{
+                class WebsocketClient {
                     ...
                 private:
-                    ios_type            m_ios;
-                    WebsocketSslSession    m_session;
+                    ios_type                    m_ios;
+                    boost::asio::ssl::context   m_context;
+                    WebsocketSslSession         m_session;
                 };
             当然如果外部主动控制其先后顺序会更好,例如:
                 class WebsocketClient {
                 public:
-                    WebsocketClient(ios_type& ios) {
-                        m_session = std::make_shared<WebsocketSslSession>(ios);
+                    WebsocketClient(ios_type& ios)
+                     : m_context({ boost::asio::ssl::context::sslv23_client }) {
+                        boost::system::error_code ignore_ec;
+                        load_root_certificates(m_context, ignore_ec);
+                        //m_context.set_default_verify_paths();
+                        m_session = std::make_shared<WebsocketSslSession>(ios, m_context);
                     }
                     ~WebsocketClient() {
                         m_session.reset();

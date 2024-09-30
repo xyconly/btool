@@ -60,7 +60,7 @@ namespace BTool
             typedef BoostNet::NetCallBack::SessionID                                SessionID;
 
             enum {
-                NOLIMIT_WRITE_BUFFER_SIZE = 0, // ??????
+                NOLIMIT_WRITE_BUFFER_SIZE = 0, // 无限制
                 MAX_WRITE_BUFFER_SIZE = 30000,
                 MAX_READSINGLE_BUFFER_SIZE = 20000,
             };
@@ -79,7 +79,6 @@ namespace BTool
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_connect_port(0)
             {
-                m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
             }
 
@@ -92,13 +91,16 @@ namespace BTool
                 , m_max_wbuffer_size(max_wbuffer_size)
                 , m_connect_port(0)
             {
-                m_socket.binary(true);
                 m_socket.read_message_max(max_rbuffer_size);
             }
 
             ~WebsocketSession() {
                 m_handler = BoostNet::NetCallBack();
                 shutdown();
+            }
+
+            void set_binary(bool b = true) {
+                m_socket.binary(b);
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -206,11 +208,11 @@ namespace BTool
             }
 
             // 同步关闭
-            void shutdown() {
+            void shutdown(const boost::beast::error_code& ec = {}) {
                 if (!m_atomic_switch.stop())
                     return;
 
-                close();
+                close(ec);
             }
 
             // 按顺序写入
@@ -280,15 +282,15 @@ namespace BTool
         private:
             // 异步读
             bool read() {
-                try {
+                //try {
                     m_socket.async_read_some(m_read_buf.prepare(m_max_rbuffer_size),
                         boost::beast::bind_front_handler(&WebsocketSession::handle_read, shared_from_this()));
                     return true;
-                }
-                catch (...) {
-                    shutdown();
-                    return false;
-                }
+                // }
+                // catch (...) {
+                //     shutdown();
+                //     return false;
+                // }
             }
 
             // 异步写
@@ -300,7 +302,7 @@ namespace BTool
 
             void handle_resolve(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results) {
                 if (ec) {
-                    close();
+                    close(ec);
                     return;
                 }
                 boost::beast::get_lowest_layer(m_socket).expires_after(std::chrono::seconds(30));
@@ -313,7 +315,7 @@ namespace BTool
             void handle_connect(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type::endpoint_type& end_point)
             {
                 if (ec) {
-                    close();
+                    close(ec);
                     return;
                 }
 
@@ -339,8 +341,7 @@ namespace BTool
             void handle_handshake(const boost::beast::error_code& ec)
             {
                 if (ec) {
-                    std::string err = ec.message();
-                    close();
+                    close(ec);
                     return;
                 }
 
@@ -350,7 +351,7 @@ namespace BTool
             // 处理开始
             void handle_start(boost::beast::error_code ec) {
                 if (ec || !m_atomic_switch.start()) {
-                    close();
+                    close(ec);
                     return;
                 }
 
@@ -365,10 +366,9 @@ namespace BTool
             }
 
             // 处理读回调
-            void handle_read(const boost::beast::error_code& error, size_t bytes_transferred) {
-                if (error) {
-                    std::string msd = error.message();
-                    shutdown();
+            void handle_read(const boost::beast::error_code& ec, size_t bytes_transferred) {
+                if (ec) {
+                    shutdown(ec);
                     return;
                 }
 
@@ -392,7 +392,7 @@ namespace BTool
             void handle_write(const boost::beast::error_code& ec, size_t bytes_transferred)
             {
                 if (ec) {
-                    shutdown();
+                    shutdown(ec);
                     return;
                 }
                 if (m_atomic_switch.has_stoped()) {
@@ -411,7 +411,7 @@ namespace BTool
                 write();
             }
 
-            void close() {
+            void close(const boost::beast::error_code& ec) {
                 boost::beast::error_code ignored_ec;
                 get_socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 m_socket.close(boost::beast::websocket::close_code::normal, ignored_ec);
@@ -426,7 +426,8 @@ namespace BTool
                 m_atomic_switch.reset();
 
                 if (m_handler.close_cbk_) {
-                    m_handler.close_cbk_(m_session_id);
+                    auto err = ec.message();
+                    m_handler.close_cbk_(m_session_id, err.c_str(), err.length());
                 }
             }
 

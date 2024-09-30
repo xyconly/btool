@@ -8,8 +8,11 @@ Description:    提供各类任务线程池基类,避免外界重复创建
 #pragma once
 #include <mutex>
 #include <vector>
-#include "submodule/oneTBB/include/tbb/concurrent_hash_map.h"
+#ifdef __USE_TBB__
+# include "submodule/oneTBB/include/tbb/concurrent_hash_map.h"
+#endif
 #include "safe_thread.hpp"
+#include "comm_function_os.hpp"
 #include "task_queue.hpp"
 
 namespace BTool {
@@ -29,19 +32,6 @@ namespace BTool {
     protected:
         TaskPoolBase(size_t max_task_count = 0) : m_task_queue(max_task_count), m_cur_thread_ver(0) {}
         virtual ~TaskPoolBase() { stop(); }
-
-        static bool BindToCore(int coreId) {
-            cpu_set_t cpuSet;
-            CPU_ZERO(&cpuSet);
-            CPU_SET(coreId, &cpuSet);
-
-            if (sched_setaffinity(0,sizeof(cpuSet), &cpuSet) == -1) {
-                return false;
-            }
-            else {
-                return true;
-            }
-        }
 
     public:
         // 开启线程池
@@ -135,7 +125,7 @@ namespace BTool {
         // 线程池线程
         void thread_fun(size_t thread_ver, bool is_bind_core, int core_index) {
             if (is_bind_core)
-                BindToCore(core_index);
+                CommonOS::BindCore(core_index);
  
             while (true) {
                 if (m_atomic_switch.has_stoped() && m_task_queue.empty()) {
@@ -375,6 +365,7 @@ namespace BTool {
         }
     };
 
+#ifdef __USE_TBB__
     /*************************************************
     Description:    提供具有相同属性任务串行有序执行的线程池
                     但是是将任务按属性简单均匀分配至内部单线程线程池
@@ -521,5 +512,6 @@ namespace BTool {
         // 属性对应队列下标
         hash_type                           m_prop_index;
     };
+#endif
 
 }

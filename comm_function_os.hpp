@@ -136,11 +136,16 @@ extern "C" {
 class CommonOS
 {
 public:
-    static int getch() {
+    static bool BindCore(int core_id) {
+        HANDLE thread = GetCurrentThread();
+        SetThreadAffinityMask(thread, 1 << core_id);
+    }
+
+    static int GetCh() {
         return _getch();
     }
 
-    static std::vector<std::string> get_mac()
+    static std::vector<std::string> GetMac()
     {
         std::vector<std::string> rslt;
         DWORD MACaddress = 0;
@@ -171,7 +176,7 @@ public:
         return rslt;
     }
 
-    static std::vector<std::string> get_ips() {
+    static std::vector<std::string> GetIps() {
         std::vector<std::string> result;
         IP_ADAPTER_INFO *pAdpFree = NULL;
         IP_ADAPTER_INFO *pIpAdpInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
@@ -226,8 +231,20 @@ public:
 class CommonOS
 {
 public:
+    static bool BindCore(int core_id) {
+        cpu_set_t cpuSet;
+        CPU_ZERO(&cpuSet);
+        CPU_SET(core_id, &cpuSet);
 
-    static int getch() {
+        if (sched_setaffinity(0,sizeof(cpuSet), &cpuSet) == -1) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
+    static int GetCh() {
         struct termios oldtc, newtc;
         int ch;
         tcgetattr(STDIN_FILENO, &oldtc);
@@ -239,7 +256,7 @@ public:
         return ch;
     }
 
-    static std::vector<std::string> get_mac()
+    static std::vector<std::string> GetMac()
     {
         std::vector<std::string> rslt;
 
@@ -278,7 +295,7 @@ public:
         return rslt;
     }
 
-    static std::vector<std::string> get_ips() {
+    static std::vector<std::string> GetIps() {
         std::vector<std::string> rslt;
 
         int fdSock = 0;

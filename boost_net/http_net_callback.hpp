@@ -28,13 +28,13 @@ namespace BTool
             };
 
             // 开启连接回调
-            virtual void on_open_cbk(SessionID session_id) {}
+            virtual void on_open_cbk(const SessionID& session_id) {}
             // 关闭连接回调
-            virtual void on_close_cbk(SessionID session_id) {}
+            virtual void on_close_cbk(const SessionID& session_id, const std::string& msg) {}
             // 读取消息回调
-            virtual void on_read_cbk(SessionID session_id, const read_msg_type& read_msg) {}
+            virtual void on_read_cbk(const SessionID& session_id, const read_msg_type& read_msg) {}
             // 写入消息回调
-            virtual void on_write_cbk(SessionID session_id, const send_msg_type& send_msg) {}
+            virtual void on_write_cbk(const SessionID& session_id, const send_msg_type& send_msg) {}
         };
 
         // 默认的客户端回调, 发送请求,读取应答

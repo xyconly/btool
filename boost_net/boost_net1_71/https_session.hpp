@@ -105,7 +105,7 @@ namespace BTool
 
             ~HttpsSession() {
                 m_handler = nullptr;
-                close();
+                close(boost::beast::error_code{});
             }
 
             // 设置回调,采用该形式可回调至不同类中分开处理
@@ -142,7 +142,7 @@ namespace BTool
                 if (!SSL_set_tlsext_host_name(m_stream.native_handle(), host))
                 {
                     boost::beast::error_code ec{ static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
-                    close();
+                    close(ec);
                     return;
                 }
 
@@ -173,13 +173,14 @@ namespace BTool
             }
 
             // 同步关闭
-            void shutdown()
+            void shutdown(const boost::beast::error_code& ec = {})
             {
                 if (!m_atomic_switch.stop())
                     return;
 
                 m_read_buf.consume(m_read_buf.size());
-                close();
+
+                close(ec);
 
                 m_atomic_switch.reset();
             }
@@ -451,38 +452,38 @@ namespace BTool
                 return send_req;
             }
 
-            void close()
+            void close(const boost::beast::error_code& ec)
             {
                 boost::beast::error_code ignored_ec;
                 m_stream.shutdown(ignored_ec);
  //               m_stream.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 
                 if (m_handler) {
-                    m_handler->on_close_cbk(m_session_id);
+                    m_handler->on_close_cbk(m_session_id, ec.message());
                 }
             }
 
             // 异步读
             void read(bool close)
             {
-                try {
+                //try {
                     m_read_msg = {};
                     boost::beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(30));
                     boost::beast::http::async_read(m_stream, m_read_buf, m_read_msg,
                         boost::beast::bind_front_handler(&SessionType::handle_read
                             , SessionType::shared_from_this()
                             , close));
-                }
-                catch (...) {
-                    shutdown();
-                }
+                // }
+                // catch (...) {
+                //     shutdown();
+                // }
             }
 
             // 解析IP回调
             void handle_resolve(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type& results)
             {
                 if (ec)
-                    return close();
+                    return close(ec);
 
                 boost::beast::get_lowest_layer(m_stream).expires_after(std::chrono::seconds(30));
                 boost::beast::get_lowest_layer(m_stream).async_connect(results
@@ -493,7 +494,7 @@ namespace BTool
             void handle_connect(const boost::beast::error_code& ec, const boost::asio::ip::tcp::resolver::results_type::endpoint_type& endpoint)
             {
                 if (ec)
-                    return close();
+                    return close(ec);
 
                 start(boost::asio::ssl::stream_base::client);
             }
@@ -502,7 +503,7 @@ namespace BTool
             void handle_handshake(boost::beast::error_code ec)
             {
                 if (ec || !m_atomic_switch.start())
-                    return close();
+                    return close(ec);
 
                 if (m_connect_ip.empty())
 					m_connect_ip = m_stream.lowest_layer().remote_endpoint(ec).address().to_string(ec);
@@ -522,7 +523,7 @@ namespace BTool
             {
                 boost::ignore_unused(bytes_transferred);
                 if (ec) {
-                    shutdown();
+                    shutdown(ec);
                     return;
                 }
 
@@ -537,8 +538,7 @@ namespace BTool
             void handle_write(bool close, const boost::beast::error_code& ec, size_t /*bytes_transferred*/)
             {
                 if (ec) {
-                    auto mmm = ec.message();
-                    return shutdown();
+                    return shutdown(ec);
                 }
 
                 if (m_handler)
