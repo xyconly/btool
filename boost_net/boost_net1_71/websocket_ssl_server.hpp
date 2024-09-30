@@ -94,6 +94,10 @@ namespace BTool
                 return true;
             }
 
+            void set_binary(bool b = true) {
+                m_use_binary = b;
+            }
+
             // 阻塞式启动服务,使用join_all等待
             // ip: 监听IP,支持域名,默认本地IPV4地址
             // port: 监听端口
@@ -235,6 +239,7 @@ namespace BTool
                 }
 
                 auto session_ptr = std::make_shared<WebsocketSslSession>(std::move(socket), m_ctx, m_max_wbuffer_size, m_max_rbuffer_size);
+                session_ptr->set_binary(m_use_binary);
                 session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&WebsocketSslServer::on_close_cbk, shared_from_this(), std::placeholders::_1));
 
                 {
@@ -281,7 +286,7 @@ namespace BTool
             BoostNet::NetCallBack::server_error_cbk     m_error_handler = nullptr;
             size_t                                      m_max_wbuffer_size;
             size_t                                      m_max_rbuffer_size;
-
+            bool                                        m_use_binary = true;
             boost::asio::ssl::context&                  m_ctx;
 
             mutable std::mutex                          m_mutex;
