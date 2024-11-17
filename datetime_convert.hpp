@@ -56,10 +56,10 @@ namespace BTool {
         enum DateTimeKind: unsigned char {
             DTK_Local = 0, // 北京时间,如:2018-07-07 15:20:00.000.000
             DTK_KLine,     // K线北京时间,如:20180707 152000 000
-            DTK_CST,       // UTC+8 , 如:Thu Jul 22 23:58:32 CST 2018
-            DTK_UTC,       // 世界标准时间, 如:20180707T152000Z/20180707T152000+08(其中Z表示是标准时间,"+08"表示东八区)
-            DTK_GMT,       // 格林威治时间, 如:Thu Jul 22 23:58:32 'GMT' 2018
-            DKT_UnixStamp, // unix时间戳,自1970-01-01以来的秒数
+            //DTK_CST,       // UTC+8 , 如:Thu Jul 22 23:58:32 CST 2018
+            //DTK_UTC,       // 世界标准时间, 如:20180707T152000Z/20180707T152000+08(其中Z表示是标准时间,"+08"表示东八区)
+            //DTK_GMT,       // 格林威治时间, 如:Thu Jul 22 23:58:32 'GMT' 2018
+            //DKT_UnixStamp, // unix时间戳,自1970-01-01以来的秒数
         };
 
         // 包含时间字段
@@ -866,8 +866,6 @@ namespace BTool {
         // 无效返回-1
         // style必须包含DTS_YMDHMS,否则无效
         std::time_t to_time_t() const {
-            if (!isvalid() && (m_style & DTS_YMDHMS) != DTS_YMDHMS)
-                return -1;
             std::tm tp = to_tm();
             return std::mktime(&tp);
         }
@@ -877,8 +875,6 @@ namespace BTool {
         // 无效返回-1
         // style必须包含DTS_YMD,否则无效
         int to_int_date() const {
-            if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
-                return -1;
             return m_year * 10000 + m_month * 100 + m_day;
         }
 
@@ -887,8 +883,6 @@ namespace BTool {
         // 无效返回-1
         // style必须包含DTS_HMS,否则无效
         int to_int_time() const {
-            if (!isvalid() || (m_style & DTS_HMS) != DTS_HMS)
-                return -1;
             return m_hour * 10000 + m_minute * 100 + m_second;
         }
 
@@ -897,8 +891,6 @@ namespace BTool {
         // 无效返回-1
         // style必须包含DTS_YMDHMS_M,否则无效
         long long to_ll_datetime() const {
-            if (!isvalid() || (m_style & DTS_YMDHMS_M) != DTS_YMDHMS_M)
-                return -1;
             return (long long)m_year * 10000000000000 + (long long)m_month * 100000000000 + (long long)m_day * 1000000000 + m_hour * 10000000 + m_minute * 100000 + m_second * 1000 + m_millsecond;
         }
 

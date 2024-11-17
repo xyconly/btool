@@ -30,9 +30,10 @@ namespace BTool {
          *功能: 10进制数字转换为char字符,如 :10->"A"
          *参数: byte: 待转换字符
          ************************************************************************/
-        static inline unsigned char get_number_to_byte(int number) {
+        static inline unsigned char get_number_to_byte(int number, bool upper = true) {
             if (number >= 10)
-                return 'A' + number - 10;
+                if (upper) return 'A' + number - 10;
+                else return 'a' + number - 10;
             else
                 return '0' + number;
         }
@@ -63,14 +64,14 @@ namespace BTool {
          *返回
                 是否正确转换
          ************************************************************************/
-        static inline void HexToString(const char* source, size_t len, unsigned char* num) {
+        static inline void HexToString(const char* source, size_t len, unsigned char* num, bool upper = true) {
             unsigned char highByte, lowByte;
             for (size_t i = 0; i < len; ++i) {
                 auto& byte = source[i];
                 highByte = (byte & 0xf0) >> 4;
                 lowByte = byte & 0x0f;
-                num[i*2] = get_number_to_byte(highByte);
-                num[i*2+1] = get_number_to_byte(lowByte);
+                num[i*2] = get_number_to_byte(highByte, upper);
+                num[i*2+1] = get_number_to_byte(lowByte, upper);
             }
         }
 
@@ -130,7 +131,7 @@ namespace BTool {
             BIO* bmem = BIO_new_mem_buf((void*)str.c_str(), (int)str.length());
             bmem = BIO_push(b64, bmem);
             buffer_len = BIO_read(bmem, decode, (int)str.length());
-            BIO_free_all(b64)
+            BIO_free_all(b64);
             return true;
         }
 
@@ -181,4 +182,5 @@ namespace BTool {
             }
             return src_len - (size_t)src_buff[src_len - 1];
         }
-};
+    };
+}

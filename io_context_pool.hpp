@@ -92,7 +92,7 @@ namespace BTool
             if (pool_size == 0)
                 pool_size = boost::thread::hardware_concurrency();
 
-            if (pool_size > (int)m_bind_cores.size()) {
+            if (!m_bind_cores.empty() && pool_size > (int)m_bind_cores.size()) {
                 return false;
             }
 
@@ -259,7 +259,7 @@ namespace BTool
             if (pool_size == 0)
                 pool_size = boost::thread::hardware_concurrency();
 
-            if (pool_size > (int)m_bind_cores.size()) {
+            if (!m_bind_cores.empty() && pool_size > (int)m_bind_cores.size()) {
                 return false;
             }
 

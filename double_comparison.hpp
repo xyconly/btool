@@ -1,0 +1,56 @@
+#ifndef DOUBLE_COMPARISON_MACROS
+#define DOUBLE_COMPARISON_MACROS
+
+#include <cmath>
+#define DOUBLE_COMPARISON_BASE 1e-8
+
+#ifndef DOUBLE_EQUAL
+# define DOUBLE_EQUAL(a, b) ((a) - (b) < DOUBLE_COMPARISON_BASE && (b) - (a) < DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_NOT_EQUAL
+# define DOUBLE_NOT_EQUAL(a, b) ((a) - (b) >= DOUBLE_COMPARISON_BASE || (b) - (a) >= DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_GREATER
+# define DOUBLE_GREATER(a, b) ((a) - (b) >= DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_LESS
+# define DOUBLE_LESS(a, b) ((a) - (b) <= -DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_GREATER_OR_EQUAL
+# define DOUBLE_GREATER_OR_EQUAL(a, b) ((a) - (b) > -DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_LESS_OR_EQUAL
+# define DOUBLE_LESS_OR_EQUAL(a, b) ((a) - (b) < DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_GREATER_OR_EQUAL_ZERO
+# define DOUBLE_GREATER_OR_EQUAL_ZERO(a) ((a) > -DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_LESS_OR_EQUAL_ZERO
+# define DOUBLE_LESS_OR_EQUAL_ZERO(a) ((a) < DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_GREATER_ZERO
+# define DOUBLE_GREATER_ZERO(a) ((a) > DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_LESS_ZERO
+# define DOUBLE_LESS_ZERO(a) ((a) < -DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_EQUAL_ZERO
+# define DOUBLE_EQUAL_ZERO(a) ((a) < DOUBLE_COMPARISON_BASE && (a) > -DOUBLE_COMPARISON_BASE)
+#endif
+
+#ifndef DOUBLE_NOT_EQUAL_ZERO
+# define DOUBLE_NOT_EQUAL_ZERO(a) ((a) > DOUBLE_COMPARISON_BASE || (a) < -DOUBLE_COMPARISON_BASE)
+#endif
+
+
+#endif // DOUBLE_COMPARISON_MACROS

@@ -132,6 +132,23 @@ extern "C" {
 // for mac
 #include <Iphlpapi.h>
 #include <Assert.h>
+
+#ifndef LOAD_LIBRARY
+# define LOAD_LIBRARY(lib) LoadLibrary(lib)
+#endif
+#ifndef GET_LIBRARY_SYMBOL
+# define GET_LIBRARY_SYMBOL(lib, func) GetProcAddress((HMODULE)(lib), func)
+#endif
+#ifndef CLOSE_LIBRARY
+# define CLOSE_LIBRARY(lib) FreeLibrary((HMODULE)(lib))
+#endif
+#ifndef LIB_HANDLE
+# define LIB_HANDLE HMODULE
+#endif
+#ifndef EXPORT_LIBRARY_SYMBOL
+# define EXPORT_LIBRARY_SYMBOL __declspec(dllexport)
+#endif
+
 #pragma comment(lib, "iphlpapi.lib")
 class CommonOS
 {
@@ -227,6 +244,24 @@ public:
 #include <stdlib.h>
 #include <termios.h>
 #include <string.h>
+
+#include <dlfcn.h>
+#ifndef LOAD_LIBRARY
+# define LOAD_LIBRARY(lib) dlopen(lib, RTLD_LAZY | RTLD_LOCAL)
+# define LOAD_LIBRARY_GLOBAL(lib) dlopen(lib, RTLD_LAZY | RTLD_GLOBAL)
+#endif
+#ifndef GET_LIBRARY_SYMBOL
+# define GET_LIBRARY_SYMBOL(lib, func) dlsym(lib, func)
+#endif
+#ifndef CLOSE_LIBRARY
+# define CLOSE_LIBRARY(lib) dlclose(lib)
+#endif
+#ifndef LIB_HANDLE
+# define LIB_HANDLE void*
+#endif
+#ifndef EXPORT_LIBRARY_SYMBOL
+# define EXPORT_LIBRARY_SYMBOL __attribute__((visibility("default")))
+#endif
 
 class CommonOS
 {

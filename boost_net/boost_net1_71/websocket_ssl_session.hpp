@@ -64,8 +64,8 @@ namespace BTool
 
             enum {
                 NOLIMIT_WRITE_BUFFER_SIZE = 0, // 无限制
-                MAX_WRITE_BUFFER_SIZE = 30000,
-                MAX_READSINGLE_BUFFER_SIZE = 20000,
+                MAX_WRITE_BUFFER_SIZE = 100*1024*1024,
+                MAX_READSINGLE_BUFFER_SIZE = 100*1024*1024,
             };
 
         public:
@@ -345,6 +345,14 @@ namespace BTool
 
                 if (!m_atomic_switch.init())
                     return;
+
+                // 使用 OpenSSL 设置 SNI
+                SSL* ssl = m_socket.next_layer().native_handle();
+                if (!SSL_set_tlsext_host_name(ssl, m_connect_ip.c_str())) {
+                    boost::system::error_code sni_ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+                    close(sni_ec);
+                    return;
+                }
 
                 m_socket.set_option(
                     boost::beast::websocket::stream_base::timeout::suggested(

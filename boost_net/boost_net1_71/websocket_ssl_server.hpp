@@ -96,6 +96,10 @@ namespace BTool
 
             void set_binary(bool b = true) {
                 m_use_binary = b;
+                std::lock_guard<std::mutex> lock(m_mutex);
+                for (auto& item : m_sessions) {
+                    item->second->set_binary(b);
+                }
             }
 
             // 阻塞式启动服务,使用join_all等待
