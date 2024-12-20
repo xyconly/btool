@@ -3,7 +3,7 @@ File name:  file_system.hpp
 Author:
 Version:
 Date:
-Description:    windowsÎÄ¼şÏµÍ³²Ù×÷Àà,ÆäËûÏµÍ³ºóÆÚÊµÏÖ
+Description:    windowsæ–‡ä»¶ç³»ç»Ÿæ“ä½œç±»,å…¶ä»–ç³»ç»ŸåæœŸå®ç°
 *************************************************/
 #pragma once
 #include <tuple>
@@ -30,8 +30,8 @@ namespace BTool {
         FileSystem() {}
         ~FileSystem() {}
 
-        // ´´½¨Ä¿Â¼¼°×ÓÄ¿Â¼
-        // folder: ¿ÉÒÔÊÇÔËĞĞÊ±Ïà¶ÔÄ¿Â¼
+        // åˆ›å»ºç›®å½•åŠå­ç›®å½•
+        // folder: å¯ä»¥æ˜¯è¿è¡Œæ—¶ç›¸å¯¹ç›®å½•
         static bool CreateDir(const std::string& folder) {
             std::string folder_builder;
             std::string sub;
@@ -59,7 +59,7 @@ namespace BTool {
             return true;
         }
 
-        // É¾³ıÎÄ¼ş
+        // åˆ é™¤æ–‡ä»¶
         static bool DeleteFile(const std::string& file_name) {
             return std::remove(file_name.c_str()) == 0;
         }
@@ -78,8 +78,8 @@ namespace BTool {
             return pBuf;
         }
 
-        // fullFilePath: ÎÄ¼şÃûÈ«Â·¾¶, ÎÄ¼ş²»´æÔÚÊÇ´´½¨ÎÄ¼ş
-        // isOver: ÊÇ·ñÒÔ¸²¸ÇĞÎÊ½Ğ´ÈëÎÄ¼ş,Ä¬ÈÏÒÔ×·¼ÓĞÎÊ½¼ÓÈë
+        // fullFilePath: æ–‡ä»¶åå…¨è·¯å¾„, æ–‡ä»¶ä¸å­˜åœ¨æ˜¯åˆ›å»ºæ–‡ä»¶
+        // isOver: æ˜¯å¦ä»¥è¦†ç›–å½¢å¼å†™å…¥æ–‡ä»¶,é»˜è®¤ä»¥è¿½åŠ å½¢å¼åŠ å…¥
         static bool WriteToFile(const char* fullFilePath, const char* msg, size_t len, bool isOver = false)
         {
             HANDLE hFile = CreateFileA(
@@ -94,7 +94,7 @@ namespace BTool {
 
             if (hFile == INVALID_HANDLE_VALUE)
             {
-                CloseHandle(hFile);        //Ò»¶¨×¢ÒâÔÚº¯ÊıÍË³öÖ®Ç°¶Ô¾ä±ú½øĞĞÊÍ·Å¡£
+                CloseHandle(hFile);        //ä¸€å®šæ³¨æ„åœ¨å‡½æ•°é€€å‡ºä¹‹å‰å¯¹å¥æŸ„è¿›è¡Œé‡Šæ”¾ã€‚
                 return false;
             }
 
@@ -126,7 +126,6 @@ namespace BTool {
 #include <sys/types.h>
 #include <dirent.h>
 #include <linux/limits.h>
-#include "boost_net/memory_stream.hpp"
 
 namespace BTool {
 
@@ -194,10 +193,10 @@ namespace BTool {
             int endCmpPath;
             int pathLen = path.length();
             char currentPath[PATH_MAX] = { 0 };
-            //Ïà¶ÔÂ·¾¶
+            //ç›¸å¯¹è·¯å¾„
             if ('/' != path[0])
             {
-                //»ñÈ¡µ±Ç°Â·¾¶
+                //è·å–å½“å‰è·¯å¾„
                 char* tmp = getcwd(currentPath, sizeof(currentPath));
                 if (!tmp) return false;
                 strcat(currentPath, "/");
@@ -211,7 +210,7 @@ namespace BTool {
             }
             else
             {
-                //¾ø¶ÔÂ·¾¶
+                //ç»å¯¹è·¯å¾„
                 strcpy(currentPath, path.c_str());
                 if (path[pathLen] != '/')
                 {
@@ -220,7 +219,7 @@ namespace BTool {
                 beginCmpPath = 1;
                 endCmpPath = strlen(currentPath);
             }
-            //´´½¨¸÷¼¶Ä¿Â¼
+            //åˆ›å»ºå„çº§ç›®å½•
             for (int i = beginCmpPath; i < endCmpPath; i++)
             {
                 if ('/' == currentPath[i])
@@ -245,11 +244,11 @@ namespace BTool {
             return "";
         }
 
-        // »ñÈ¡ÎÄ¼ş¼ĞÏÂËùÓĞµÄÎÄ¼şÃû, ²»°üº¬µİ¹é»ñÈ¡
+        // è·å–æ–‡ä»¶å¤¹ä¸‹æ‰€æœ‰çš„æ–‡ä»¶å, ä¸åŒ…å«é€’å½’è·å–
         static std::tuple<bool, std::vector<std::string>> GetDirectFile(const std::string& path)
         {
             std::vector<std::string> result;
-            DIR* directory = opendir(path.c_str()); // ´ò¿ªÄ¿Â¼
+            DIR* directory = opendir(path.c_str()); // æ‰“å¼€ç›®å½•
             if (directory == nullptr) {
                 return std::forward_as_tuple(false, result);
             }
@@ -266,7 +265,7 @@ namespace BTool {
             return std::forward_as_tuple(true, result);
         }
 
-        // ¶¨ÒåÒ»¸öµİ¹éº¯Êı£¬ÓÃÓÚ»ñÈ¡Ö¸¶¨Â·¾¶ÏÂµÄËùÓĞÎÄ¼şºÍÄ¿Â¼
+        // å®šä¹‰ä¸€ä¸ªé€’å½’å‡½æ•°ï¼Œç”¨äºè·å–æŒ‡å®šè·¯å¾„ä¸‹çš„æ‰€æœ‰æ–‡ä»¶å’Œç›®å½•
         static bool GetFilesRecursively(const std::string& path, std::vector<std::string>& fileList) {
             DIR* dir = opendir(path.c_str());
             if (dir == nullptr) {
@@ -282,10 +281,10 @@ namespace BTool {
                     struct stat statbuf;
                     if (stat(fullPath.c_str(), &statbuf) != -1) {
                         if (S_ISDIR(statbuf.st_mode)) {
-                            // Èç¹ûÊÇÄ¿Â¼£¬Ôòµİ¹é±éÀú
+                            // å¦‚æœæ˜¯ç›®å½•ï¼Œåˆ™é€’å½’éå†
                             GetFilesRecursively(fullPath, fileList);
                         } else {
-                            // Èç¹ûÊÇÎÄ¼ş£¬ÔòÌí¼Óµ½ÎÄ¼şÁĞ±íÖĞ
+                            // å¦‚æœæ˜¯æ–‡ä»¶ï¼Œåˆ™æ·»åŠ åˆ°æ–‡ä»¶åˆ—è¡¨ä¸­
                             fileList.push_back(fullPath);
                         }
                     }
@@ -295,328 +294,6 @@ namespace BTool {
             return true;
         }
         
-    };
-
-    class BatchWriter {
-    public:
-        // over_write: ÊÇ·ñ¸²¸ÇÔ­ÎÄ¼ş
-        // realtime_flush: ÊÇ·ñÊµÊ±Ë¢ĞÂ
-        BatchWriter(const std::string& filename, bool over_write = true, bool realtime_flush = false, size_t buffer_size = 8192)
-            : m_file(nullptr)
-            , m_realtime_flush(realtime_flush)
-            , m_buffer(buffer_size + 1024)
-            , m_buffer_size(buffer_size)
-        {
-            if (over_write) {
-                m_file = std::fopen(filename.c_str(), "wb");
-            }
-            else {
-                m_file = std::fopen(filename.c_str(), "ab");
-                std::fseek(m_file, 0, SEEK_END);
-            }
-
-            if (!m_file) {
-                std::cerr << "Error opening file for writing!file:" << filename << std::endl;
-            }
-        }
-
-        ~BatchWriter() {
-            if (m_file) {
-                flush();
-                std::fclose(m_file);
-            }
-        }
-
-        // ¶ÁÈ¡×îºó n ¸ö×Ö·û
-        static std::string ReadLastByte(const std::string& filename, size_t len)
-        {
-            std::string ret;
-            FILE* file = std::fopen(filename.c_str(), "rb"); // ´ò¿ªÎÄ±¾ÎÄ¼ş
-            if (file == nullptr) 
-                return ret;
-
-            // È·¶¨ÎÄ¼şµÄ´óĞ¡
-            fseek(file, 0, SEEK_END);
-            long fileSize = ftell(file);
-
-            // ¼ÆËãÒª¶ÁÈ¡µÄ×Ö·ûµÄÆğÊ¼Î»ÖÃ
-            long startPos = fileSize - len;
-
-            // ¼ì²é startPos ÊÇ·ñÎª¸ºÊı£¬Èç¹ûÊÇ£¬ÔòÉèÖÃÎª 0
-            if (startPos < 0) {
-                startPos = 0;
-            }
-
-            // ÉèÖÃÎÄ¼şÖ¸Õëµ½ÆğÊ¼Î»ÖÃ
-            std::fseek(file, startPos, SEEK_SET);
-            // ¶ÁÈ¡ n ¸ö×Ö·û
-            char* lastNChars = (char*)malloc(len + 1); // +1 ÓÃÓÚÖÕÖ¹ null ×Ö·û
-            if (lastNChars != NULL) {
-                std::fread(lastNChars, 1, len, file);
-                lastNChars[len] = '\0'; // Ìí¼Ó null ÖÕÖ¹·ûÒÔ´´½¨ C ×Ö·û´®
-                ret = std::string(lastNChars, len);
-                std::free(lastNChars); // ÊÍ·ÅÄÚ´æ
-            }
-
-            std::fclose(file); // ¹Ø±ÕÎÄ¼ş
-            return ret;
-        }
-
-        bool empty() const {
-            return std::ftell(m_file) == 0;
-        }
-
-        void reset_flush(bool realtime_flush) {
-            m_realtime_flush = realtime_flush;
-        }
-
-        template<typename Type>
-        void write(Type&& data) {
-            m_buffer.append(std::forward<Type>(data));
-            if (m_buffer.length() >= m_buffer_size) {
-                flush();
-            }
-        }
-
-        void write_string(const char* data) {
-            write((const void*)data, strlen(data));
-        }
-        void write_string(const std::string& data) {
-            write((const void*)data.data(), data.length());
-        }
-
-        void write_string_line(const char* data) {
-            write_line((const void*)data, strlen(data));
-        }
-        void write_string_line(const std::string& data) {
-            write_line((const void*)data.data(), data.length());
-        }
-
-        void write(const void* buffer, size_t len) {
-            m_buffer.append(buffer, len);
-            if (m_realtime_flush || m_buffer.length() >= m_buffer_size) {
-                flush();
-            }
-        }
-
-        void write_line(const void* buffer, size_t len) {
-            m_buffer.append(buffer, len);
-            m_buffer.append("\n", 1);
-            if (m_realtime_flush || m_buffer.length() >= m_buffer_size) {
-                flush();
-            }
-        }
-
-        void flush() {
-            if (!m_buffer.empty()) {
-                std::fwrite(m_buffer.data(), sizeof(char), m_buffer.size(), m_file);
-                std::fflush(m_file);
-                m_buffer.clear();
-            }
-        }
-
-        template<typename Type>
-        void write_now(Type&& data) {
-            std::fwrite((const char*)(&data), sizeof(char), sizeof(Type), m_file);
-        }
-
-        void write_now(const void* buffer, size_t len) {
-            std::fwrite((const char*)buffer, sizeof(char), len, m_file);
-        }
-    private:
-        FILE*                   m_file;
-        bool                    m_realtime_flush;
-        BTool::MemoryStream     m_buffer;
-        size_t                  m_buffer_size;
-    };
-
-    class ShmReaderWriter {
-    public:
-        enum RWType { READER = O_RDONLY, WRITER = O_RDWR, READER_WRITER = WRITER };
-
-        // exit_unlink: ÍË³öÊ±×Ô¶¯¹Ø±Õ¹²ÏíÄÚ´æ
-        ShmReaderWriter(RWType type, bool exit_unlink = false)
-            : m_type(type)
-            , m_shm_size(0)
-            , m_exit_unlink(exit_unlink)
-            , m_shm_fd(-1)
-            , m_shm_ptr(MAP_FAILED)
-        {
-            switch (type)
-            {
-            case RWType::READER:
-                m_mmap_type = PROT_READ;
-                break;
-            case RWType::READER_WRITER:
-                m_mmap_type = PROT_READ | PROT_WRITE;
-                break;
-            default:
-                throw std::invalid_argument("Invalid RWType");
-            }
-        }
-
-        ~ShmReaderWriter() {
-            close_and_unmap();
-            if (m_exit_unlink) {
-                unlink();
-            }
-        }
-
-        // ³õÊ¼»¯
-        // shm_name: ¹²ÏíÄÚ´æÃû
-        // force_create: µ±²»´æÔÚÊ±ÊÇ·ñÇ¿ÖÆ´´½¨
-        // shm_size Îª0 ±íÊ¾ÖØĞÂ¶ÁÈ¡¹²ÏíÄÚ´æ´óĞ¡
-        // shm_size ²»Îª0ÔòÖ±½Ó¸Ä±ä´óĞ¡
-        // default_value: ²»´æÔÚÊ±µÄÄ¬ÈÏÄÚ´æ
-        bool init(const std::string& shm_name, bool force_create = false, size_t shm_size = 0, const void* default_value = nullptr) {
-            m_shm_fd = shm_open(shm_name.c_str(), m_type, 0666);
-            if (m_shm_fd == -1) {
-                // ·ÇÇ¿ÖÆ´´½¨ÔòÖ±½ÓÍË³ö
-                if (!force_create || shm_size == 0)
-                    return false;
-
-                // ´´½¨¹²ÏíÄÚ´æ²¢ÉèÖÃ³õÊ¼´óĞ¡
-                m_shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
-                if (m_shm_fd == -1) {
-                    // std::cerr << "Failed to create shared memory\n";
-                    return false;
-                }
-                if (ftruncate(m_shm_fd, shm_size) == -1) {
-                    close(m_shm_fd);
-                    m_shm_fd = -1;
-                    return false;
-                }
-                // Ó³Éä¹²ÏíÄÚ´æ²¢Ğ´ÈëÄ¬ÈÏÖµ
-                void* ptr = mmap(0, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_shm_fd, 0);
-                if (ptr == MAP_FAILED) {
-                    close(m_shm_fd);
-                    m_shm_fd = -1;
-                    // std::cerr << "Failed to map shared memory\n";
-                    return false;
-                }
-                if (default_value) {
-                    memcpy(ptr, default_value, shm_size);
-                } else {
-                    memset(ptr, 0, shm_size);
-                }
-                munmap(ptr, shm_size);
-            }
-            else if (shm_size > 0) {
-                // ÖØĞÂÓ³Éä¹²ÏíÄÚ´æÓÃÏÖÔÚµÄshm_size
-                size_t existing_size = get_shared_memory_size(m_shm_fd);
-                if (shm_size != existing_size) {
-                    if (ftruncate(m_shm_fd, shm_size) == -1) {
-                        close(m_shm_fd);
-                        m_shm_fd = -1;
-                        return false;
-                    }
-                }
-            }
-
-            m_shm_name = shm_name;
-            
-            if (shm_size == 0) {
-                shm_size = get_shared_memory_size(m_shm_fd);
-            }
-            m_shm_size = shm_size;
-
-            m_shm_ptr = mmap(0, m_shm_size, m_mmap_type, MAP_SHARED, m_shm_fd, 0);
-            if (m_shm_ptr == MAP_FAILED) {
-                // std::cerr << "Failed to map shared memory\n";
-                close(m_shm_fd);
-                m_shm_fd = -1;
-                return false;
-            }
-            return true;
-        }
-
-        // shm_size Îª0 ±íÊ¾ÖØĞÂ¶ÁÈ¡¹²ÏíÄÚ´æ´óĞ¡
-        // shm_size ²»Îª0ÔòÖ±½Ó¸Ä±ä´óĞ¡
-        bool resize(size_t shm_size = 0) {
-            if (shm_size == 0) {
-                shm_size = get_shared_memory_size(m_shm_fd);
-            }
-
-            if (shm_size == m_shm_size) {
-                return true;
-            }
-
-            if (ftruncate(m_shm_fd, shm_size) == -1) {
-                // std::cerr << "Failed to resize shared memory\n";
-                return false;
-            }
-            if (munmap(m_shm_ptr, m_shm_size) == -1) {
-                // std::cerr << "Failed to unmap shared memory\n";
-                return false;
-            }
-            m_shm_ptr = mmap(0, shm_size, m_mmap_type, MAP_SHARED, m_shm_fd, 0);
-            if (m_shm_ptr == MAP_FAILED) {
-                // std::cerr << "Failed to map shared memory\n";
-                throw std::runtime_error("Failed to map shared memory!");
-                return false;
-            }
-            m_shm_size = shm_size;
-            return true;
-        }
-
-        void* read() {
-            if (m_shm_fd == -1 || m_shm_ptr == MAP_FAILED)
-                return nullptr;
-
-            return m_shm_ptr;
-        }
-
-        bool write(const void* data, size_t size) {
-            if (m_type == READER || m_shm_fd == -1 || m_shm_ptr == MAP_FAILED) return false;
-            if (size > m_shm_size) return false;
-            memcpy(m_shm_ptr, data, size);
-            return true;
-        }
-
-        void unlink() {
-            if (!m_shm_name.empty())
-                shm_unlink(m_shm_name.c_str());
-        }
-
-        void close_and_unmap() {
-            if (m_shm_ptr != MAP_FAILED) {
-                munmap(m_shm_ptr, m_shm_size);
-                m_shm_ptr = MAP_FAILED;
-            }
-            if (m_shm_fd != -1) {
-                close(m_shm_fd);
-                m_shm_fd = -1;
-            }
-        }
-        
-    private:
-        static size_t get_shared_memory_size(int shm_fd) {
-            struct stat shm_stat;
-            if (fstat(shm_fd, &shm_stat) == -1) {
-                // std::cerr << "Failed to get shared memory size\n";
-                return 0;
-            }
-            return shm_stat.st_size;
-        }
-
-
-    private:
-        // ¶ÁĞ´ÀàĞÍ
-        RWType              m_type;
-        // mmapÓ³Éä¸ñÊ½
-        int                 m_mmap_type;
-        // ¹²ÏíÄÚ´æÃû
-        std::string         m_shm_name;
-        // ¹²ÏíÄÚ´æ´óĞ¡
-        size_t              m_shm_size;
-        // ÍË³öÊ±×Ô¶¯¹Ø±Õ¹²ÏíÄÚ´æ
-        bool                m_exit_unlink;
-        // ¹²ÏíÄÚ´æÎÄ¼ş¾ä±ú
-        int                 m_shm_fd;
-        // ¹²ÏíÄÚ´æÖ¸Õë
-        void*               m_shm_ptr;
-
-        char*               m_buffer = nullptr;
     };
 
 }

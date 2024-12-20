@@ -661,6 +661,12 @@ namespace BTool {
             m_minute = minute;
             m_second = second;
         }
+        void set_time_tdms(long long msecs) {
+            m_hour = msecs / (60 * 60 * 1000);
+            m_minute = (msecs % (60 * 60 * 1000) / (60 * 1000));
+            m_second = (msecs / 1000) % 60;
+            m_millsecond = msecs % 1000;
+        }
 
         // 增加天数
         // 无效或不包含DTS_YMD时,无变化
@@ -678,6 +684,12 @@ namespace BTool {
             if (!isvalid())
                 return;
             *this = get_add_second(secs);
+            m_day_of_week = UNDEFINE;
+        }
+        void add_millsecond(long long msecs) {
+            if (!isvalid())
+                return;
+            *this = get_add_millsecond(msecs);
             m_day_of_week = UNDEFINE;
         }
 
@@ -884,6 +896,14 @@ namespace BTool {
         // style必须包含DTS_HMS,否则无效
         int to_int_time() const {
             return m_hour * 10000 + m_minute * 100 + m_second;
+        }
+
+        // 返回当前时间
+        // 格式:hhmmssmmm
+        // 无效返回-1
+        // style必须包含DTS_HMS,否则无效
+        int to_int_time_ms() const {
+            return m_hour * 10000000 + m_minute * 100000 + m_second * 1000 + m_millsecond;
         }
 
         // 返回当前时间
