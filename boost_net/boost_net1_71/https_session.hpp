@@ -744,13 +744,19 @@ namespace BTool
             void close(const boost::beast::error_code& ec, bool callback = true)
             {
                 boost::beast::error_code ignored_ec;
-                m_stream.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+                auto& lowest_layer = m_stream.lowest_layer();
+                lowest_layer.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
                 if(m_atomic_switch.has_init()) {
-                    m_stream.lowest_layer().cancel();
-                    m_stream.lowest_layer().close();
-                    boost::beast::get_lowest_layer(m_stream).socket().close(ignored_ec);
+                    auto ssl_handle = m_stream.native_handle();
+                    if (ssl_handle != nullptr) {
+                        SSL_clear(ssl_handle);
+                    }
+                    lowest_layer.cancel(ignored_ec);
+                    if (lowest_layer.is_open()) {
+                        lowest_layer.close(ignored_ec);
+                        boost::beast::get_lowest_layer(m_stream).socket().close(ignored_ec);
+                    }
                 }
-                SSL_clear(m_stream.native_handle());
 
                 m_read_buf.consume(m_read_buf.size());
                 m_atomic_switch.reset();

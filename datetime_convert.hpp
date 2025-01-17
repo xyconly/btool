@@ -82,28 +82,16 @@ namespace BTool {
             DTS_ALL = 0xFF,
         };
 
-        DateTimeConvert()
-            : m_style(DTS_Invlid)
-            , m_day_of_week(UNDEFINE)
-            , m_isvalid(false)
-            , m_year(0)
-            , m_month(1)
-            , m_day(1)
-            , m_hour(0)
-            , m_minute(0)
-            , m_second(0)
-            , m_millsecond(0)
-            , m_microsecond(0)
-        {
-        }
+        DateTimeConvert() {}
 
         // 按字符形式转换,格式参考DateTimeKind
         // 目前仅支持DTK_Local以及DTK_KLine
-        explicit DateTimeConvert(const char* dt, DateTimeStyle style = DTS_ALL, DateTimeKind kind = DTK_Local)
-            : m_style(style)
-            , m_day_of_week(UNDEFINE)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromString(const char* dt, const DateTimeStyle& style = DTS_ALL, const DateTimeKind& kind = DTK_Local)
         {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+            
             char tmp[5] = { 0 };
             int offset(0);
 
@@ -114,7 +102,7 @@ namespace BTool {
                 else if (kind == DTK_KLine)
                     offset += 4;
 
-                m_year = atoi(tmp);
+                ret.m_year = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_Month) {
@@ -124,13 +112,13 @@ namespace BTool {
                 else if (kind == DTK_KLine)
                     offset += 2;
 
-                m_month = atoi(tmp);
+                ret.m_month = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_Day) {
                 memcpy(tmp, dt + offset, 2);
                 offset += 3;
-                m_day = atoi(tmp);
+                ret.m_day = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_Hour) {
@@ -139,7 +127,7 @@ namespace BTool {
                     offset += 3;
                 else if (kind == DTK_KLine)
                     offset += 2;
-                m_hour = atoi(tmp);
+                ret.m_hour = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_Min) {
@@ -148,7 +136,7 @@ namespace BTool {
                     offset += 3;
                 else if (kind == DTK_KLine)
                     offset += 2;
-                m_minute = atoi(tmp);
+                ret.m_minute = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_Sec) {
@@ -157,7 +145,7 @@ namespace BTool {
                     offset += 3;
                 else if (kind == DTK_KLine)
                     offset += 3;
-                m_second = atoi(tmp);
+                ret.m_second = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_mSec) {
@@ -166,210 +154,191 @@ namespace BTool {
                     offset += 4;
                 else if (kind == DTK_KLine)
                     offset += 4;
-                m_millsecond = atoi(tmp);
+                ret.m_millsecond = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             if (style & DTS_uSec) {
                 memcpy(tmp, dt + offset, 3);
-                m_microsecond = atoi(tmp);
+                ret.m_microsecond = atoi(tmp);
                 memset(tmp, 0, 5);
             }
             
-            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            ret.m_isvalid &= ret.check_dt_valid();
+            return ret;
         }
 
         // 按年月日时分秒的顺序,依据DateTimeStyle进行赋值,参数为int型
-        explicit DateTimeConvert(DateTimeStyle style, int date_time, ...)
-            : m_style(style)
-            , m_day_of_week(UNDEFINE)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromInt(const DateTimeStyle& style, int date_time, ...)
         {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+
             int cur_param = date_time;
 
             va_list args;
             va_start(args, date_time);
 
             if (style & DTS_Year) {
-                m_year = cur_param;
+                ret.m_year = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_Month) {
-                m_month = cur_param;
+                ret.m_month = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_Day) {
-                m_day = cur_param;
+                ret.m_day = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_Hour) {
-                m_hour = cur_param;
+                ret.m_hour = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_Min) {
-                m_minute = cur_param;
+                ret.m_minute = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_Sec) {
-                m_second = cur_param;
+                ret.m_second = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_mSec) {
-                m_millsecond = cur_param;
+                ret.m_millsecond = cur_param;
                 cur_param = va_arg(args, int);
             }
             if (style & DTS_uSec) {
-                m_microsecond = cur_param;
+                ret.m_microsecond = cur_param;
             }
 
             va_end(args);
             
-            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            ret.m_isvalid &= ret.check_dt_valid();
+            return ret;
         }
 
-        explicit DateTimeConvert(int date, int time, DateTimeStyle style = DTS_YMDHMS)
-            : m_style(style)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromIntDateTime(int date, int time, DateTimeStyle style = DTS_YMDHMS)
         {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+
             if (style & DTS_Year) {
-                m_year = date / 10000;
+                ret.m_year = date / 10000;
             }
             if (style & DTS_Month) {
-                m_month = (date % 10000) / 100;
+                ret.m_month = (date % 10000) / 100;
             }
             if (style & DTS_Day) {
-                m_day = date % 100;
+                ret.m_day = date % 100;
             }
 
             if (style & DTS_Hour) {
-                m_hour = time / 10000000;
+                ret.m_hour = time / 10000000;
             }
             if (style & DTS_Min) {
-                m_minute = (time % 10000000) / 100000;
+                ret.m_minute = (time % 10000000) / 100000;
             }
             if (style & DTS_Sec) {
-                m_second = (time % 100000) / 1000;
+                ret.m_second = (time % 100000) / 1000;
             }
             if (style & DTS_mSec) {
-                m_millsecond = time % 1000;
+                ret.m_millsecond = time % 1000;
             }
             
-            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            ret.m_isvalid &= ret.check_dt_valid();
+            return ret;
         }
 
-        explicit DateTimeConvert(int date, DateTimeStyle style = DTS_YMD)
-            : m_style(style)
-            , m_day_of_week(UNDEFINE)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromIntDate(int date, DateTimeStyle style = DTS_YMD)
         {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+
            if (style & DTS_Year) {
-                m_year = date / 10000;
+                ret.m_year = date / 10000;
             }
             if (style & DTS_Month) {
-                m_month = (date % 10000) / 100;
+                ret.m_month = (date % 10000) / 100;
             }
             if (style & DTS_Day) {
-                m_day = date % 100;
+                ret.m_day = date % 100;
             }
-            m_isvalid &= m_year >= 1900 && m_month > 0 && m_day > 0;
+            
+            ret.m_isvalid &= ret.check_dt_valid();
+            return ret;
         }
 
-        explicit DateTimeConvert(std::time_t dt, DateTimeStyle style = DTS_YMDHMS)
-            : m_style(style)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromStdTime(const std::time_t& dt, DateTimeStyle style = DTS_YMDHMS, int millsecond = 0, int microsecond = 0)
         {
-#ifdef __linux
             std::tm tp;
+#ifdef __linux
             localtime_r(&dt, &tp);
 #else
-            std::tm tp;
             localtime_s(&tp, &dt);
 #endif
-            if (style & DTS_Year) {
-                m_year = tp.tm_year + 1900;
-            }
-            if (style & DTS_Month) {
-                m_month = tp.tm_mon + 1;
-            }
-            if (style & DTS_Day) {
-                m_day = tp.tm_mday;
-            }
-            if (style & DTS_Hour) {
-                m_hour = tp.tm_hour;
-            }
-            if (style & DTS_Min) {
-                m_minute = tp.tm_min;
-            }
-            if (style & DTS_Sec) {
-                m_second = tp.tm_sec;
-            }
-            m_day_of_week = (DayOfWeek)tp.tm_wday;
-            m_isvalid &= m_day_of_week != UNDEFINE && m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            return FromStdTm(tp, style, millsecond, microsecond);
         }
 
-        explicit DateTimeConvert(const std::tm& dt, DateTimeStyle style = DTS_YMDHMS)
-            : m_style(style)
-            , m_day_of_week((DayOfWeek)dt.tm_wday)
-            , m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromUnixTime(const uint64_t& unix_dt)
         {
-            if (style & DTS_Year) {
-                m_year = dt.tm_year + 1900;
-            }
-            if (style & DTS_Month) {
-                m_month = dt.tm_mon + 1;
-            }
-            if (style & DTS_Day) {
-                m_day = dt.tm_mday;
-            }
-            if (style & DTS_Hour) {
-                m_hour = dt.tm_hour;
-            }
-            if (style & DTS_Min) {
-                m_minute = dt.tm_min;
-            }
-            if (style & DTS_Sec) {
-                m_second = dt.tm_sec;
-            }
-            m_isvalid &= m_day_of_week != UNDEFINE && m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            return FromStdTime(unix_dt, DTS_YMDHMS);
         }
 
-        explicit DateTimeConvert(const std::chrono::system_clock::time_point& dt, DateTimeStyle style = DTS_ALL)
-            : m_style(style), m_isvalid(style != DTS_Invlid)
+        static DateTimeConvert FromUnixTimeMs(const uint64_t& unix_dt)
         {
+            return FromStdTime(unix_dt / 1000, DTS_YMDHMS_M, unix_dt % 1000);
+        }
+
+        static DateTimeConvert FromStdTm(const std::tm& dt, DateTimeStyle style = DTS_YMDHMS, int millsecond = 0, int microsecond = 0)
+        {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+            
+            if (style & DTS_Year) {
+                ret.m_year = dt.tm_year + 1900;
+            }
+            if (style & DTS_Month) {
+                ret.m_month = dt.tm_mon + 1;
+            }
+            if (style & DTS_Day) {
+                ret.m_day = dt.tm_mday;
+            }
+            if (style & DTS_Hour) {
+                ret.m_hour = dt.tm_hour;
+            }
+            if (style & DTS_Min) {
+                ret.m_minute = dt.tm_min;
+            }
+            if (style & DTS_Sec) {
+                ret.m_second = dt.tm_sec;
+            }
+            ret.m_millsecond = millsecond;
+            ret.m_microsecond = microsecond;
+            ret.m_day_of_week = (DayOfWeek)dt.tm_wday;
+            ret.m_isvalid &= ret.m_day_of_week != UNDEFINE;
+            ret.m_isvalid &= ret.check_dt_valid();
+            return ret;
+        }
+
+        static DateTimeConvert FromTimePoint(const std::chrono::system_clock::time_point& dt, DateTimeStyle style = DTS_ALL)
+        {
+            DateTimeConvert ret;
+            ret.m_style = style;
+            ret.m_isvalid = style != DTS_Invlid;
+
             std::time_t time = std::chrono::system_clock::to_time_t(dt);
-#ifdef __linux
-            std::tm tp;
-            localtime_r(&time, &tp);
-#else
-            std::tm tp;
-            localtime_s(&tp, &time);
-#endif
-            if (style & DTS_Year) {
-                m_year = tp.tm_year + 1900;
-            }
-            if (style & DTS_Month) {
-                m_month = tp.tm_mon + 1;
-            }
-            if (style & DTS_Day) {
-                m_day = tp.tm_mday;
-            }
-            if (style & DTS_Hour) {
-                m_hour = tp.tm_hour;
-            }
-            if (style & DTS_Min) {
-                m_minute = tp.tm_min;
-            }
-            if (style & DTS_Sec) {
-                m_second = tp.tm_sec;
-            }
+
+            int millsecond(0), microsecond(0);
             if (style & DTS_mSec) {
-                m_millsecond = std::chrono::duration_cast<std::chrono::milliseconds>(dt.time_since_epoch()).count() % 1000;
+                millsecond = std::chrono::duration_cast<std::chrono::milliseconds>(dt.time_since_epoch()).count() % 1000;
             }
             if (style & DTS_uSec) {
-                m_microsecond = std::chrono::duration_cast<std::chrono::microseconds>(dt.time_since_epoch()).count() % 1000;
+                microsecond = std::chrono::duration_cast<std::chrono::microseconds>(dt.time_since_epoch()).count() % 1000;
             }
-            m_day_of_week = (DayOfWeek)tp.tm_wday;
-            
-            m_isvalid &= m_day_of_week != UNDEFINE && m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0;
+            return FromStdTime(time, style, millsecond, microsecond);
         }
 
     public:
@@ -591,14 +560,7 @@ namespace BTool {
     public:
         // 获取当前时间
         static DateTimeConvert GetCurrentSystemTime(DateTimeStyle style = DTS_ALL) {
-            if (style & (DTS_mSec | DTS_uSec)) {
-                std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-                DateTimeConvert rslt(std::chrono::system_clock::to_time_t(tp), style);
-                rslt.m_millsecond = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count() % 1000;
-                rslt.m_microsecond = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count() % 1000;
-                return rslt;
-            }
-            return DateTimeConvert(time(NULL), style);
+            return FromTimePoint(std::chrono::system_clock::now(), style);
         }
 
         // 获取两个指定日期间隔的天数
@@ -656,12 +618,14 @@ namespace BTool {
         }
 
         // 设置时分秒
-        void set_time(int hour, int minute, int second) {
+        void reset_time(int hour = 0, int minute = 0, int second = 0, int millsecond = 0, int microsecond = 0) {
             m_hour = hour;
             m_minute = minute;
             m_second = second;
+            m_millsecond = millsecond;
+            m_microsecond = microsecond;
         }
-        void set_time_tdms(long long msecs) {
+        void reset_time_tdms(long long msecs) {
             m_hour = msecs / (60 * 60 * 1000);
             m_minute = (msecs % (60 * 60 * 1000) / (60 * 1000));
             m_second = (msecs / 1000) % 60;
@@ -699,10 +663,7 @@ namespace BTool {
             if (!isvalid() || (m_style & DTS_YMD) != DTS_YMD)
                 return DateTimeConvert();
 
-            if ((m_style & DTS_YMD) == DTS_YMD)
-                return get_add_second(days * 24 * 60 * 60);
-
-            return DateTimeConvert(m_style, year(), month(), day(), hour(), minute(), second()).get_add_second(days * 24 * 60 * 60);
+            return get_add_second(days * 24 * 60 * 60);
         }
 
         // 返回漂移秒数后时间
@@ -710,28 +671,9 @@ namespace BTool {
         DateTimeConvert get_add_second(long long secs) const {
             if (!isvalid())
                 return DateTimeConvert();
-
             std::time_t ltime = to_time_t();
-
             ltime = ltime + secs;
-
-#ifdef __linux
-            std::tm tmcur;
-            localtime_r(&ltime, &tmcur);
-#else
-            std::tm tmcur;
-            localtime_s(&tmcur, &ltime);
-#endif
-            DateTimeConvert rslt(tmcur, m_style);
-            if (m_style & DTS_mSec) {
-                rslt.m_millsecond = m_millsecond;
-            }
-
-            if (m_style & DTS_uSec) {
-                rslt.m_microsecond = m_microsecond;
-            }
-
-            return rslt;
+            return FromStdTime(ltime, m_style);
         }
 
         // 返回漂移毫秒数后时间
@@ -740,30 +682,13 @@ namespace BTool {
             if (!isvalid())
                 return DateTimeConvert();
 
-            std::time_t ltime = to_time_t();
-
-            int res_millsec = millsecs % 1000 + m_millsecond;
+            int res_millsec = millsecs + m_millsecond;
             // int new_millsec = res_millsec % 1000;
-            long long secs(res_millsec / 1000 + millsecs / 1000);
+            int secs = res_millsec / 1000;
+            millsecs = millsecs % 1000;
+            std::time_t ltime = to_time_t();
             ltime = ltime + secs;
-
-#ifdef __linux
-            std::tm tmcur;
-            localtime_r(&ltime, &tmcur);
-#else
-            std::tm tmcur;
-            localtime_s(&tmcur, &ltime);
-#endif
-            DateTimeConvert rslt(tmcur, m_style);
-            if (m_style & DTS_mSec) {
-                rslt.m_millsecond = res_millsec;
-            }
-
-            if (m_style & DTS_uSec) {
-                rslt.m_microsecond = m_microsecond;
-            }
-
-            return rslt;
+            return FromStdTime(ltime, m_style, millsecs);
         }
 
         std::string to_local_string(DateTimeStyle style = DTS_YMDHMS) const {
@@ -875,11 +800,15 @@ namespace BTool {
         }
 
         // 返回当前时间
-        // 无效返回-1
-        // style必须包含DTS_YMDHMS,否则无效
         std::time_t to_time_t() const {
             std::tm tp = to_tm();
             return std::mktime(&tp);
+        }
+
+        // 返回当前时间
+        uint64_t to_unix_time_ms() const {
+            uint64_t time = to_time_t();
+            return time * 1000 + m_millsecond;
         }
 
         // 返回当前日期
@@ -1101,13 +1030,17 @@ namespace BTool {
             return UNDEFINE;
         }
 
+        bool check_dt_valid() const {
+            return m_year >= 1900 && m_month > 0 && m_day > 0 && m_hour >= 0 && m_minute >= 0 && m_second >= 0 && m_millsecond >= 0 && m_microsecond >= 0;
+        }
+
     private:
         // 包含时间字段
-        DateTimeStyle       m_style;
+        DateTimeStyle       m_style = DTS_Invlid;
 
-        mutable DayOfWeek   m_day_of_week;
+        mutable DayOfWeek   m_day_of_week = UNDEFINE;
 
-        bool                m_isvalid;
+        bool                m_isvalid = false;
         int                 m_year = 0;
         int                 m_month = 1;
         int                 m_day = 1;

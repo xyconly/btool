@@ -177,7 +177,7 @@ namespace BTool {
             return true;
         }
         static inline bool check_len(size_t len, AESBit bits) {
-            return len >= (bits / 8);
+            return len >= size_t(bits / 8);
         }
 
         static constexpr inline size_t get_blocksize(/*AESBit bits, Padding pad*/) {
@@ -247,8 +247,8 @@ namespace BTool {
                 if (bits != AES128)
                     return false;
                 {
-                    unsigned char ecount_buf[AES_BLOCK_SIZE] = { 0 };
-                    int number(0);
+                    // unsigned char ecount_buf[AES_BLOCK_SIZE] = { 0 };
+                    // int number(0);
 
                     //AES_ctr128_encrypt(src_buff, out_buff, src_len, &aes, tmp_iv, ecount_buf, (unsigned int*)&number);
                 }

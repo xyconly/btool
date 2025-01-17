@@ -17,7 +17,7 @@ namespace BTool
     template<class _Ty>
     class instance_base {
     public:
-        static _Ty* instance() {
+        static inline _Ty* instance() {
             static _Ty s_instance;
             return &s_instance;
         }

@@ -31,11 +31,12 @@ namespace BTool {
             ok = 0,
             unknow = -1,
             open_fail = -2,
-            close_fail = -3,
-            free_space_fail = -4,    // 剩余空间不足
-            mmap_fail = -5,
-            munmap_fail = -6,
-            ftruncate_fail = -7,
+            stat_fail = -3,
+            close_fail = -4,
+            free_space_fail = -5,    // 剩余空间不足
+            mmap_fail = -6,
+            munmap_fail = -7,
+            ftruncate_fail = -8,
         };
 
         // 错误信息
@@ -928,7 +929,7 @@ namespace BTool {
             };            
         };
        
-        // 提供基于动态长度写入的大内存, 文件长度固定, 完成时收缩
+        // 提供基于动态长度写入的大内存, 完成时需主动收缩
         class FixBuffer {
         protected:
     #pragma pack(push, 1)
@@ -949,6 +950,8 @@ namespace BTool {
                 ~Writer() { close(); }
 
                 error open(const std::string& file, size_t buffer_size, bool is_append = true) {
+                    m_is_shm = false;
+                    m_file_path = file;
                     bool is_create = false;
                     auto err = MMapFile::OpenWriteFile<false>(m_shm_fd, is_create, file, 0);
                     if (err) return err;
@@ -956,6 +959,8 @@ namespace BTool {
                 }
 
                 error shm_open(const std::string& title, size_t buffer_size, bool is_append = true) {
+                    m_is_shm = true;
+                    m_file_path = title;
                     bool is_create = false;
                     auto err = MMapFile::OpenWriteFile<true>(m_shm_fd, is_create, title, 0);
                     if (err) return err;
@@ -1008,6 +1013,15 @@ namespace BTool {
                     return error(error_t::ok);
                 }
                 
+                error add_file_len(const size_t& len) {
+                    size_t buffer_size = m_meta->file_size_ + len - sizeof(MetaSt);
+                    close();
+                    if (m_is_shm) {
+                        return shm_open(m_file_path, buffer_size, true);
+                    }
+                    return open(m_file_path, buffer_size, true);
+                }
+                
                 void add_write_len(const size_t& len) {
                     m_meta->write_len_ += len;
                 }
@@ -1042,15 +1056,26 @@ namespace BTool {
             protected:
                 error open_impl(bool is_create, size_t buffer_size, bool is_append) {
                     // 设置共享内存大小
-                    size_t shm_size = sizeof(MetaSt) + buffer_size;
-                    size_t real_buffer_size = shm_size & ~(sysconf(_SC_PAGE_SIZE) - 1);
+                    size_t page_size = sysconf(_SC_PAGE_SIZE);
+                    size_t shm_size = std::max(sizeof(MetaSt) + buffer_size, page_size);
+                    size_t real_file_size = shm_size & ~(page_size - 1);
 
-                    if (ftruncate(m_shm_fd, real_buffer_size) == -1) {
+                    // 非创建时获取文件实际大小与初始设定大小取最大值后映射
+                    if (!is_create) {
+                        struct stat shm_stat;
+                        if (::fstat(m_shm_fd, &shm_stat) == -1) {
+                            close();
+                            return create_error(error_t::stat_fail);
+                        }
+                        real_file_size = std::max((size_t)shm_stat.st_size, real_file_size);
+                    }
+
+                    if (ftruncate(m_shm_fd, real_file_size) == -1) {
                         return create_error(error_t::ftruncate_fail);
                     }
 
                     // 映射共享内存，确保映射整个内存区域
-                    void* addr = mmap(NULL, real_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_shm_fd, 0);
+                    void* addr = mmap(NULL, real_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, m_shm_fd, 0);
                     if (addr == MAP_FAILED) {
                         return create_error(error_t::mmap_fail);
                     }
@@ -1058,8 +1083,12 @@ namespace BTool {
                     // 获取映射的共享内存区域
                     m_meta = static_cast<MetaSt*>(addr);
                     if (is_create || !is_append) {
-                        *m_meta = MetaSt{false, 0, real_buffer_size};
+                        *m_meta = MetaSt{false, 0, real_file_size};
                     }
+                    else {
+                        m_meta->file_size_ = real_file_size;
+                    }
+                    m_meta->has_finished_ = false;
                     return error(error_t::ok);
                 }
 
@@ -1071,6 +1100,10 @@ namespace BTool {
             protected:
                 int             m_shm_fd = -1;       // 共享内存文件描述符
                 MetaSt*         m_meta = nullptr;    // 指向共享内存映射的元数据
+
+                bool            m_is_shm = false;
+                std::string     m_file_path;
+
             };
 
             // 非线程安全

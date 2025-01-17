@@ -39,6 +39,19 @@ namespace BTool
     class TaskQueue {
     public:
         typedef std::function<void()> TaskItem;
+        // class TaskItem {
+        // public:
+        //     template <typename TFunc>
+        //     TaskItem(TFunc&& func) : m_func(reinterpret_cast<void*>(new TFunc(std::forward<TFunc>(func)))), 
+        //                                 m_invoke([](void* f) { (*reinterpret_cast<TFunc*>(f))(); }),
+        //                                 m_destroy([](void* f) { delete reinterpret_cast<TFunc*>(f); }) {}
+        //     ~TaskItem() { m_destroy(m_func); }
+        //     void operator()() { m_invoke(m_func); }
+        // private:
+        //     void* m_func;
+        //     void (*m_invoke)(void*);
+        //     void (*m_destroy)(void*);
+        // };
     public:
         TaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
