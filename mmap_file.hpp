@@ -928,7 +928,7 @@ namespace BTool {
                 MetaSt      m_meta;
             };            
         };
-       
+
         // 提供基于动态长度写入的大内存, 完成时需主动收缩
         class FixBuffer {
         protected:

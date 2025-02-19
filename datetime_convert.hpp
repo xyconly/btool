@@ -217,7 +217,7 @@ namespace BTool {
             return ret;
         }
 
-        static DateTimeConvert FromIntDateTime(int date, int time, DateTimeStyle style = DTS_YMDHMS)
+        static DateTimeConvert FromIntDateTime(int date, int time, DateTimeStyle style = DTS_YMDHMS_M)
         {
             DateTimeConvert ret;
             ret.m_style = style;
@@ -562,6 +562,32 @@ namespace BTool {
         static DateTimeConvert GetCurrentSystemTime(DateTimeStyle style = DTS_ALL) {
             return FromTimePoint(std::chrono::system_clock::now(), style);
         }
+        static uint64_t GetCurrentUnixTimeMs() {
+            auto now = std::chrono::system_clock::now();
+            auto duration = now.time_since_epoch();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        }
+        // 获取时差
+        static int64_t GetUTCOffsetMs() {
+            static thread_local bool s_has_get = false;
+            static thread_local int64_t s_unix_time_adjusted = 0;
+            if (!s_has_get) {
+                std::time_t unix_time_utc = std::time(nullptr);
+                std::tm* local_tm = std::gmtime(&unix_time_utc);
+                std::time_t unix_time_local = std::mktime(local_tm);
+                s_unix_time_adjusted = (unix_time_local - unix_time_utc) * 1000;
+                s_has_get = true;
+            }
+            return s_unix_time_adjusted;
+        }
+        static uint64_t GetCurrentUTCTimeMs() {
+            auto now = std::chrono::system_clock::now();
+            auto duration = now.time_since_epoch();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() + GetUTCOffsetMs();
+        }
+        static DateTimeConvert GetCurrentUTCDateTime() {
+            return FromUnixTimeMs(GetCurrentUTCTimeMs());
+        }
 
         // 获取两个指定日期间隔的天数
         // 无效返回-1
@@ -809,6 +835,10 @@ namespace BTool {
         uint64_t to_unix_time_ms() const {
             uint64_t time = to_time_t();
             return time * 1000 + m_millsecond;
+        }
+        // 返回当天的毫秒时间
+        uint32_t to_today_ms() const {
+            return m_hour * 3600000 + m_minute * 60000 + m_second * 1000 + m_millsecond;
         }
 
         // 返回当前日期
