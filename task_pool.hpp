@@ -36,7 +36,7 @@ namespace BTool {
     public:
         // 开启线程池
         // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
-        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
+        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 1) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
 
@@ -83,7 +83,7 @@ namespace BTool {
         // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
         // thread_num: 重置线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
         // 注意:必须开启线程池后方可生效
-        void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
+        void reset_thread_num(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 1) {
             if (!m_atomic_switch.has_started())
                 return;
 
@@ -93,9 +93,6 @@ namespace BTool {
 
     protected:
         // crtp实现
-        void pop_task_inner() {
-            static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
-        }
         void pop_task_inner_impl() {
             m_task_queue.pop_task();
         }
@@ -135,7 +132,7 @@ namespace BTool {
                 if (thread_ver < m_cur_thread_ver.load())
                     break;
 
-                pop_task_inner();
+                static_cast<TCrtpImpl*>(this)->pop_task_inner_impl();
             }
         }
 
@@ -333,21 +330,28 @@ namespace BTool {
     4, 实时性:只要线程池线程有空闲的,那么提交任务后必须立即执行;尽可能提高线程的利用率。
     5. 提供可扩展或缩容线程池数量功能。
     *************************************************/
-    template<typename TPropType>
+    template<typename TPropType, typename TTaskQueueType = SerialTaskQueue<TPropType>>
     class SerialTaskPool
-        : public TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>
+        : public TaskPoolBase<SerialTaskPool<TPropType, TTaskQueueType>, TTaskQueueType>
     {
-        friend class TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>;
+        friend class TaskPoolBase<SerialTaskPool<TPropType, TTaskQueueType>, TTaskQueueType>;
+
     public:
         // 具有相同属性任务串行有序执行的线程池
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         SerialTaskPool(size_t max_task_count = 0)
-            : TaskPoolBase<SerialTaskPool<TPropType>, SerialTaskQueue<TPropType>>(max_task_count)
+            : TaskPoolBase<SerialTaskPool<TPropType, TTaskQueueType>, TTaskQueueType>(max_task_count)
         {
         }
 
         ~SerialTaskPool() {}
 
+        void reset_props(const std::vector<TPropType>& props) {
+            if constexpr (TTaskQueueType::NEED_SET_PROP::value) {
+                // 只有当底层队列真的需要属性时才调用
+                this->m_task_queue.reset_props(props);
+            }
+        }
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         // add_task(prop, [param1, param2=...]{...})
@@ -365,7 +369,298 @@ namespace BTool {
         }
     };
 
+    /*************************************************
+    Description:    条件变量版具有相同属性任务串行有序执行的线程池
+    1, 每个属性都可以同时添加多个任务;
+    2, 有很多的属性和很多的任务;
+    3, 每个属性添加的任务必须有序串行执行;
+    4, 实时性:无锁设计确保最高性能;
+    5, 创建时即分配固定属性, 不可更改, 不可删除
+    *************************************************/
+    template<typename TPropType, typename TTaskQueueType = LockFreeTaskQueue>
+    class ConditionRotateSerialTaskPool {
+        struct alignas(64) ProcessingFlag {
+            std::atomic<bool> flag{false};
+        };
+    public:
+        explicit ConditionRotateSerialTaskPool(const std::vector<TPropType>& props, size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 1)
+            : m_thread_num(thread_num)
+        {
+            if (m_thread_num == 0) {
+                m_thread_num = std::thread::hardware_concurrency();
+            }
+            m_thread_num = std::min(props.size(), m_thread_num);
+    
+            m_queues.resize(m_thread_num);
+    
+            for (size_t i = 0; i < props.size(); ++i) {
+                size_t idx = props[i] % m_thread_num;
+                m_prop_index[props[i]] = idx;
+            }
+    
+            m_threads.reserve(m_thread_num);
+            for (size_t tid = 0; tid < m_thread_num; ++tid) {
+                m_threads.emplace_back([this, is_bind_core, start_core_index, tid] {
+                    if (is_bind_core) {
+                        CommonOS::BindCore(start_core_index + tid);
+                    }
+                    thread_worker(tid);
+                });
+            }
+        }
+    
+        ~ConditionRotateSerialTaskPool() {
+            stop();
+        }
+    
+        void stop(bool bWait = false) {
+            {
+                std::lock_guard<std::mutex> lk(m_ready_mtx);
+                m_stopping.flag.store(true, std::memory_order_release);
+                if (!bWait) {
+                    for (auto& q : m_queues) q.clear();
+                }
+            }
+            m_ready_cv.notify_all();
+            for (auto& th : m_threads) {
+                if (th.joinable()) th.join();
+            }
+            m_threads.clear();
+        }
+    
+        template<typename AsTPropType, typename TFunction>
+        bool add_task(AsTPropType&& prop, TFunction&& func) {
+            auto it = m_prop_index.find(prop);
+            if (it == m_prop_index.end()) return false;
+
+            m_queues[it->second].add_task(std::forward<TFunction>(func));
+            m_ready_cv.notify_one();
+            return true;
+        }
+    
+    private:
+        void thread_worker(size_t tid) {
+            auto& cur_que = m_queues[tid];
+            for(;;) {   
+                typename TTaskQueueType::Task cur_item; 
+                {
+                    bool is_stopping = false;
+                    std::unique_lock<std::mutex> lk(m_ready_mtx);
+                    m_ready_cv.wait(lk, [this, &cur_que, &cur_item, &is_stopping]{
+                        is_stopping = m_stopping.flag.load(std::memory_order_relaxed);
+                        return cur_que.pop_task(cur_item) || is_stopping;
+                    });
+    
+                    if (is_stopping && !cur_item) return;
+                }
+
+                while (cur_item) {
+                    cur_item();
+                    cur_que.pop_task(cur_item);
+                }
+
+                if (m_stopping.flag.load(std::memory_order_relaxed)) return;
+            }
+        }
+    
+    private:
+        size_t                                  m_thread_num;
+        std::vector<std::thread>                m_threads;
+
+        std::unordered_map<TPropType, size_t>   m_prop_index;
+        std::vector<TTaskQueueType>             m_queues;
+
+        std::mutex                              m_ready_mtx;
+        std::condition_variable                 m_ready_cv;
+
+        ProcessingFlag                          m_stopping;
+    };
+
+    /*************************************************
+    Description:    无锁版具有相同属性任务串行有序执行的线程池
+    1, 每个属性都可以同时添加多个任务;
+    2, 有很多的属性和很多的任务;
+    3, 每个属性添加的任务必须有序串行执行;
+    4, 实时性:无锁设计确保最高性能;
+    5, 创建时即分配固定属性, 不可更改, 不可删除
+    *************************************************/
+    template<typename TPropType, typename TTaskQueueType = LockFreeTaskQueue>
+    class LockFreeRotateSerialTaskPool {
+        struct alignas(64) ProcessingFlag {
+            std::atomic<bool> flag{false};
+        };
+    public:
+        explicit LockFreeRotateSerialTaskPool(const std::vector<TPropType>& props, size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 1)
+            : m_thread_num(thread_num)
+        {
+            if (m_thread_num == 0) {
+                m_thread_num = std::thread::hardware_concurrency();
+            }
+            m_thread_num = std::min(props.size(), m_thread_num);
+    
+            m_queues.resize(m_thread_num);
+    
+            for (size_t i = 0; i < props.size(); ++i) {
+                size_t idx = props[i] % m_thread_num;
+                m_prop_index[props[i]] = idx;
+            }
+    
+            m_threads.reserve(m_thread_num);
+            for (size_t tid = 0; tid < m_thread_num; ++tid) {
+                m_threads.emplace_back([this, is_bind_core, start_core_index, tid] {
+                    if (is_bind_core) {
+                        CommonOS::BindCore(start_core_index + tid);
+                    }
+                    thread_worker(tid);
+                });
+            }
+        }
+    
+        ~LockFreeRotateSerialTaskPool() {
+            stop(true);
+        }
+    
+        // 注意bWait为false时非线程安全
+        void stop(bool bWait = false) {
+            m_stopping.flag.store(true, std::memory_order_release);
+            if (!bWait) {
+                for (auto& q : m_queues) q.clear();
+            }
+            for (auto& th : m_threads) {
+                if (th.joinable()) th.join();
+            }
+            m_threads.clear();
+        }
+    
+        template<typename AsTPropType, typename TFunction>
+        bool add_task(AsTPropType&& prop, TFunction&& func) {
+            auto it = m_prop_index.find(prop);
+            if (it == m_prop_index.end()) return false;
+            if (UNLIKELY(m_stopping.flag.load(std::memory_order_relaxed)))
+                return false;
+
+            m_queues[it->second].add_task(std::forward<TFunction>(func));
+            return true;
+        }
+    
+    private:
+        void thread_worker(size_t tid) {
+            auto& cur_que = m_queues[tid];
+            for(;;) {
+                deal_all(cur_que);
+                if (UNLIKELY(m_stopping.flag.load(std::memory_order_relaxed))) {
+                    deal_all(cur_que);
+                    return;
+                }
+            }
+        }
+
+        void deal_all(TTaskQueueType& cur_que) {
+            auto cur_item = cur_que.pop_task();
+            while (cur_item) {
+                cur_item();
+                cur_que.pop_task(cur_item);
+            }
+        }
+    
+    private:
+        size_t                                  m_thread_num;
+        std::vector<std::thread>                m_threads;
+
+        std::unordered_map<TPropType, size_t>   m_prop_index;
+        std::vector<TTaskQueueType>             m_queues;
+
+        std::mutex                              m_ready_mtx;
+        std::condition_variable                 m_ready_cv;
+
+        ProcessingFlag                          m_stopping;
+    };
+
 #ifdef __USE_TBB__
+    // class ParallelTaskPool
+    // {
+    // public:
+    //     explicit ParallelTaskPool(size_t max_task_count = 0)
+    //         : m_max_task_count(max_task_count), m_stopped(false) {}
+
+    //     ~ParallelTaskPool() {
+    //         stop(true);
+    //     }
+
+    //     void start(size_t thread_num = 1, bool is_bind_core = false, int start_core_index = 1) {
+    //         if (thread_num == 0) thread_num = 1;
+    //         for (size_t i = 0; i < thread_num; ++i) {
+    //             m_thread.start([this] { run(); });
+    //         }
+    //     }
+
+    //     void stop(bool wait = false) {
+    //         {
+    //             std::lock_guard<std::mutex> lock(m_mtx);
+    //             m_stopped = true;
+    //             m_cv.notify_all();
+    //         }
+    //         if (wait) {
+    //             m_thread.join();
+    //         }
+    //     }
+
+    //     template<typename TFunction>
+    //     bool add_task(TFunction&& func) {
+    //         {
+    //             std::unique_lock<std::mutex> lock(m_mtx);
+    //             if (m_max_task_count > 0 && m_tasks.size() >= m_max_task_count) {
+    //                 m_cv.wait(lock, [this] { return m_tasks.size() < m_max_task_count; });
+    //             }
+    //             if (m_stopped) return false;
+    //             m_tasks.emplace(std::forward<TFunction>(func));
+    //         }
+    //         m_cv.notify_one();
+    //         return true;
+    //     }
+
+    //     void clear() {
+    //         std::lock_guard<std::mutex> lock(m_mtx);
+    //         std::queue<std::function<void()>> empty;
+    //         std::swap(m_tasks, empty);
+    //     }
+
+    //     void wait() {
+    //         std::unique_lock<std::mutex> lock(m_mtx);
+    //         m_cv.wait(lock, [this] { return m_tasks.empty(); });
+    //     }
+
+    // private:
+    //     void run() {
+    //         while (true) {
+    //             std::function<void()> task;
+    //             {
+    //                 std::unique_lock<std::mutex> lock(m_mtx);
+    //                 m_cv.wait(lock, [this] { return m_stopped || !m_tasks.empty(); });
+
+    //                 if (m_stopped && m_tasks.empty())
+    //                     break;
+
+    //                 task = std::move(m_tasks.front());
+    //                 m_tasks.pop();
+    //                 if (m_max_task_count > 0) {
+    //                     m_cv.notify_one();
+    //                 }
+    //             }
+    //             if (task) {
+    //                 task();
+    //             }
+    //         }
+    //     }
+
+    // private:
+    //     size_t m_max_task_count;
+    //     std::queue<std::function<void()>> m_tasks;
+    //     std::mutex m_mtx;
+    //     std::condition_variable m_cv;
+    //     bool m_stopped;
+    //     SafeThread m_thread;
+    // };
     /*************************************************
     Description:    提供具有相同属性任务串行有序执行的线程池
                     但是是将任务按属性简单均匀分配至内部单线程线程池
@@ -382,29 +677,29 @@ namespace BTool {
     class RotateSerialTaskPool
     {
         enum {
-            TP_MAX_THREAD = 2000,   // 最大线程数
+            TP_MAX_THREAD = 2000,
         };
-
+    
         using hash_type = typename tbb::concurrent_hash_map<TPropType, size_t>;
-
+    
     public:
         // 注意: max_task_count:表示单线程池内的最大任务量, 和其余线程池不同
-        RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_task_pool_index(-1) {}
+        RotateSerialTaskPool(size_t max_task_count = 0) : m_max_task_count(max_task_count), m_next_thread_index(0) {}
+    
         ~RotateSerialTaskPool() { stop(); }
-
-    public:
+    
         // 开启线程池
         // thread_num: 开启线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
-        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 0) {
+        void start(size_t thread_num = std::thread::hardware_concurrency(), bool is_bind_core = false, int start_core_index = 1) {
             if (!m_atomic_switch.init() || !m_atomic_switch.start())
                 return;
             writeLock locker(m_mtx);
-            create_thread(thread_num);
-            for (auto& item : m_task_pools) {
-                item->start(1, is_bind_core, start_core_index++);
+            create_threads(thread_num);
+            for (auto& pool : m_task_pools) {
+                pool->start(1, is_bind_core, start_core_index++);
             }
         }
-
+    
         // 终止线程池
         // 注意此处可能阻塞等待task的回调线程结束,故在task的回调线程中不可调用该函数
         // bwait: 是否强制等待当前所有队列执行完毕后才结束
@@ -416,7 +711,7 @@ namespace BTool {
             writeLock locker(m_mtx);
             if (bwait) {
                 std::vector<SafeThread> tmp_threads(m_task_pools.size());
-                for (size_t i = 0;i < m_task_pools.size(); ++i) {
+                for (size_t i = 0; i < m_task_pools.size(); ++i) {
                     tmp_threads[i].start([this, i] {
                         m_task_pools[i]->stop(true);
                     });
@@ -425,18 +720,16 @@ namespace BTool {
                     if (item.joinable()) item.join();
                 }
             }
-
-            // 删除所有
             for (auto& item : m_task_pools) {
                 delete item;
                 item = nullptr;
             }
-
             m_task_pools.clear();
-            m_next_task_pool_index.store(-1);
+            m_prop_index.clear();
+            m_next_thread_index.store(0);
             m_atomic_switch.reset();
         }
-
+    
         // 注意此处可能阻塞, 为了与stop做同步
         void clear() {
             readLock locker(m_mtx);
@@ -444,16 +737,15 @@ namespace BTool {
                 item->clear();
             }
         }
-        
+    
         // 等待所有任务执行完毕, 为了与stop做同步
         void wait() {
-            typename hash_type::accessor ac;
             readLock locker(m_mtx);
             for (auto& item : m_task_pools) {
                 item->wait();
             }
         }
-
+    
         // 重置线程池个数,每缩容一个线程时会存在一个指针的内存冗余(线程资源会自动释放),执行stop函数或析构函数可消除该冗余
         // thread_num: 重置线程数,最大为STP_MAX_THREAD个线程,0表示系统CPU核数
         // 注意:必须开启线程池后方可生效
@@ -461,7 +753,7 @@ namespace BTool {
             stop(true);
             start(thread_num);
         }
-
+    
         // 新增任务队列,超出最大任务数时存在阻塞
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         // add_task(prop, [param1, param2=...]{...})
@@ -471,34 +763,35 @@ namespace BTool {
             readLock locker(m_mtx); // 为了与stop做同步
             if (UNLIKELY(!this->m_atomic_switch.has_started()))
                 return false;
-
-            size_t index = 0;
-            {
-                typename hash_type::accessor ac;
-                bool ok = m_prop_index.insert(ac, prop);
-                if (ok) {
-                    index = ac->second = ++m_next_task_pool_index % m_task_pools.size();
-                }
-                else {
-                    index = ac->second;
-                }
-            }
+    
+            size_t index = get_thread_index(std::forward<AsTPropType>(prop));
             return m_task_pools[index]->add_task(std::forward<TFunction>(func));
         }
-
+    
     private:
+        template<typename AsTPropType>
+        size_t get_thread_index(AsTPropType&& prop) {
+            typename hash_type::accessor ac;
+            bool inserted = m_prop_index.insert(ac, prop);
+            if (inserted) {
+                // 新属性，轮询分配一个线程池
+                ac->second = m_next_thread_index.fetch_add(1) % m_task_pools.size();
+            }
+            return ac->second;
+        }
+
         // 创建线程
-        void create_thread(size_t thread_num, bool is_bind_core = false, int start_core_index = 0) {
+        void create_threads(size_t thread_num) {
             if (thread_num == 0) {
                 thread_num = std::thread::hardware_concurrency();
             }
-            thread_num = thread_num < TP_MAX_THREAD ? thread_num : TP_MAX_THREAD;
-            for (size_t i = 0; i < thread_num; i++) {
+            thread_num = std::min(thread_num, (size_t)TP_MAX_THREAD);
+            for (size_t i = 0; i < thread_num; ++i) {
                 m_task_pools.emplace_back(new ParallelTaskPool(m_max_task_count));
             }
         }
-
-    protected:
+    
+    private:
         // 单线程池内的最大任务量
         size_t                              m_max_task_count;
         // 原子启停标志
@@ -508,7 +801,7 @@ namespace BTool {
         // 线程队列
         std::vector<ParallelTaskPool*>      m_task_pools;
         // 下一个新增属性的任务队列下标
-        std::atomic<size_t>                 m_next_task_pool_index;
+        std::atomic<size_t>                 m_next_thread_index;
         // 属性对应队列下标
         hash_type                           m_prop_index;
     };

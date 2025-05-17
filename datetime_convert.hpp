@@ -10,10 +10,9 @@ Note:    目前文本类型仅支持标准北京时间(DTK_Local)
 #include <locale>
 //#include <codecvt>
 #include <chrono>
-#ifdef __linux
-#include <string.h>  // for memcpy
-#include <stdexcept> // for std::domain_error
-#endif
+#include <string.h>
+#include <stdexcept>
+#include "comm_function_os.hpp"
 
 namespace BTool {
 
@@ -273,7 +272,7 @@ namespace BTool {
         static DateTimeConvert FromStdTime(const std::time_t& dt, DateTimeStyle style = DTS_YMDHMS, int millsecond = 0, int microsecond = 0)
         {
             std::tm tp;
-#ifdef __linux
+#if defined(__COMM_APPLE__) || defined(__COMM_UNIX__)
             localtime_r(&dt, &tp);
 #else
             localtime_s(&tp, &dt);

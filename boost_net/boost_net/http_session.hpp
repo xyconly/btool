@@ -54,7 +54,7 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
 
 namespace BTool
 {
-    namespace BoostNet1_71
+    namespace BoostNet
     {
         // Http连接对象
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>

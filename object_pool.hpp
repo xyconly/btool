@@ -115,4 +115,86 @@ namespace BTool {
         std::mutex                                          m_mtx;
         std::queue<std::unique_ptr<T, deleter_function>>    m_pool;
     };
+
+    // 对象池,用于存储连续属性节点
+    template<typename T>
+    class ObjectPoolNode {
+    private:
+        struct FreeNode {
+            FreeNode* next;
+        };
+
+    public:
+        explicit ObjectPoolNode(size_t preallocate = 4096, size_t chunk_size = 1024)
+            : m_free_list(nullptr), m_memory(nullptr), m_chunk_size(chunk_size), m_capacity(preallocate) {
+                allocate_new_chunk(preallocate); // 初始分配
+        }
+
+        ~ObjectPoolNode() {
+            // 清理内存池的所有内存块
+            for (void* block : m_blocks) {
+                free(block);
+            }
+            m_blocks.clear();
+        }
+
+        template<typename... Args>
+        inline T* allocate(Args&&... args) {
+            void* ptr = nullptr;
+            if (m_free_list) {
+                // 从空闲链表获取一个空闲块
+                ptr = m_free_list;
+                m_free_list = m_free_list->next;
+            } else {
+                // 如果空闲链表没有对象了，分配新的内存分片
+                allocate_new_chunk(m_chunk_size);
+                ptr = m_free_list;
+                m_free_list = m_free_list->next;
+            }
+            return new(ptr) T(std::forward<Args>(args)...); // placement new
+        }
+
+        inline void deallocate(T* obj) {
+            if (!obj) return;
+
+            obj->~T(); // 显式调用析构
+
+            // 将对象回收到空闲链表
+            auto* node = reinterpret_cast<FreeNode*>(obj);
+            node->next = m_free_list;
+            m_free_list = node;
+        }
+
+    private:
+        // 分配新的内存块，并链接到当前的内存池中
+        void allocate_new_chunk(const size_t& chunk_size) {
+            // 计算新分片的内存大小
+            size_t bytes = sizeof(T) * chunk_size;
+
+            // 分配新的内存
+            char* new_memory = static_cast<char*>(malloc(bytes));
+            m_blocks.emplace_back(new_memory);
+            
+            // 将新分片链接到原来的空闲链表
+            FreeNode* current = reinterpret_cast<FreeNode*>(new_memory);
+            for (size_t i = 1; i < chunk_size; ++i) {
+                FreeNode* next = reinterpret_cast<FreeNode*>(new_memory + i * sizeof(T));
+                current->next = next;
+                current = next;
+            }
+            current->next = m_free_list; // 连接到原来的空闲链表
+
+            m_free_list = reinterpret_cast<FreeNode*>(new_memory);
+            m_memory = new_memory;
+            m_capacity += chunk_size;
+        }
+
+    private:
+        FreeNode*   m_free_list;    // 
+        char*       m_memory;       // 保存大块内存的起始地址
+        size_t      m_chunk_size;   
+        size_t      m_capacity;
+        std::list<void*> m_blocks; // 保存所有分配过的内存块
+    };            
+
 }

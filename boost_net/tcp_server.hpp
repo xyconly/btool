@@ -176,7 +176,7 @@ namespace BTool
             void close(SessionID session_id) {
                 auto sess_ptr = find_session(session_id);
                 if (sess_ptr) {
-                    sess_ptr->shutdown();
+                    sess_ptr->shutdown(boost::asio::error::operation_aborted);
                 }
             }
 
@@ -247,21 +247,25 @@ namespace BTool
             void handle_accept(const boost::system::error_code& ec, const TcpSessionPtr& session_ptr) {
                 start_accept();
                 if (ec) {
-                    session_ptr->shutdown();
+                    session_ptr->shutdown(ec);
                     return;
                 }
 
-                session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&TcpServer::on_close_cbk, this, std::placeholders::_1));
+                session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&TcpServer::on_close_cbk, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
                     bool rslt = m_sessions.emplace(session_ptr->get_session_id(), session_ptr).second;
                     if (!rslt)
-                        return session_ptr->shutdown();
+                        return session_ptr->shutdown(boost::asio::error::operation_aborted);
                 }
 
                 // 把tcp_session的start的调用交给io_context,由io_context来决定何时执行,可以增加并发度
+#if BOOST_VERSION >= 108000
+                boost::asio::dispatch(session_ptr->get_io_context(), [session_ptr]() { session_ptr->start(); });
+#else
                 session_ptr->get_io_context().dispatch(std::bind(&TcpSession::start, session_ptr));
+#endif
             }
 
             // 查找连接对象
@@ -282,10 +286,10 @@ namespace BTool
 
         private:
             // 关闭连接回调
-            void on_close_cbk(SessionID session_id) {
+            void on_close_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 remove_session(session_id);
                 if (m_handler.close_cbk_)
-                    m_handler.close_cbk_(session_id);
+                    m_handler.close_cbk_(session_id, msg, bytes_transferred);
             }
 
         private:

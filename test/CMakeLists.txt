@@ -10,14 +10,16 @@ SET(OUT_DIR ${PROJECT_DIR}/bin/${CMAKE_BUILD_TYPE})
 SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 SET(EXECUTABLE_OUTPUT_PATH ${OUT_DIR})
+SET(THRID_PATH ${SOLUTION_DIR}/..)
+
 #SET(LIBRARY_OUTPUT_PATH ${OUT_DIR})
 
-INCLUDE_DIRECTORIES(/root/workspace/boost_1_71_0)
+INCLUDE_DIRECTORIES(${THRID_PATH}/boost_1_88_0/install_dir/include)
 INCLUDE_DIRECTORIES(${SOLUTION_DIR})
+INCLUDE_DIRECTORIES(${SOLUTION_DIR}/submodule/oneTBB/include)
 
-LINK_DIRECTORIES(/root/workspace/boost_1_71_0/stage/lib)
+LINK_DIRECTORIES(${THRID_PATH}/boost_1_88_0/install_dir/lib)
 LINK_DIRECTORIES(${SOLUTION_DIR}/submodule/oneTBB/libs/static_release)
-LINK_DIRECTORIES(${SOLUTION_DIR}/submodule/libgo/libs)
 
 AUX_SOURCE_DIRECTORY(${PROJECT_DIR}/src src_files)
 #AUX_SOURCE_DIRECTORY(${PROJECT_DIR}/other other_files)
@@ -29,11 +31,16 @@ AUX_SOURCE_DIRECTORY(${PROJECT_DIR}/src src_files)
 #ADD_EXECUTABLE(${PROJECT_NAME} ${src_files})
 #TARGET_LINK_LIBRARIES(${PROJECT_NAME} dl pthread liblibgo.a libtbb.a)
 
+add_definitions(-D__USE_TBB__)
+
 FOREACH(var ${src_files})
     STRING(REGEX REPLACE ".*/" "" tmp ${var})
     STRING(REGEX REPLACE ".cpp" "" tgt ${tmp})
     ADD_EXECUTABLE(${tgt} ${var})
-    TARGET_LINK_LIBRARIES(${tgt} dl pthread liblibgo.a libtbb.a)
+    IF (${CMAKE_BUILD_TYPE} MATCHES "Debug")
+        TARGET_COMPILE_OPTIONS(${tgt} PRIVATE -ggdb3 -g -O0 -fno-omit-frame-pointer -fno-inline)
+    ENDIF()
+    TARGET_LINK_LIBRARIES(${tgt} dl pthread libtbb.a libboost_thread.a libboost_system.a)
 ENDFOREACH(var)
 
 # FILE(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/Output/${CMAKR_BUILD_TYPE})

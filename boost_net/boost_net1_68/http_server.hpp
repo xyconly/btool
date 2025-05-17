@@ -5,7 +5,7 @@ Purpose:    http服务类
 Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
 
 示例代码:
-        class TestHttpService : public BTool::BoostNet::HttpServiceNetCallBack
+        class TestHttpService : public BTool::BoostNet::BoostNet::HttpNetCallBack
         {
             typedef BTool::BoostNet::HttpService   service_type;
             typedef std::shared_ptr<service_type>   service_ptr_type;
@@ -36,7 +36,7 @@ Note:       可直接使用HttpService,调用HttpServiceNetCallBack回调
 
 备注:
         也可直接自定义发送及返回消息类型, 如
-            using SelfHttpServiceNetCallBack = HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
+            using SelfHttpServiceNetCallBack = BoostNet::HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
             using SelfHttpServer = HttpServer<true, boost::beast::http::string_body, boost::beast::http::file_body>
 *****************************************************************************/
 
@@ -53,7 +53,7 @@ namespace BTool
     {
         // Http服务
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
-        class HttpServer : public HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
+        class HttpServer : public BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
         {
             typedef AsioServicePool::ios_type                       ios_type;
             typedef boost::asio::io_context                         io_context_type;
@@ -63,7 +63,7 @@ namespace BTool
             typedef HttpServer<isRequest, ReadType, WriteType, Fields>          ServerType;
 
             // 回调相关命名
-            typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
+            typedef BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
             typedef typename callback_type::read_msg_type                       read_msg_type;
             typedef typename callback_type::send_msg_type                       send_msg_type;
             typedef typename callback_type::SessionID                           SessionID;

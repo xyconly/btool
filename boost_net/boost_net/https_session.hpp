@@ -7,7 +7,7 @@ Note:       客户端可直接使用HttpsClientSession,调用HttpClientNetCallBack回调
 示例代码:
         class TestHttpClient : public BTool::BoostNet::HttpClientNetCallBack
         {
-            BTool::BoostNet1_71::HttpsClientSession     session_type;
+            BTool::BoostNet::HttpsClientSession     session_type;
             typedef std::shared_ptr<session_type>       session_ptr_type;
         public:
             TestHttpClient()
@@ -62,7 +62,7 @@ Note:       客户端可直接使用HttpsClientSession,调用HttpClientNetCallBack回调
 
 namespace BTool
 {
-    namespace BoostNet1_71
+    namespace BoostNet
     {
 
 

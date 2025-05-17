@@ -34,6 +34,13 @@ namespace BTool
                 m_buf.commit(n);
             }
 
+            streambuf_type& streambuf() {
+                return m_buf;
+            }
+            const streambuf_type& streambuf() const {
+                return m_buf;
+            }
+
             // 获取输入序列的缓存字节数
             size_type size() const {
                 return m_buf.size();
@@ -41,7 +48,11 @@ namespace BTool
 
             // 检查输入序列的缓存
             const char* peek() const {
+#if BOOST_VERSION >= 108000
+                return static_cast<const char*>(m_buf.data().data());
+#else
                 return boost::asio::buffer_cast<const char*> (m_buf.data());
+#endif
             }
 
             // 获取输入序列的缓存列表
@@ -65,15 +76,20 @@ namespace BTool
         };
 
         // 发送缓存
+        template<size_t DEFAULT_SIZE = 1024>
         class WriteBuffer
         {
         public:
             typedef MemoryStream                            WriteMemoryStream;
-            typedef std::shared_ptr<MemoryStream>           WriteMemoryStreamPtr;
+            typedef std::unique_ptr<MemoryStream>           WriteMemoryStreamPtr;
 
-            WriteBuffer() : m_all_len(0) { }
+            WriteBuffer(size_t pool_size = 1000) : m_all_len(0) {
+                for(size_t i = 0; i < pool_size; ++i) {
+                    m_free_pool.push(std::make_unique<WriteMemoryStream>(DEFAULT_SIZE));
+                }
+            }
             ~WriteBuffer() {
-                clear();
+                destroy();
             }
 
         public:
@@ -84,18 +100,16 @@ namespace BTool
 
             // 写功能
             bool append(const char* const msg, size_t len) {
-                WriteMemoryStreamPtr memory_stream = std::make_shared<WriteMemoryStream>();
+                WriteMemoryStreamPtr memory_stream = acquire(msg, len);
                 if (!memory_stream)
                     return false;
-                memory_stream->append(msg, len);
-
-                return append(memory_stream);
+                return append(std::move(memory_stream));
             }
-            bool append(const WriteMemoryStreamPtr& memory_stream) {
+            bool append(WriteMemoryStreamPtr&& memory_stream) {
                 if (!memory_stream)
                     return false;
                 m_all_len += memory_stream->size();
-                m_send_items.push(memory_stream);
+                m_send_items.push_back(std::move(memory_stream));
                 return true;
             }
 
@@ -105,7 +119,7 @@ namespace BTool
                 if (m_send_items.empty())
                     return append(msg, len);
 
-                auto item = m_send_items.back();
+                auto& item = m_send_items.back();
                 if(max_package_size != 0 && item->get_length() + len >= max_package_size)
                     return append(msg, len);
 
@@ -114,22 +128,24 @@ namespace BTool
             }
 
             // 获取数据
-            WriteMemoryStreamPtr front() const {
+            const WriteMemoryStreamPtr& front() const {
                 return m_send_items.front();
             }
 
             // 获取并移除数据
             WriteMemoryStreamPtr pop_front() {
-                auto msg = m_send_items.front();
-                m_send_items.pop();
+                auto msg = std::move(m_send_items.front());
+                m_send_items.pop_front();
                 m_all_len -= msg->size();
                 return msg;
             }
 
             // 清空数据
             void clear() {
-                if (!m_send_items.empty())
-                    m_send_items = std::queue<WriteMemoryStreamPtr>();
+                while (!m_send_items.empty()) {
+                    m_free_pool.push(std::move(m_send_items.front()));
+                    m_send_items.pop_front();
+                }
                 m_all_len = 0;
             }
 
@@ -138,8 +154,40 @@ namespace BTool
                 return m_send_items.empty();
             }
 
+            void release(WriteMemoryStreamPtr& obj) {
+                if (obj) {
+                    m_free_pool.push(std::move(obj));
+                }
+            }
+
+            WriteMemoryStreamPtr acquire(const char* const msg, size_t len) {
+                if (!m_free_pool.empty()) {
+                    auto obj = std::move(m_free_pool.front());
+                    m_free_pool.pop();
+                    if (len > 0)
+                        obj->load(msg, len);
+                    else
+                        obj->clear();
+                    return obj;
+                }
+                auto obj = std::make_unique<WriteMemoryStream>();
+                obj->load(msg, len, DEFAULT_SIZE);
+                return obj;
+            }
+
         private:
-            std::queue<WriteMemoryStreamPtr>    m_send_items;
+            void destroy() {
+                std::queue<WriteMemoryStreamPtr> empty;
+                m_free_pool.swap(empty);
+                m_send_items.clear();
+            }
+
+        private:
+            // 尚未使用的空闲队列
+            std::queue<WriteMemoryStreamPtr>    m_free_pool;
+            // 等待使用的发送队列
+            std::deque<WriteMemoryStreamPtr>    m_send_items;
+            // 当前总等待发送数据长度
             size_t                              m_all_len;
         };
     }

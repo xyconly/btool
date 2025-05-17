@@ -17,21 +17,24 @@ Note:    server本身存储session对象,外部仅提供ID进行操作
 
 namespace BTool
 {
-    namespace BoostNet1_71
+    namespace BoostNet
     {
         // Websocket服务
-        class WebsocketSslServer : public std::enable_shared_from_this<WebsocketSslServer>
+        template<bool IsBinary, bool IsReadSome = IsBinary>
+        class WebsocketSslServer : public std::enable_shared_from_this<WebsocketSslServer<IsBinary, IsReadSome>>
         {
             typedef AsioContextPool::ioc_type                   ioc_type;
             typedef boost::asio::ip::tcp::acceptor              accept_type;
-            typedef std::shared_ptr<WebsocketSslSession>        WebsocketSslSessionPtr;
+            typedef WebsocketSslSession<IsBinary, IsReadSome>   WebsocketSslSessionType;
+            typedef WebsocketSslServer<IsBinary, IsReadSome>    WebsocketSslServerType;
+            typedef std::shared_ptr<WebsocketSslSessionType>    WebsocketSslSessionPtr;
             typedef BoostNet::NetCallBack::SessionID            SessionID;
             typedef std::map<SessionID, WebsocketSslSessionPtr> WebsocketSslSessionMap;
         
         public:
             // Websocket服务
             // handler: session返回回调
-            WebsocketSslServer(AsioContextPool& ioc, boost::asio::ssl::context& ctx, size_t max_wbuffer_size = WebsocketSslSession::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = WebsocketSslSession::MAX_READSINGLE_BUFFER_SIZE)
+            WebsocketSslServer(AsioContextPool& ioc, boost::asio::ssl::context& ctx, size_t max_wbuffer_size = WebsocketSslSessionType::NOLIMIT_WRITE_BUFFER_SIZE, size_t max_rbuffer_size = WebsocketSslSessionType::MAX_READSINGLE_BUFFER_SIZE)
                 : m_ioc_pool(ioc)
                 , m_acceptor(ioc.get_io_context())
                 , m_max_wbuffer_size(max_wbuffer_size)
@@ -94,14 +97,6 @@ namespace BTool
                 return true;
             }
 
-            void set_binary(bool b = true) {
-                m_use_binary = b;
-                std::lock_guard<std::mutex> lock(m_mutex);
-                for (auto& item : m_sessions) {
-                    item->second->set_binary(b);
-                }
-            }
-
             // 阻塞式启动服务,使用join_all等待
             // ip: 监听IP,支持域名,默认本地IPV4地址
             // port: 监听端口
@@ -132,7 +127,7 @@ namespace BTool
             // 异步写入
             bool write(SessionID session_id, const char* send_msg, size_t size)
             {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (!sess_ptr) {
                     return false;
                 }
@@ -143,7 +138,7 @@ namespace BTool
             // max_package_size: 单个消息最大包长
             bool write_tail(SessionID session_id, const char* send_msg, size_t size, size_t max_package_size = 65535)
             {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (!sess_ptr) {
                     return false;
                 }
@@ -153,7 +148,7 @@ namespace BTool
             // 消费掉指定长度的读缓存
             void consume_read_buf(SessionID session_id, size_t bytes_transferred)
             {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (sess_ptr) {
                     sess_ptr->consume_read_buf(bytes_transferred);
                 }
@@ -162,7 +157,7 @@ namespace BTool
             // 消费掉指定长度的读缓存
             void close(SessionID session_id)
             {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (sess_ptr) {
                     sess_ptr->shutdown();
                 }
@@ -170,7 +165,7 @@ namespace BTool
 
             // 获取连接者IP
             bool get_ip(SessionID session_id, std::string& ip) const {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (sess_ptr) {
                     ip = sess_ptr->get_ip();
                     return true;
@@ -180,7 +175,7 @@ namespace BTool
 
             // 获取连接者port
             bool get_port(SessionID session_id, unsigned short& port) const {
-                auto sess_ptr = find_session(session_id);
+                auto& sess_ptr = find_session(session_id);
                 if (sess_ptr) {
                     port = sess_ptr->get_port();
                     return true;
@@ -224,7 +219,7 @@ namespace BTool
                 try {
                     m_acceptor.async_accept(
                         boost::asio::make_strand(m_ioc_pool.get_io_context()),
-                        boost::beast::bind_front_handler(&WebsocketSslServer::handle_accept, shared_from_this()));
+                        boost::beast::bind_front_handler(&WebsocketSslServerType::handle_accept, this->shared_from_this()));
                 }
                 catch (std::exception&) {
                     stop();
@@ -234,7 +229,7 @@ namespace BTool
             }
 
             // 处理接听回调
-            void handle_accept(const boost::beast::error_code& ec, boost::asio::ip::tcp::socket socket)
+            void handle_accept(const boost::beast::error_code& ec, boost::asio::ip::tcp::socket&& socket)
             {
                 start_accept();
 
@@ -242,9 +237,8 @@ namespace BTool
                     return;
                 }
 
-                auto session_ptr = std::make_shared<WebsocketSslSession>(std::move(socket), m_ctx, m_max_wbuffer_size, m_max_rbuffer_size);
-                session_ptr->set_binary(m_use_binary);
-                session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&WebsocketSslServer::on_close_cbk, shared_from_this(), std::placeholders::_1));
+                auto session_ptr = std::make_shared<WebsocketSessionType>(std::move(socket), m_ctx, m_max_wbuffer_size, m_max_rbuffer_size);
+                session_ptr->register_cbk(m_handler).register_close_cbk(std::bind(&WebsocketSslServerType::on_close_cbk, this->shared_from_this(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
@@ -257,8 +251,19 @@ namespace BTool
             }
 
             // 查找连接对象
-            WebsocketSslSessionPtr find_session(SessionID session_id) const
+            WebsocketSslSessionPtr& find_session(SessionID session_id)
             {
+                static WebsocketSessionPtr s_null = nullptr;
+                std::lock_guard<std::mutex> lock(m_mutex);
+                auto iter = m_sessions.find(session_id);
+                if (iter == m_sessions.end()) {
+                    return WebsocketSslSessionPtr();
+                }
+                return iter->second;
+            }
+            const WebsocketSslSessionPtr& find_session(SessionID session_id) const
+            {
+                static WebsocketSessionPtr s_null = nullptr;
                 std::lock_guard<std::mutex> lock(m_mutex);
                 auto iter = m_sessions.find(session_id);
                 if (iter == m_sessions.end()) {
@@ -276,11 +281,11 @@ namespace BTool
 
         private:
             // 关闭连接回调
-            virtual void on_close_cbk(SessionID session_id)
+            virtual void on_close_cbk(SessionID session_id, const char* const msg, size_t bytes_transferred)
             {
                 remove_session(session_id);
                 if (m_handler.close_cbk_)
-                    m_handler.close_cbk_(session_id);
+                    m_handler.close_cbk_(session_id, msg, bytes_transferred);
             }
 
         private:
@@ -290,7 +295,6 @@ namespace BTool
             BoostNet::NetCallBack::server_error_cbk     m_error_handler = nullptr;
             size_t                                      m_max_wbuffer_size;
             size_t                                      m_max_rbuffer_size;
-            bool                                        m_use_binary = true;
             boost::asio::ssl::context&                  m_ctx;
 
             mutable std::mutex                          m_mutex;

@@ -264,8 +264,8 @@ namespace BTool {
             if (!m_atomic_switch.stop())
                 return;
 
-            m_ioc_pool.stop();
             clear();
+            m_ioc_pool.stop();
 
             m_atomic_switch.reset();
         }

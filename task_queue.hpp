@@ -17,7 +17,7 @@ Note2:  queue是自己创建的, 可以通过swap等方式快速释放占用内存
                一定要释放的话, 自行在消费完毕后调用malloc_trim(0);
 *************************************************/
 #pragma once
-#include <malloc.h>
+#include <stdlib.h>
 #include <functional>
 #include <queue>
 #include <list>
@@ -29,6 +29,8 @@ Note2:  queue是自己创建的, 可以通过swap等方式快速释放占用内存
 #include "atomic_switch.hpp"
 #include "comm_function_os.hpp"
 #include "submodule/concurrentqueue/concurrentqueue.h"
+#include "object_pool.hpp"
+#include "fast_function.hpp"
 //#include "concurrentqueue/blockingconcurrentqueue.h"
 
 namespace BTool
@@ -63,12 +65,12 @@ namespace BTool
         }
 
         bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return !not_empty();
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             clear_inner();
         }
 
@@ -84,7 +86,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -146,12 +148,12 @@ namespace BTool
         }
 
         bool full() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return !not_full();
         }
 
         size_t size() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return m_queue.size();
         }
 
@@ -195,6 +197,7 @@ namespace BTool
     class ParallelTaskQueue {
     public:
         typedef std::function<void()> TaskItem;
+        using NEED_SET_PROP = std::false_type;
     public:
         ParallelTaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
@@ -210,7 +213,7 @@ namespace BTool
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             clear_inner();
         }
 
@@ -226,7 +229,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -328,6 +331,7 @@ namespace BTool
     class SingleThreadParallelTaskQueue {
     public:
         typedef std::function<void()> TaskItem;
+        using NEED_SET_PROP = std::false_type;
     public:
         SingleThreadParallelTaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
@@ -347,7 +351,7 @@ namespace BTool
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             clear_inner();
         }
 
@@ -363,7 +367,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -470,6 +474,7 @@ namespace BTool
     class NoBlockingParallelTaskQueue {
     public:
         typedef std::function<void()> TaskItem;
+        using NEED_SET_PROP = std::false_type;
     public:
         NoBlockingParallelTaskQueue(size_t max_task_count = 0)
             : m_bstop(false)
@@ -566,6 +571,7 @@ namespace BTool
     {
     public:
         typedef std::function<void()> TaskItem;
+        using NEED_SET_PROP = std::false_type;
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
         LastTaskQueue(size_t max_task_count = 0)
@@ -577,12 +583,12 @@ namespace BTool
         }
 
         inline bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return !not_empty();
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             clear_inner();
         }
 
@@ -598,7 +604,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -670,7 +676,7 @@ namespace BTool
                 pop_task();
 
                 {
-                    std::unique_lock<std::mutex> locker(m_mtx);
+                    std::lock_guard<std::mutex> locker(m_mtx);
                     m_cur_pop_props.erase(pop_type);
                 }
                 m_cv_not_full.notify_one();
@@ -681,7 +687,7 @@ namespace BTool
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
             {
-                std::unique_lock<std::mutex> locker(m_mtx);
+                std::lock_guard<std::mutex> locker(m_mtx);
                 m_wait_props.remove_if([prop] (const TPropType& value)->bool {return (value == prop); });
                 m_wait_tasks.erase(std::forward<AsTPropType>(prop));
             }
@@ -689,12 +695,12 @@ namespace BTool
         }
 
         bool full() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return !not_full();
         }
 
         inline size_t size() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return m_wait_props.size();
         }
 
@@ -737,6 +743,41 @@ namespace BTool
         std::condition_variable          m_cv_not_full;
     };
 
+    class alignas(64) LockFreeTaskQueue {
+    public:
+        using Task = BTool::FastFunction;
+        using NEED_SET_PROP = std::false_type;
+    
+        LockFreeTaskQueue() = default;
+    
+        Task pop_task() {
+            Task task;
+            if (m_queue.try_dequeue(task)) {
+                return task;
+            }
+            return nullptr;
+        }
+        bool pop_task(Task& task) {
+            if (m_queue.try_dequeue(task)) {
+                return true;
+            }
+            task = nullptr;
+            return false;
+        }
+    
+        void add_task(Task&& task) {
+            m_queue.enqueue(std::move(task));
+        }
+
+        void clear() {
+            moodycamel::ConcurrentQueue<Task> empty;
+            m_queue.swap(empty);
+        }
+    
+    private:
+        moodycamel::ConcurrentQueue<Task> m_queue;
+    };
+
     /*************************************************
     Description:提供按属性划分的,保留所有任务的FIFO任务队列,将调用函数转为元祖对象存储
                 当某一属性正在队列中时,同属性的其他任务新增时,会追加至原任务之后执行
@@ -747,6 +788,7 @@ namespace BTool
     {
     public:
         typedef std::function<void()> TaskItem;
+        using NEED_SET_PROP = std::false_type;
 
     protected:
         // 连续属性双向链表,用于存储同一属性上下位置,及FIFO顺序
@@ -754,15 +796,14 @@ namespace BTool
         class PropCountNodeList
         {
             // 连续任务结构体
-            struct PropCountNode {
-                bool         can_pop_;      // 当前节点是否可被pop, 每次复位后/新增后首链表会被复位为true
-                size_t       count_;        // 当前连续新增同属性任务个数,如连续新增300个同属性,在队列中只创建一个PropCountNode,计数为300
-
+            struct alignas(64) PropCountNode {
                 PropCountNode*  pre_same_prop_node_;  // 同属性上一连续任务指针
                 PropCountNode*  next_same_prop_node_; // 同属性下一连续任务指针
                 PropCountNode*  pre_list_prop_node_;  // 队列的上一连续任务指针
                 PropCountNode*  next_list_prop_node_; // 队列的下一连续任务指针
 
+                size_t       count_;        // 当前连续新增同属性任务个数,如连续新增300个同属性,在队列中只创建一个PropCountNode,计数为300
+                bool         can_pop_;      // 当前节点是否可被pop, 每次复位后/新增后首链表会被复位为true
                 TPropType    prop_;
 
                 template<typename AsTPropType>
@@ -797,6 +838,7 @@ namespace BTool
 
                 inline const TPropType& get_prop_type() const { return prop_; }
             };
+        
         public:
             PropCountNodeList() : m_begin_node(nullptr), m_end_node(nullptr) {}
             ~PropCountNodeList() { clear(); }
@@ -805,7 +847,7 @@ namespace BTool
             void push_back(AsTPropType&& prop, bool can_immediately_pop) {
                 // 是否已存在节点
                 if (!m_end_node) {
-                    m_begin_node = m_end_node = new PropCountNode(std::forward<AsTPropType>(prop), nullptr, nullptr, can_immediately_pop);
+                    m_begin_node = m_end_node = m_obj_pool.allocate(std::forward<AsTPropType>(prop), nullptr, nullptr, can_immediately_pop);
                     m_all_nodes[m_end_node->get_prop_type()].emplace_back(m_end_node);
                     return;
                 }
@@ -820,14 +862,14 @@ namespace BTool
                 auto all_nodes_iter = m_all_nodes.find(prop);
                 if (all_nodes_iter == m_all_nodes.end())
                 {
-                    PropCountNode* new_node = new PropCountNode(std::forward<AsTPropType>(prop), nullptr, m_end_node, can_immediately_pop);
+                    PropCountNode* new_node = m_obj_pool.allocate(std::forward<AsTPropType>(prop), nullptr, m_end_node, can_immediately_pop);
                     m_end_node = new_node;
                     m_all_nodes[new_node->get_prop_type()].emplace_back(new_node);
                     return;
                 }
 
                 PropCountNode* pre_same_prop_node = all_nodes_iter->second.back();
-                PropCountNode* new_node = new PropCountNode(std::forward<AsTPropType>(prop), pre_same_prop_node, m_end_node, false);
+                PropCountNode* new_node = m_obj_pool.allocate(std::forward<AsTPropType>(prop), pre_same_prop_node, m_end_node, false);
                 m_end_node = new_node;
                 m_all_nodes[new_node->get_prop_type()].emplace_back(new_node);
             }
@@ -883,7 +925,7 @@ namespace BTool
                     m_end_node = pre_list_prop_node;
 
                 auto prop_type = pop_front_node->get_prop_type();
-                delete pop_front_node;
+                m_obj_pool.deallocate(pop_front_node);
                 return prop_type;
             }
 
@@ -928,7 +970,7 @@ namespace BTool
                     }
 
                     // 删除该节点
-                    delete item;
+                    m_obj_pool.deallocate(item);
                 }
                 m_all_nodes.erase(all_node_iter);
             }
@@ -937,7 +979,7 @@ namespace BTool
                 PropCountNode* node_ptr(m_begin_node);
                 while (node_ptr) {
                     auto tmp = node_ptr->get_next_list_prop_node();
-                    delete node_ptr;
+                    m_obj_pool.deallocate(node_ptr);
                     node_ptr = tmp;
                 }
                 m_begin_node = nullptr;
@@ -945,30 +987,45 @@ namespace BTool
                 m_all_nodes.clear();
             }
 
+            bool empty() const {
+                return m_begin_node == nullptr;
+            }
+
         private:
             PropCountNode*                                  m_begin_node;   // 队列起始节点
             PropCountNode*                                  m_end_node;     // 队列结束节点
             std::unordered_map<TPropType, std::list<PropCountNode*>>  m_all_nodes;    // 所有队列节点
+            ObjectPoolNode<PropCountNode>                   m_obj_pool;     // 对象池
         };
 
     public:
         // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
-        SerialTaskQueue(size_t max_task_count = 0)
+        SerialTaskQueue(size_t max_task_count = 0, size_t props_size = 128)
             : m_bstop(false)
             , m_max_task_count(max_task_count)
-        {}
+        {
+            m_wait_tasks.reserve(props_size);
+            m_cur_props.reserve(props_size);
+        }
 
         virtual ~SerialTaskQueue() {
             stop();
         }
 
+        // 预设属性个数, 避免频繁rehash带来的性能开销
+        void reserve(size_t props_size) {
+            std::lock_guard<std::mutex> locker(m_mtx);
+            m_wait_tasks.reserve(props_size);
+            m_cur_props.reserve(props_size); 
+        }
+
         bool empty() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return m_wait_tasks.empty();
         }
 
         void clear() {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             clear_inner();
         }
 
@@ -983,7 +1040,7 @@ namespace BTool
         }
 
         void stop(bool bwait = false) {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             // 是否已终止判断
             bool target(false);
             if (!m_bstop.compare_exchange_strong(target, true)) {
@@ -1005,18 +1062,42 @@ namespace BTool
         // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
         template<typename AsTPropType, typename AsTFunction>
         bool add_task(AsTPropType&& prop, AsTFunction&& func) {
-            if (UNLIKELY(m_bstop.load()))
+            if (UNLIKELY(m_bstop.load(std::memory_order_relaxed)))
                 return false;
 
+            // 快速路径检查
+            if (not_full()) {
+                std::unique_lock<std::mutex> locker(m_mtx, std::defer_lock);
+                if (locker.try_lock()) {
+                    if (UNLIKELY(m_bstop.load(std::memory_order_relaxed)))
+                        return false;
+
+                    auto& task_queue = m_wait_tasks[prop];
+                    task_queue.push_back(std::forward<AsTFunction>(func));
+                    bool is_first = m_cur_props.find(prop) == m_cur_props.end() && task_queue.size() == 1;
+                    m_wait_props.push_back(std::forward<AsTPropType>(prop), is_first);
+                    m_approx_size.fetch_add(1, std::memory_order_release);
+                    locker.unlock();
+                    m_cv_not_empty.notify_one();
+                    return true;
+                }
+            }
+
+            // 慢速路径
             {
                 std::unique_lock<std::mutex> locker(m_mtx);
-                m_cv_not_full.wait(locker, [this] { return m_bstop.load() || not_full(); });
+                m_cv_not_full.wait(locker, [this] { 
+                    return m_bstop.load(std::memory_order_relaxed) || not_full(); 
+                });
 
-                if (UNLIKELY(m_bstop.load()))
+                if (UNLIKELY(m_bstop.load(std::memory_order_relaxed)))
                     return false;
 
-                m_wait_props.push_back(prop, m_cur_props.find(prop) == m_cur_props.end() && m_wait_tasks.find(prop) == m_wait_tasks.end());
-                m_wait_tasks[std::forward<AsTPropType>(prop)].push_back(std::forward<AsTFunction>(func));
+                auto& task_queue = m_wait_tasks[prop];
+                task_queue.push_back(std::forward<AsTFunction>(func));
+                bool is_first = m_cur_props.find(prop) == m_cur_props.end() && task_queue.size() == 1;
+                m_wait_props.push_back(std::forward<AsTPropType>(prop), is_first);
+                m_approx_size.fetch_add(1, std::memory_order_relaxed);
             }
             m_cv_not_empty.notify_one();
             return true;
@@ -1035,6 +1116,7 @@ namespace BTool
                 if (UNLIKELY(!not_empty()))
                     return;
 
+                m_approx_size.fetch_sub(1, std::memory_order_release);
                 prop_type = m_wait_props.pop_front();
                 assert(m_cur_props.find(prop_type) == m_cur_props.end());
                 m_cur_props.emplace(prop_type);
@@ -1047,7 +1129,7 @@ namespace BTool
             if (next_task) {
                 next_task();
                 {
-                    std::unique_lock<std::mutex> locker(m_mtx);
+                    std::lock_guard<std::mutex> locker(m_mtx);
                     auto wait_task_iter = m_wait_tasks.find(prop_type);
                     if (wait_task_iter != m_wait_tasks.end()) {
                         wait_task_iter->second.pop_front();
@@ -1066,7 +1148,7 @@ namespace BTool
         template<typename AsTPropType>
         void remove_prop(AsTPropType&& prop) {
             {
-                std::unique_lock<std::mutex> locker(m_mtx);
+                std::lock_guard<std::mutex> locker(m_mtx);
                 auto iter = m_wait_tasks.find(prop);
                 if (iter != m_wait_tasks.end())
                     m_wait_tasks.erase(prop);
@@ -1076,12 +1158,12 @@ namespace BTool
         }
 
         bool full() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return !not_full();
         }
 
         size_t size() const {
-            std::unique_lock<std::mutex> locker(m_mtx);
+            std::lock_guard<std::mutex> locker(m_mtx);
             return m_wait_tasks.size();
         }
 
@@ -1105,7 +1187,7 @@ namespace BTool
 
         // 是否处于未满状态
         inline bool not_full() const {
-            return m_max_task_count == 0 || m_wait_tasks.size() < m_max_task_count;
+            return m_max_task_count == 0 || m_approx_size.load(std::memory_order_relaxed) < m_max_task_count;
         }
 
         // 是否处于空状态
@@ -1116,13 +1198,14 @@ namespace BTool
     protected:
         // 是否已终止标识符
         std::atomic<bool>                           m_bstop;
+        std::atomic<size_t>                         m_approx_size{0};
 
         // 数据安全锁
         mutable std::mutex                          m_mtx;
         // 总待执行任务属性顺序队列,用于判断执行队列顺序
         PropCountNodeList                           m_wait_props;
         // 总待执行任务队列属性及其对应任务
-        std::unordered_map<TPropType, std::list<TaskItem>>    m_wait_tasks;
+        std::unordered_map<TPropType, std::deque<TaskItem>>    m_wait_tasks;
         // 最大任务个数,当为0时表示无限制
         size_t                                      m_max_task_count;
 
@@ -1135,4 +1218,201 @@ namespace BTool
         std::unordered_set<TPropType>               m_cur_props;
 
     };
+
+    /*************************************************
+    Description:提供按属性划分的,保留所有任务的FIFO任务队列,将调用函数转为元祖对象存储
+                当某一属性正在队列中时,同属性的其他任务新增时,会追加至原任务之后执行
+                当某一任务正在执行时,同属性其他任务将不被执行,同一属性之间的任务均按照FIFO串行执行完毕
+                注意: 该任务队列操作接口必须为线程安全的, 不提供安全保护, 且需开始时就注册属性
+                      add_task时, 不同属性间线程安全, 同属性内非线程安全
+    *************************************************/
+    template<typename TPropType>
+    class SPMCSerialTaskQueue
+    {
+    public:
+        using Task = BTool::FastFunction;        
+        using NEED_SET_PROP = std::true_type;
+
+        struct alignas(64) AlignedStatus {
+            TPropType           prop_;
+            std::atomic<bool>   can_pop_;
+            
+            AlignedStatus(const TPropType& prop) : prop_(prop), can_pop_(true) {};
+            AlignedStatus(const AlignedStatus& other) noexcept 
+                : prop_(other.prop_), 
+                  can_pop_(other.can_pop_.load(std::memory_order_relaxed)) {}
+            AlignedStatus(AlignedStatus&& other) noexcept 
+                : prop_(std::move(other.prop_)), 
+                  can_pop_(other.can_pop_.load(std::memory_order_relaxed)) {}
+        };
+
+    public:
+        // max_task_count: 最大任务个数,超过该数量将产生阻塞;0则表示无限制
+        // max_single_task_count: 单任务最大个数,超过该数量将产生阻塞;0则表示无限制
+        SPMCSerialTaskQueue(size_t max_task_count = 0, size_t max_single_task_count = 0)
+            : m_bstop(false)
+            , m_bclear(false)
+            , m_approx_size(0)
+            , m_max_task_count(max_task_count)
+            , m_max_single_task_count(max_single_task_count)
+        {
+        }
+
+        virtual ~SPMCSerialTaskQueue() {
+            stop();
+        }
+
+        void reset_props(const std::vector<TPropType>& props) {
+            m_cur_props_index.store(0);
+            for (auto& prop : props) {
+                m_wait_tasks.emplace(prop, moodycamel::ConcurrentQueue<Task>());
+                m_all_props.emplace_back(AlignedStatus(prop));
+                m_single_task_count.emplace(prop, 0);
+            }
+        }
+
+        bool empty() const {
+            return !not_empty();
+        }
+
+        void clear() {
+            clear_inner();
+        }
+
+        void start() {
+            // 复位已终止标志符
+            bool target(true);
+            if (!m_bstop.compare_exchange_strong(target, false)) {
+                return;
+            }
+        }
+
+        void stop(bool bwait = false) {
+            // 是否已终止判断
+            bool target(false);
+            if (!m_bstop.compare_exchange_strong(target, true)) {
+                return;
+            }
+            if (!bwait) {
+                clear();
+            }
+        }
+
+        void wait() {
+            while(!empty()) std::this_thread::yield();
+        }
+
+        // 特别注意!遇到char*/char[]等指针性质的临时指针,必须转换为string等实例对象,否则外界析构后,将指向野指针!!!!
+        template<typename AsTPropType, typename AsTFunction>
+        bool add_task(AsTPropType&& prop, AsTFunction&& func) {
+            if (UNLIKELY(m_bstop.load(std::memory_order_relaxed)))
+                return false;
+
+            if (!not_full(prop)) {
+                return false;
+            }
+
+            m_wait_tasks[prop].enqueue(std::forward<AsTFunction>(func));
+
+            if (UNLIKELY(m_bclear.load(std::memory_order_relaxed))) {
+                m_approx_size.store(0, std::memory_order_release);
+                m_single_task_count[prop].store(0, std::memory_order_release);
+            }
+            else {
+                m_approx_size.fetch_add(1, std::memory_order_release);
+                m_single_task_count[prop].fetch_add(1, std::memory_order_release);
+            }
+            return true;
+        }
+
+        void pop_task() {
+            // 预判
+            if (!not_empty())
+                return;
+
+            auto cur_index = m_cur_props_index.fetch_add(1, std::memory_order_relaxed) % m_all_props.size();
+            auto& cur_prop = m_all_props[cur_index];
+
+            bool expected = true;
+            if (!cur_prop.can_pop_.compare_exchange_strong(expected, false)) {
+                return;
+            }
+
+            auto& wait_prop = m_wait_tasks[cur_prop.prop_];
+            
+            Task next_task(nullptr);
+            while (wait_prop.try_dequeue(next_task)) {
+                if (UNLIKELY(m_bclear.load(std::memory_order_relaxed))) {
+                    m_approx_size.store(0, std::memory_order_release);
+                    m_single_task_count[cur_prop.prop_].store(0, std::memory_order_release);
+                    break;
+                }
+                else {
+                    m_approx_size.fetch_sub(1, std::memory_order_release);
+                    m_single_task_count[cur_prop.prop_].fetch_sub(1, std::memory_order_release);
+                }
+                if (next_task) {
+                    next_task();
+                }
+            }
+            cur_prop.can_pop_.store(true, std::memory_order_release);
+        }
+
+        bool full() const {
+            return !not_full();
+        }
+
+        size_t size() const {
+            return m_wait_tasks.size();
+        }
+
+    protected:
+        void clear_inner() {
+            m_bclear.store(true, std::memory_order_release);
+            for (auto& item : m_all_props) {
+                item.can_pop_.store(false, std::memory_order_release);
+            }
+            Task t;
+            for (auto& item : m_wait_tasks) {
+                auto& task_queue = item.second;
+                while (task_queue.try_dequeue(t));
+            }
+            for (auto& item : m_single_task_count){
+                item.second.store(0, std::memory_order_release);
+            }
+            m_cur_props_index.store(0, std::memory_order_release);
+            for (auto& item : m_all_props) {
+                item.can_pop_.store(true);
+            }
+            m_approx_size.store(0, std::memory_order_release);
+        }
+
+        // 是否处于未满状态
+        inline bool not_full(const TPropType& prop) {
+            return m_max_single_task_count == 0 || m_single_task_count[prop].load(std::memory_order_relaxed) < m_max_single_task_count;
+        }
+        // 是否处于空状态
+        inline bool not_empty() const {
+            return !m_bclear.load(std::memory_order_relaxed) && m_approx_size.load(std::memory_order_relaxed) > 0;
+        }
+
+    protected:
+        // 是否已终止标识符
+        std::atomic<bool>                                   m_bstop;
+        std::atomic<bool>                                   m_bclear;
+        std::atomic<int>                                    m_approx_size;
+        // 当前属性下标
+        std::atomic<size_t>                                 m_cur_props_index;
+        // 所有属性
+        std::vector<AlignedStatus>                          m_all_props;
+        // 总待执行任务队列属性及其对应任务
+        std::unordered_map<TPropType, moodycamel::ConcurrentQueue<Task>>      m_wait_tasks;
+        // 最大任务个数,当为0时表示无限制
+        size_t                                              m_max_task_count;
+        // 单属性最大任务个数,当为0时表示无限制
+        size_t                                              m_max_single_task_count;
+        std::unordered_map<TPropType, std::atomic<int>>     m_single_task_count;
+    };
+
+
 }

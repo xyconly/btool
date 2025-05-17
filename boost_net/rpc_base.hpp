@@ -1,9 +1,9 @@
 /************************************************************************
  * File name:      rpc_base.hpp
  * Author:			AChar
- * Purpose:  ÊÜĞÅ»·¾³ÏÂµÄrpcÍ¨Ñ¶
+ * Purpose:  å—ä¿¡ç¯å¢ƒä¸‹çš„rpcé€šè®¯
  * Date:     2020-10-27 15:18:11
- * Ê¹ÓÃ·½·¨:
+ * ä½¿ç”¨æ–¹æ³•:
 
     void foo_1(NetCallBack::SessionID session_id) {}
     struct st_1 {
@@ -25,7 +25,7 @@
         return std::forward_as_tuple(a, b);
     }
 
- ·şÎñ¶Ë:
+ æœåŠ¡ç«¯:
      class TestService {
         typedef RpcService<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 30000> rpc_server;
         rpc_server                                  m_rpc_server;
@@ -40,7 +40,7 @@
             m_rpc_server.listen("127.0.0.1", 61239);
             BTool::ParallelTaskPool pool;
             pool.start();
-            // Í¬²½°ó¶¨²»Ö±½Ó·µ»Ø,ĞèÖ÷¶¯·µ»Ø
+            // åŒæ­¥ç»‘å®šä¸ç›´æ¥è¿”å›,éœ€ä¸»åŠ¨è¿”å›
             m_rpc_server.bind("bind lambda", [this, &pool](rpc_server::SessionID session_id, const rpc_server::message_head& head, int rslt, int rsp_info) {
                 pool.add_task([=] {
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -48,7 +48,7 @@
                 });
             });
 
-            // Í¬²½°ó¶¨Ö±½Ó·µ»Ø
+            // åŒæ­¥ç»‘å®šç›´æ¥è¿”å›
             m_rpc_server.bind_auto("foo_1", &foo_1);
             m_rpc_server.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
             m_rpc_server.bind_auto("set", &set);
@@ -59,11 +59,11 @@
             std::function<int(rpc_server::SessionID, int)> func = [&](rpc_server::SessionID, int rsp_info)->int {};
             m_rpc_server.bind_auto_functional("functional", func);
 
-            // Ö÷¶¯ÍÆËÍ, Í¬²½µÈ´ı
+            // ä¸»åŠ¨æ¨é€, åŒæ­¥ç­‰å¾…
             auto [rsp_status, rsp_rslt] = m_rpc_server.push<int>("push", session_id, req_params...);
             auto [rsp_status3, rsp_rslt3] = m_rpc_server.push<200, int>("push", session_id, req_params...);
             auto rsp_status2 = m_rpc_server.push("push2", session_id);
-            // Ö÷¶¯ÍÆËÍ, Òì²½µÈ´ı
+            // ä¸»åŠ¨æ¨é€, å¼‚æ­¥ç­‰å¾…
             m_rpc_server.push_back("push_back", session_id, req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
             m_rpc_server.push_back<200>("push_back", session_id, req_params...)([&](rpc_server::SessionID, rpc_server::msg_status, rsp_args...) {});
 
@@ -71,7 +71,7 @@
         }
     };
 
-¿Í»§¶Ë:
+å®¢æˆ·ç«¯:
     class TestClient {
         typedef RpcClient<DefaultProxyPkgHandle, DefaultProxyMsgHandle, 30000>    rpc_client;
         rpc_client                                  m_rpc_client;
@@ -87,7 +87,7 @@
 
             BTool::ParallelTaskPool pool;
             pool.start();
-            // Í¬²½°ó¶¨²»Ö±½Ó·µ»Ø,ĞèÖ÷¶¯·µ»Ø
+            // åŒæ­¥ç»‘å®šä¸ç›´æ¥è¿”å›,éœ€ä¸»åŠ¨è¿”å›
             m_rpc_client.bind("bind lambda", [this, &pool](m_rpc_client::SessionID session_id, const m_rpc_client::message_head& head, int rslt, int rsp_info) {
                 pool.add_task([=] {
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -95,7 +95,7 @@
                 });
             });
 
-            // Í¬²½°ó¶¨Ö±½Ó·µ»Ø
+            // åŒæ­¥ç»‘å®šç›´æ¥è¿”å›
             m_rpc_client.bind_auto("foo_1", &foo_1);
             m_rpc_client.bind_auto("st_1 foo_1", &st_1::foo_1, new st_1);
             m_rpc_client.bind_auto("set", &set);
@@ -106,11 +106,11 @@
             std::function<int(m_rpc_client::SessionID, int)> func = [&](m_rpc_client::SessionID, int rsp_info)->int {};
             m_rpc_client.bind_auto_functional("functional", func);
 
-            // Ö÷¶¯ÍÆËÍ, Í¬²½µÈ´ı
+            // ä¸»åŠ¨æ¨é€, åŒæ­¥ç­‰å¾…
             auto [rsp_status, rsp_rslt] = m_rpc_client.call<int>("call", session_id, req_params...);
             auto [rsp_status3, rsp_rslt3] = m_rpc_client.call<200, int>("call", session_id, req_params...);
             auto rsp_status2 = m_rpc_client.call("push2", session_id);
-            // Ö÷¶¯ÍÆËÍ, Òì²½µÈ´ı
+            // ä¸»åŠ¨æ¨é€, å¼‚æ­¥ç­‰å¾…
             m_rpc_client.call_back("push_back", session_id, req_params...)([&](m_rpc_client::SessionID, m_rpc_client::msg_status, rsp_args...) {});
             m_rpc_client.call_back<200>("push_back", session_id, req_params...)([&](m_rpc_client::SessionID, m_rpc_client::msg_status, rsp_args...) {});
 
@@ -134,23 +134,23 @@ namespace BTool
     namespace BoostNet
     {
         enum class msg_status : int8_t {
-            no_bind = -1,   // Î´°ó¶¨
-            ok = 0,         // ·şÎñ¶ËÖ´ĞĞÕıÈ·
-            fail,           // ·şÎñ¶ËÖ´ĞĞÊ§°Ü
-            timeout,        // µÈ´ıÓ¦´ğ³¬Ê±
-            unpack_error,   // ½âÎöÊı¾İÊ§°Ü
-            send_error,     // ·¢ËÍÊ§°Ü
-            wait_error      // µÈ´ıÊ§°Ü
+            no_bind = -1,   // æœªç»‘å®š
+            ok = 0,         // æœåŠ¡ç«¯æ‰§è¡Œæ­£ç¡®
+            fail,           // æœåŠ¡ç«¯æ‰§è¡Œå¤±è´¥
+            timeout,        // ç­‰å¾…åº”ç­”è¶…æ—¶
+            unpack_error,   // è§£ææ•°æ®å¤±è´¥
+            send_error,     // å‘é€å¤±è´¥
+            wait_error      // ç­‰å¾…å¤±è´¥
         };
 
-        // µ÷ÓÃÔ¶³Ì·şÎñÄ£Ê½
+        // è°ƒç”¨è¿œç¨‹æœåŠ¡æ¨¡å¼
         enum class rpc_model : uint8_t {
-            future,         // ÇëÇó¶ËÍ¬²½µÈ´ıÇëÇó½á¹û, Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ²¢×Ô¶¯·µ»Øº¯Êı·µ»ØÖµ
-            callback,       // ÇëÇó¶ËÒì²½·µ»ØÇëÇó½á¹û, Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ²¢×Ô¶¯·µ»Øº¯Êı·µ»ØÖµ
-            bind            // bind_auto:Ó¦´ğ¶ËÍ¬²½Ö´ĞĞ¶©ÔÄ, ×Ô¶¯·µ»Øº¯Êı / bind:Ó¦´ğ¶ËÒì²½Ö´ĞĞ¶©ÔÄ, ĞèÖ÷¶¯ÏÔÊ½·µ»Ø
+            future,         // è¯·æ±‚ç«¯åŒæ­¥ç­‰å¾…è¯·æ±‚ç»“æœ, åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œå¹¶è‡ªåŠ¨è¿”å›å‡½æ•°è¿”å›å€¼
+            callback,       // è¯·æ±‚ç«¯å¼‚æ­¥è¿”å›è¯·æ±‚ç»“æœ, åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œå¹¶è‡ªåŠ¨è¿”å›å‡½æ•°è¿”å›å€¼
+            bind            // bind_auto:åº”ç­”ç«¯åŒæ­¥æ‰§è¡Œè®¢é˜…, è‡ªåŠ¨è¿”å›å‡½æ•° / bind:åº”ç­”ç«¯å¼‚æ­¥æ‰§è¡Œè®¢é˜…, éœ€ä¸»åŠ¨æ˜¾å¼è¿”å›
         };
 
-        // ÇëÇóÓ¦´ğÄ£Ê½
+        // è¯·æ±‚åº”ç­”æ¨¡å¼
         enum class comm_model : uint8_t {
             request,
             rsponse,
@@ -170,13 +170,13 @@ namespace BTool
             comm_model      comm_model_;
             rpc_model       rpc_model_;
             uint32_t        req_id_;
-            uint8_t         title_size_;   // ×î¶à255
-            uint32_t        content_size_; // ×î¶à4,294,967,295
+            uint8_t         title_size_;   // æœ€å¤š255
+            uint32_t        content_size_; // æœ€å¤š4,294,967,295
         };
 #pragma pack ()
 
         struct DefaultProxyMsgHandle {
-            // »ñÈ¡ÇëÇó
+            // è·å–è¯·æ±‚
             template<typename Type = void>
             typename std::enable_if<std::is_void<Type>::value, Type>::type
                 get_req_params(MemoryStream& msg, msg_status& status) {
@@ -319,13 +319,13 @@ namespace BTool
         public:
             typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>> ProxyMsgPtr;
 
-            // ´ò°üÏûÏ¢
-            // ´Ë´¦Ä¬ÈÏ²ÉÓÃ head + title + content(status + data)µÄÄÚ´æÖ±½Ó´ò°ü
+            // æ‰“åŒ…æ¶ˆæ¯
+            // æ­¤å¤„é»˜è®¤é‡‡ç”¨ head + title + content(status + data)çš„å†…å­˜ç›´æ¥æ‰“åŒ…
             template<typename... Args>
             ProxyMsgPtr package_msg(const std::string& rpc_name, comm_model comm_model, rpc_model model, uint32_t req_id, msg_status status, Args&&... args) {
                 uint8_t title_size = (uint8_t)rpc_name.length();
                 
-                // content³¤¶È, content °üº¬ status + ÄÚÈİ
+                // contenté•¿åº¦, content åŒ…å« status + å†…å®¹
                 uint32_t content_length = MemoryStream::get_args_length<msg_status, Args...>(status, std::forward<Args>(args)...);
 
                 BTool::MemoryStream write_buffer(sizeof(message_head) + title_size + content_length);
@@ -343,24 +343,23 @@ namespace BTool
                 return std::make_shared<ProxyMsg<TProxyMsgHandle>>(rpc_name, head, std::move(write_buffer));
             }
             
-            
-            // ½â°üÏûÏ¢
-            // ´Ë´¦Ä¬ÈÏ²ÉÓÃ head + title + content(status + data)µÄÄÚ´æÖ±½Ó½â°ü
+            // è§£åŒ…æ¶ˆæ¯
+            // æ­¤å¤„é»˜è®¤é‡‡ç”¨ head + title + content(status + data)çš„å†…å­˜ç›´æ¥è§£åŒ…
             std::tuple<std::vector<ProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
                 std::vector<ProxyMsgPtr>  resault;
                 BTool::MemoryStream read_buffer(msg, bytes_transferred);
                 while (read_buffer.get_res_length() >= sizeof(struct message_head) + sizeof(msg_status)) {
-                    // ¶ÁÈ¡,×Ô´øÆ¯ÒÆ
+                    // è¯»å–,è‡ªå¸¦æ¼‚ç§»
                     message_head cur_head;
-                    // head ¶ÁÈ¡, ×Ô´øÆ¯ÒÆ
+                    // head è¯»å–, è‡ªå¸¦æ¼‚ç§»
                     read_buffer.read(&cur_head);
 
-                    // Òì³£°ü, ´Ë´¦¿ÉÒÀ¾İ¶Ë¿ÚÏŞÖÆ´óĞ¡ÉèÖÃ
+                    // å¼‚å¸¸åŒ…, æ­¤å¤„å¯ä¾æ®ç«¯å£é™åˆ¶å¤§å°è®¾ç½®
                     if (cur_head.title_size_ == 0 || cur_head.content_size_ > (uint32_t)(-1) / 2) {
-                        return { std::vector<ProxyMsgPtr>(), 0, error(msg_status::send_error, "Òì³£°ü") };
+                        return { std::vector<ProxyMsgPtr>(), 0, error(msg_status::send_error, "å¼‚å¸¸åŒ…") };
                     }
 
-                    // ¶Ï°üÅĞ¶Ï
+                    // æ–­åŒ…åˆ¤æ–­
                     if (read_buffer.get_res_length() < cur_head.title_size_ + cur_head.content_size_) {
                         return { resault, read_buffer.get_offset() - sizeof(struct message_head), error() };
                     }
@@ -389,7 +388,7 @@ namespace BTool
             ProxyMsgPtr package_msg(const std::string& rpc_name, comm_model comm_model, rpc_model model, uint32_t req_id, msg_status status, TRspParams&&... args) {
                 return handle_.package_msg(rpc_name, comm_model, model, req_id, status, std::forward<TRspParams>(args)...);
             }
-            // ·µ»Ø: ÏûÏ¢¼¯ºÏ, ´¦Àí³¤¶È, ´íÎóĞÅÏ¢
+            // è¿”å›: æ¶ˆæ¯é›†åˆ, å¤„ç†é•¿åº¦, é”™è¯¯ä¿¡æ¯
             std::tuple<std::vector<ProxyMsgPtr>, size_t, error> unpackage_msg(const char* const msg, size_t bytes_transferred) {
                 return handle_.unpackage_msg(msg, bytes_transferred);
             }
@@ -450,7 +449,7 @@ namespace BTool
         class CallbackProxy {
             typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>  ProxyMsgPtr;
             typedef NetCallBack::SessionID                      SessionID;
-            // »Øµ÷Ä£Ê½ÄÚ²¿½âÎöº¯Êı
+            // å›è°ƒæ¨¡å¼å†…éƒ¨è§£æå‡½æ•°
             typedef std::function<void(SessionID, msg_status, ProxyMsgPtr)>       rsp_callback_function_type;
 
             struct session_timer_st {
@@ -522,7 +521,7 @@ namespace BTool
             template<typename... TRspParams>
             void proxy(std::function<void(SessionID, msg_status, TRspParams...)>& func, uint32_t req_id, SessionID session_id, msg_status status, ProxyMsgPtr msg) {
                 if constexpr (sizeof...(TRspParams) == 0) {
-                    // ±¾Éí·¢ËÍÊ§°Ü
+                    // æœ¬èº«å‘é€å¤±è´¥
                     if (status != msg_status::ok || !msg) {
                         std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status)));
                         return;
@@ -532,7 +531,7 @@ namespace BTool
                 }
                 else {
                     using args_type = std::tuple<typename std::decay<TRspParams>::type...>;
-                    // ±¾Éí·¢ËÍÊ§°Ü
+                    // æœ¬èº«å‘é€å¤±è´¥
                     if (status != msg_status::ok || !msg) {
                         std::apply(func, MemoryStream::tuple_merge(std::forward_as_tuple(session_id, status), args_type{}));
                         return;
@@ -543,15 +542,15 @@ namespace BTool
             }
 
         private:
-            // ¶¨Ê±É¾³ıÈÎÎñ
+            // å®šæ—¶åˆ é™¤ä»»åŠ¡
             TimerManager                                                    m_deadline_timer;
-            // Êı¾İ°²È«Ëø
+            // æ•°æ®å®‰å…¨é”
             std::mutex                                                      m_mtx;
-            // µ±Ç°ÇëÇóid
+            // å½“å‰è¯·æ±‚id
             uint32_t                                                        m_cur_req_id = 0;
             // req_id, timer_id
             std::unordered_map<uint32_t, session_timer_st>                  m_overtime_reqs;
-            // callbackº¯Êı°ó¶¨¼¯ºÏ
+            // callbackå‡½æ•°ç»‘å®šé›†åˆ
             std::unordered_map<uint32_t, rsp_callback_function_type>        m_callback_map;
         };
 
@@ -562,7 +561,7 @@ namespace BTool
         class BindProxy {
             typedef std::shared_ptr<ProxyMsg<TProxyMsgHandle>>  ProxyMsgPtr;
             typedef NetCallBack::SessionID                      SessionID;
-            // »Øµ÷Ä£Ê½ÄÚ²¿½âÎöº¯Êı
+            // å›è°ƒæ¨¡å¼å†…éƒ¨è§£æå‡½æ•°
             typedef std::function<void(SessionID, msg_status, ProxyMsgPtr)>       rsp_callback_function_type;
 
         public:
@@ -570,7 +569,7 @@ namespace BTool
                 m_parent = parent;
             }
 
-            // ·µ»ØÊÇ·ñÒÑ°ó¶¨
+            // è¿”å›æ˜¯å¦å·²ç»‘å®š
             bool invoke(SessionID session_id, const ProxyMsgPtr& msg) {
                 auto iter = m_bind_map.find(msg->get_rpc_name());
                 if (iter == m_bind_map.end())
@@ -707,11 +706,11 @@ namespace BTool
                 return std::apply(bindfunc, MemoryStream::tuple_merge(session_id, std::forward<ArgsTuple>(args)));
             }
 
-            // °ó¶¨Ä£Ê½ÄÚ²¿½âÎöº¯Êı
+            // ç»‘å®šæ¨¡å¼å†…éƒ¨è§£æå‡½æ•°
             typedef std::function<void(SessionID, const ProxyMsgPtr&)>  bind_function_type;
-            // bindº¯Êı°ó¶¨¼¯ºÏ
+            // bindå‡½æ•°ç»‘å®šé›†åˆ
             std::unordered_map<std::string, bind_function_type>          m_bind_map;
-            // ËùÊô¶ÔÏó
+            // æ‰€å±å¯¹è±¡
             RpcBase<TProxyPkgHandle, TProxyMsgHandle, DEFAULT_TIMEOUT>*  m_parent;
         };
 
@@ -726,17 +725,17 @@ namespace BTool
             RpcBase() : m_bind_proxy(this){}
             virtual ~RpcBase() {}
 
-/**************   call_back ÇëÇó²Ù×÷¶¨Òå  ******************/
-            // »Øµ÷¸¨Öú²Ù×÷Àà
+            /**************   call_back è¯·æ±‚æ“ä½œå®šä¹‰  ******************/
+            // å›è°ƒè¾…åŠ©æ“ä½œç±»
             template<size_t TIMEOUT, typename TParam = std::nullptr_t>
             struct callback_req_op {
-                // ÎŞ²ÎÊı
+                // æ— å‚æ•°
                 template<bool = std::is_null_pointer<TParam>::value>
                 callback_req_op(RpcBase* parent, const std::string& rpc_name, SessionID session_id)
                     : parent_(parent)
                     , rpc_name_(rpc_name)
                     , session_id_(session_id) {}
-                // ÓĞ²ÎÊı
+                // æœ‰å‚æ•°
                 template<bool = !std::is_null_pointer<TParam>::value>
                 callback_req_op(RpcBase* parent, const std::string& rpc_name, SessionID session_id, TParam&& arg)
                     : parent_(parent)
@@ -771,13 +770,13 @@ namespace BTool
                 }
 
             private:
-                // ÎŞ²ÎÊı
+                // æ— å‚æ•°
                 template <typename TType = TParam>
                 typename std::enable_if<std::is_null_pointer<TType>::value, void>::type
                     write_msg(uint32_t req_id) {
                     parent_->callback_send(TIMEOUT, rpc_name_, session_id_, req_id);
                 }
-                // ÓĞ²ÎÊı
+                // æœ‰å‚æ•°
                 template <typename TType = TParam>
                 typename std::enable_if<!std::is_null_pointer<TType>::value, void>::type
                     write_msg(uint32_t req_id) {
@@ -792,52 +791,52 @@ namespace BTool
             };
 
         public:
-/**************   bind && bind_auto  ******************/
+            /**************   bind && bind_auto  ******************/
             // lambda
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûĞèÖ÷¶¯µ÷¶¯rsp_bind
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
             template<typename TBindFunc>
             inline void bind(const std::string& rpc_name, TBindFunc&& bindfunc) {
                 bind_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
             }
             // std::functional
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûĞèÖ÷¶¯µ÷¶¯rsp_bind
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
             template<typename TReturn, typename... TRspParams>
             inline void bind_functional(const std::string& rpc_name, std::function<TReturn(SessionID, const message_head&, TRspParams...)> bindfunc) {
                 m_bind_proxy.insert(rpc_name, bindfunc);
             }
             // &functional
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûĞèÖ÷¶¯µ÷¶¯rsp_bind
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
             template<typename TReturn, typename... TRspParams>
             inline void bind(const std::string& rpc_name, TReturn(*bindfunc)(SessionID, const message_head&, TRspParams...)) {
                 bind_functional(rpc_name, std::function<TReturn(SessionID, const message_head&, TRspParams...)>(bindfunc));
             }
             // &object::functional, object
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûĞèÖ÷¶¯µ÷¶¯rsp_bind
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœéœ€ä¸»åŠ¨è°ƒåŠ¨rsp_bind
             template<typename TReturn, typename TObjClass, typename TObject, typename... TRspParams>
             inline void bind(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(SessionID, const message_head&, TRspParams...), TObject* obj) {
                 bind(rpc_name, [=](SessionID session_id, const message_head& head, TRspParams... ps)->TReturn { return (obj->*bindfunc)(session_id, head, ps...); });
             }
 
             // lambda
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
             template<typename TBindFunc>
             inline void bind_auto(const std::string& rpc_name, TBindFunc&& bindfunc) {
                 bind_auto_functional(rpc_name, from_lambad(std::forward<TBindFunc>(bindfunc)));
             }
             // std::functional
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
             template<typename TReturn, typename... TRspParams>
             inline void bind_auto_functional(const std::string& rpc_name, std::function<TReturn(SessionID, TRspParams...)> bindfunc) {
                 m_bind_proxy.insert_auto_rsp(rpc_name, bindfunc);
             }
             // &functional
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
             template<typename TReturn, typename... TRspParams>
             inline void bind_auto(const std::string& rpc_name, TReturn(*bindfunc)(SessionID, TRspParams...)) {
                 bind_auto_functional(rpc_name, std::function<TReturn(SessionID, TRspParams...)>(bindfunc));
             }
             // &object::functional, object
-            // º¯ÊıµÄÖ´ĞĞ½á¹ûÖ±½Ó·µ»Ø¸øÇëÇó¶Ë
+            // å‡½æ•°çš„æ‰§è¡Œç»“æœç›´æ¥è¿”å›ç»™è¯·æ±‚ç«¯
             template<typename TReturn, typename TObjClass, typename TObject, typename... TRspParams>
             inline void bind_auto(const std::string& rpc_name, TReturn(TObjClass::* bindfunc)(SessionID, TRspParams...), TObject* obj) {
                 bind_auto(rpc_name, [=](SessionID session_id, TRspParams... ps)->TReturn { return (obj->*bindfunc)(session_id, ps...); });
@@ -851,20 +850,20 @@ namespace BTool
 
 
         protected:
-/**************   Òì²½µ÷ÓÃ·¢ËÍĞÅÏ¢  ******************/
+            /**************   å¼‚æ­¥è°ƒç”¨å‘é€ä¿¡æ¯  ******************/
             template<typename... Args>
             void callback_send(size_t overtime, const std::string& rpc_name, SessionID session_id, uint32_t req_id, Args&&... args) {
                 m_callback_proxy.insert_timer(overtime, session_id, req_id);
-                // todo... ºóÆÚ¿¼ÂÇ½«¸Ã·½·¨ÒÆ¶¯ÖÁÆä¼Ì³ĞÀà×ÔÉíÊµÏÖ, ÃâÈ¥TProxyPkgHandleµÄÒıÈë
+                // todo... åæœŸè€ƒè™‘å°†è¯¥æ–¹æ³•ç§»åŠ¨è‡³å…¶ç»§æ‰¿ç±»è‡ªèº«å®ç°, å…å»TProxyPkgHandleçš„å¼•å…¥
                 auto unit = m_proxy_deal.package_msg(rpc_name, comm_model::request, rpc_model::callback, req_id, msg_status::ok, std::forward<Args>(args)...);
                 if (!write_impl(session_id, unit->get_package(), unit->get_length())) {
                     m_callback_proxy.remove(req_id, msg_status::send_error);
                 }
             }
 
-/**************   Í¬²½µ÷ÓÃ·¢ËÍĞÅÏ¢, ´æÔÚ×èÈû  ******************/
-            // ÎŞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-            // ·µ»Ø²ÎÊıÀàĞÍ: msg_status,  ±íÊ¾×îÖÕ×´Ì¬
+            /**************   åŒæ­¥è°ƒç”¨å‘é€ä¿¡æ¯, å­˜åœ¨é˜»å¡  ******************/
+            // æ— è¿”å›å‚æ•° åŒæ­¥è°ƒç”¨,å­˜åœ¨é˜»å¡
+            // è¿”å›å‚æ•°ç±»å‹: msg_status,  è¡¨ç¤ºæœ€ç»ˆçŠ¶æ€
             template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
             typename std::enable_if<std::is_void<TReturn>::value, msg_status>::type
                 sync_send(const std::string& rpc_name, SessionID session_id, Args&&... args) {
@@ -874,8 +873,8 @@ namespace BTool
                 }
                 return status;
             }
-            // ÓĞ·µ»Ø²ÎÊı Í¬²½µ÷ÓÃ,´æÔÚ×èÈû
-            // ·µ»Ø²ÎÊıÀàĞÍ: std::tuple<msg_status, TReturn>,  ±íÊ¾<×îÖÕ×´Ì¬, ·µ»Ø½á¹û>
+            // æœ‰è¿”å›å‚æ•° åŒæ­¥è°ƒç”¨,å­˜åœ¨é˜»å¡
+            // è¿”å›å‚æ•°ç±»å‹: std::tuple<msg_status, TReturn>,  è¡¨ç¤º<æœ€ç»ˆçŠ¶æ€, è¿”å›ç»“æœ>
             template<size_t TIMEOUT, typename TReturn, typename ...Args>
             std::tuple<msg_status, typename std::enable_if<!std::is_void<TReturn>::value, TReturn>::type>
                 sync_send(const std::string& rpc_name, SessionID session_id, Args&&... args) {
@@ -891,7 +890,7 @@ namespace BTool
             template<size_t TIMEOUT, typename ...Args>
             std::tuple<msg_status, ProxyMsgPtr> sync_send_impl(const std::string& rpc_name, SessionID session_id, Args&&... args) {
                 auto req_id = m_sync_proxy.get_next_promise();
-                // todo... ºóÆÚ¿¼ÂÇ½«¸Ã·½·¨ÒÆ¶¯ÖÁÆä¼Ì³ĞÀà×ÔÉíÊµÏÖ, ÃâÈ¥TProxyPkgHandleµÄÒıÈë
+                // todo... åæœŸè€ƒè™‘å°†è¯¥æ–¹æ³•ç§»åŠ¨è‡³å…¶ç»§æ‰¿ç±»è‡ªèº«å®ç°, å…å»TProxyPkgHandleçš„å¼•å…¥
                 auto unit = m_proxy_deal.package_msg(rpc_name, comm_model::request, rpc_model::future, req_id, msg_status::ok, std::forward<Args>(args)...);
                 if (!write_impl(session_id, unit->get_package(), unit->get_length())) {
                     return std::forward_as_tuple(msg_status::send_error, nullptr);
@@ -903,7 +902,7 @@ namespace BTool
             virtual bool write_impl(SessionID session_id, const char* const data, size_t bytes_transferred) = 0;
 
         private:
-/**************   º¯Êı×ª»»  ******************/
+            /**************   å‡½æ•°è½¬æ¢  ******************/
             template <typename T> struct function_traits_base {
                 typedef T type;
             };
@@ -939,8 +938,8 @@ namespace BTool
             typedef typename RpcBaseType::SessionID    SessionID;
 
         public:
-            // max_buffer_size: ×î´óĞ´»º³åÇø´óĞ¡,0±íÊ¾ÎŞÏŞÖÆ
-            // max_rbuffer_size: µ¥´Î¶ÁÈ¡×î´ó»º³åÇø´óĞ¡
+            // max_buffer_size: æœ€å¤§å†™ç¼“å†²åŒºå¤§å°,0è¡¨ç¤ºæ— é™åˆ¶
+            // max_rbuffer_size: å•æ¬¡è¯»å–æœ€å¤§ç¼“å†²åŒºå¤§å°
             RpcService(int works = 0, size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) : m_ioc_pool(works) {
                 m_service = std::make_shared<TServer>(m_ioc_pool, max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
@@ -949,19 +948,19 @@ namespace BTool
                 m_service->register_read_cbk(std::bind(&RpcService::read_cbk, this, _1, _2, _3));
             }
             ~RpcService() {
-                m_ioc_pool.stop();
                 m_service.reset();
+                m_ioc_pool.stop();
             }
 
-            // ÉèÖÃ¼àÌı´íÎó»Øµ÷
+            // è®¾ç½®ç›‘å¬é”™è¯¯å›è°ƒ
             void register_error_cbk(const NetCallBack::server_error_cbk& cbk) {
                 m_service->register_error_cbk(cbk);
             }
-            // ÉèÖÃ¿ªÆôÁ¬½Ó»Øµ÷
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
             void register_open_cbk(const NetCallBack::open_cbk& cbk) {
                 m_service->register_open_cbk(cbk);
             }
-            // ÉèÖÃ¹Ø±ÕÁ¬½Ó»Øµ÷
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
             void register_close_cbk(const NetCallBack::close_cbk& cbk) {
                 m_service->register_close_cbk(cbk);
             }
@@ -979,7 +978,7 @@ namespace BTool
             }
 
         public:
-         /**************   tcp»Øµ÷  ******************/
+         /**************   tcpå›è°ƒ  ******************/
             void read_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
                 if (err.status_ != msg_status::ok) {
@@ -1009,7 +1008,6 @@ namespace BTool
                     default:
                         //this->m_error_proxy.invoke(item);
                         m_service->close(session_id);
-
                         return;
                         break;
                     }
@@ -1030,10 +1028,10 @@ namespace BTool
             }
 
          /**************   pushback  ******************/
-            // Òì²½»Øµ÷
-            // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-            // ·µ»Ø²ÎÊıÀàĞÍ: callback_req_op<...>, Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-            // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
             template<size_t TIMEOUT>
             decltype(auto) push_back(const std::string& rpc_name, SessionID session_id) {
                 return typename RpcBaseType::template callback_req_op<TIMEOUT>
@@ -1049,10 +1047,10 @@ namespace BTool
                 return typename RpcBaseType::template callback_req_op<TIMEOUT, std::tuple<TParam, Args...>>
                     (this, rpc_name, session_id, std::forward_as_tuple(std::forward<TParam>(param), std::forward<Args>(args)...));
             }
-            // Òì²½»Øµ÷
-            // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-            // ·µ»Ø²ÎÊıÀàĞÍ: callback_req_op<...>, Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-            // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
             template<typename ...Args>
             decltype(auto) push_back(const std::string& rpc_name, SessionID session_id, Args&&... args) {
                 return push_back<DEFAULT_TIMEOUT>(rpc_name, session_id, std::forward<Args>(args)...);
@@ -1079,9 +1077,9 @@ namespace BTool
             typedef typename RpcBaseType::SessionID    SessionID;
 
         public:
-            // works: »Øµ÷Ïß³Ì³ØÊı
-            // max_buffer_size: ×î´óĞ´»º³åÇø´óĞ¡,0±íÊ¾ÎŞÏŞÖÆ
-            // max_rbuffer_size: µ¥´Î¶ÁÈ¡×î´ó»º³åÇø´óĞ¡
+            // works: å›è°ƒçº¿ç¨‹æ± æ•°
+            // max_buffer_size: æœ€å¤§å†™ç¼“å†²åŒºå¤§å°,0è¡¨ç¤ºæ— é™åˆ¶
+            // max_rbuffer_size: å•æ¬¡è¯»å–æœ€å¤§ç¼“å†²åŒºå¤§å°
             RpcClient(size_t max_wbuffer_size = 0, size_t max_rbuffer_size = 2000) :m_ioc_pool(1) {
                 m_session = std::make_shared<TSession>(m_ioc_pool.get_io_context(), max_wbuffer_size, max_rbuffer_size);
                 using std::placeholders::_1;
@@ -1089,14 +1087,14 @@ namespace BTool
                 using std::placeholders::_3;
                 //m_session->register_cbk(m_cbk);
                 m_session->register_open_cbk(std::bind(&RpcClient::open_cbk, this, _1))
-                    .register_close_cbk(std::bind(&RpcClient::close_cbk, this, _1))
+                    .register_close_cbk(std::bind(&RpcClient::close_cbk, this, _1, _2, _3))
                     .register_read_cbk(std::bind(&RpcClient::read_cbk, this, _1, _2, _3));
             }
             ~RpcClient() {
                 m_session->register_cbk(NetCallBack());
                 shutdown();
-                m_ioc_pool.stop();
                 m_session.reset();
+                m_ioc_pool.stop();
             }
 
             void connect(const std::string& ip, unsigned short port, bool auto_reconnect = true) {
@@ -1104,11 +1102,11 @@ namespace BTool
                 m_session->connect(ip.c_str(), port);
             }
 
-            // ÉèÖÃ¿ªÆôÁ¬½Ó»Øµ÷
+            // è®¾ç½®å¼€å¯è¿æ¥å›è°ƒ
             void register_open_cbk(const NetCallBack::open_cbk& cbk) {
                 m_cbk.open_cbk_ = cbk;
             }
-            // ÉèÖÃ¹Ø±ÕÁ¬½Ó»Øµ÷
+            // è®¾ç½®å…³é—­è¿æ¥å›è°ƒ
             void register_close_cbk(const NetCallBack::close_cbk& cbk) {
                 m_cbk.close_cbk_ = cbk;
             }
@@ -1123,14 +1121,14 @@ namespace BTool
             }
 
         public:
-/**************   tcp»Øµ÷  ******************/
+            /**************   tcpå›è°ƒ  ******************/
             void open_cbk(NetCallBack::SessionID session_id) {
                 if (m_cbk.open_cbk_)
                     m_cbk.open_cbk_(session_id);
             }
-            void close_cbk(NetCallBack::SessionID session_id) {
+            void close_cbk(NetCallBack::SessionID session_id, const char* const msg, size_t bytes_transferred) {
                 if (m_cbk.close_cbk_)
-                    m_cbk.close_cbk_(session_id);
+                    m_cbk.close_cbk_(session_id, msg, bytes_transferred);
 
                 if (m_b_auto_reconnect) {
 #ifdef __linux
@@ -1144,7 +1142,7 @@ namespace BTool
                 auto [units, deal_len, err] = this->m_proxy_deal.unpackage_msg(msg, bytes_transferred);
                 if (err.status_ != msg_status::ok) {
                     //this->m_error_proxy.error(err);
-                    m_session->shutdown();
+                    m_session->shutdown(boost::asio::error::invalid_argument);
                     return;
                 }
 
@@ -1168,7 +1166,7 @@ namespace BTool
                         break;
                     default:
                         //this->m_error_proxy.invoke(item);
-                        m_session->shutdown();
+                        m_session->shutdown(boost::asio::error::invalid_argument);
                         return;
                         break;
                     }
@@ -1178,7 +1176,15 @@ namespace BTool
             }
 
         public:
-/**************   call  ******************/
+            template <typename T, typename = void>
+            struct HAS_EXPLICIT_TIME : std::false_type {};
+            template <typename T>
+            struct HAS_EXPLICIT_TIME<T, std::enable_if_t<
+                                            std::is_integral_v<std::remove_reference_t<T>>
+                                        >
+                                    > : std::true_type {};
+
+            /**************   call  ******************/
             template<size_t TIMEOUT, typename TReturn = void, typename ...Args>
             decltype(auto) call(const std::string& rpc_name, Args&&... args) {
                 return this->template sync_send<TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
@@ -1188,33 +1194,33 @@ namespace BTool
                 return this->template sync_send<DEFAULT_TIMEOUT, TReturn>(rpc_name, get_session_id(), std::forward<Args>(args)...);
             }
 
-/**************   callback  ******************/
-            // Òì²½»Øµ÷
-            // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-            // ·µ»Ø²ÎÊıÀàĞÍ: callback_req_op<...>, Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-            // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
+            /**************   callback  ******************/
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
             template<size_t TIMEOUT>
-            decltype(auto) call_back(const std::string& rpc_name) {
+            decltype(auto) call_back_timer(const std::string& rpc_name) {
                 return typename RpcBaseType::template callback_req_op<TIMEOUT>
                     (this, rpc_name, get_session_id());
             }
             template<size_t TIMEOUT, typename TParam>
-            decltype(auto) call_back(const std::string& rpc_name, TParam&& param) {
+            decltype(auto) call_back_timer(const std::string& rpc_name, TParam&& param) {
                 return typename RpcBaseType::template callback_req_op<TIMEOUT, TParam>
                     (this, rpc_name, get_session_id(), std::forward<TParam>(param));
             }
             template<size_t TIMEOUT, typename TParam, typename ...Args>
-            decltype(auto) call_back(const std::string& rpc_name, TParam&& param, Args&&... args) {
+            decltype(auto) call_back_timer(const std::string& rpc_name, TParam&& param, Args&&... args) {
                 return typename RpcBaseType::template callback_req_op<TIMEOUT, std::tuple<TParam, Args...>>
                     (this, rpc_name, get_session_id(), std::forward_as_tuple(std::forward<TParam>(param), std::forward<Args>(args)...));
             }
-            // Òì²½»Øµ÷
-            // decltype(auto) ¿ÉÍÆµ¼³öÒıÓÃµÈÔ­ÀàĞÍ
-            // ·µ»Ø²ÎÊıÀàĞÍ: callback_req_op<...>, Í¨¹ıÆä·¢ËÍÒì²½µ÷ÓÃ
-            // º¯Êı±ØĞë²ÎÊı(SessionID, msg_status, ...)
+            // å¼‚æ­¥å›è°ƒ
+            // decltype(auto) å¯æ¨å¯¼å‡ºå¼•ç”¨ç­‰åŸç±»å‹
+            // è¿”å›å‚æ•°ç±»å‹: callback_req_op<...>, é€šè¿‡å…¶å‘é€å¼‚æ­¥è°ƒç”¨
+            // å‡½æ•°å¿…é¡»å‚æ•°(SessionID, msg_status, ...)
             template<typename ...Args>
             decltype(auto) call_back(const std::string& rpc_name, Args&&... args) {
-                return call_back<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
+                return call_back_timer<DEFAULT_TIMEOUT>(rpc_name, std::forward<Args>(args)...);
             }
 
         private:

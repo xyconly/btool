@@ -36,7 +36,7 @@ Note:       客户端可直接使用HttpClientSession,调用HttpClientNetCallBack回调
 
 备注:
         也可直接自定义发送及返回消息类型, 如
-            using SelfHttpClientNetCallBack = HttpNetCallBack<false, boost::beast::http::file_body, boost::beast::http::string_body>;
+            using SelfHttpClientNetCallBack = BoostNet::HttpNetCallBack<false, boost::beast::http::file_body, boost::beast::http::string_body>;
             using SelfHttpClientSession = HttpSession<false, boost::beast::http::file_body, boost::beast::http::string_body>
 *****************************************************************************/
 
@@ -66,7 +66,7 @@ namespace BTool
             typedef boost::beast::flat_buffer                                   read_buffer_type;
 
             typedef HttpSession<isRequest, ReadType, WriteType, Fields>         SessionType;
-            typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
+            typedef BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
             typedef typename callback_type::read_msg_type                       read_msg_type;
             typedef typename callback_type::send_msg_type                       send_msg_type;
             typedef typename callback_type::SessionID                           SessionID;

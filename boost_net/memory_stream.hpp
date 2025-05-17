@@ -209,12 +209,13 @@ namespace BTool {
                 return;
             }
 
-            if (m_buffer)
-                m_buffer = (char*)realloc(m_buffer, len);
-            else
-                m_buffer = (char*)malloc(len);
-
-            m_capacity = len;
+            if (m_capacity < len) {
+                if (m_buffer)
+                    m_buffer = (char*)realloc(m_buffer, len);
+                else
+                    m_buffer = (char*)malloc(len);
+                m_capacity = len;
+            }
         }
         // 重置内存指向,此时将不再自动管理内存释放
         void attach(char* src, size_t len) {
@@ -268,15 +269,19 @@ namespace BTool {
         // 加载数据,此后将自动管理内存释放
         // 加载时会清空原有数据,且加载后不会对漂移位置进行置位
         void load(const char* buffer, size_t len) {
+            reset_capacity(len);
+            memcpy(m_buffer, buffer, len);
             m_buffer_size = len;
             m_offset = 0;
-            m_capacity = len;
-            if (m_buffer && m_auto_delete)
-                free(m_buffer);
-
-            m_buffer = (char*)malloc(len);
+        }
+        // 加载数据,此后将自动管理内存释放
+        // 加载时会覆盖原有数据,且加载后不会对漂移位置进行置位
+        void load(const char* buffer, size_t len, size_t capacity) {
+            capacity = std::max(capacity, len);
+            reset_capacity(capacity);
             memcpy(m_buffer, buffer, len);
-            m_auto_delete = true;
+            m_buffer_size = len;
+            m_offset = 0;
         }
         // 追加数据至指定位置的内存处
         void append(const void* buffer, size_t len, size_t offset) {

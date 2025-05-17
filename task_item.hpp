@@ -182,11 +182,11 @@ namespace BTool
 #if defined(_MSC_VER)
         typedef unsigned __int64			        TimerId;
 #elif __GNUC__
-#if __WORDSIZE == 64
+# if __WORDSIZE == 64
         typedef unsigned long int 			        TimerId;
-#else
+# else
         __extension__ typedef unsigned long long	TimerId;
-#endif
+# endif
 #else
         typedef unsigned long long			        TimerId;
 #endif

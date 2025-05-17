@@ -47,7 +47,7 @@ Special Note: 构造函数中ios_type& ios为外部引用,需要优先释放该对象之后才能释放io
 
 namespace BTool
 {
-    namespace BoostNet1_68
+    namespace BoostNet
     {
         // WebsocketSsl连接对象
         class WebsocketSslSession : public std::enable_shared_from_this<WebsocketSslSession>

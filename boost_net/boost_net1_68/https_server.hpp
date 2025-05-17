@@ -40,7 +40,7 @@ Note:       可直接使用HttpsService,调用HttpServiceNetCallBack回调
 
 备注:
         也可直接自定义发送及返回消息类型, 如
-            using SelfHttpServiceNetCallBack = HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
+            using SelfHttpServiceNetCallBack = BoostNet::HttpNetCallBack<true, boost::beast::http::string_body, boost::beast::http::file_body>;
             using SelfHttpsServer = HttpsServer<true, boost::beast::http::string_body, boost::beast::http::file_body>
 *****************************************************************************/
 
@@ -58,7 +58,7 @@ namespace BTool
     {
         // Http服务
         template<bool isRequest, class ReadType, class WriteType = ReadType, class Fields = boost::beast::http::fields>
-        class HttpsServer : public HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
+        class HttpsServer : public BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>
         {
             typedef AsioServicePool::ios_type                       ios_type;
             typedef boost::asio::ssl::context                       io_context_type;
@@ -68,7 +68,7 @@ namespace BTool
             typedef HttpsServer<isRequest, ReadType, WriteType, Fields>         ServerType;
 
             // 回调相关命名
-            typedef HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
+            typedef BoostNet::HttpNetCallBack<isRequest, ReadType, WriteType, Fields>     callback_type;
             typedef typename callback_type::read_msg_type                       read_msg_type;
             typedef typename callback_type::send_msg_type                       send_msg_type;
             typedef typename callback_type::SessionID                           SessionID;

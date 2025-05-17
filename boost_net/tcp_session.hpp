@@ -47,8 +47,8 @@ namespace BTool
             typedef boost::asio::ip::tcp::socket        socket_type;
             typedef boost::asio::io_context             ioc_type;
             typedef ReadBuffer                          ReadBufferType;
-            typedef WriteBuffer                         WriteBufferType;
-            typedef WriteBuffer::WriteMemoryStreamPtr   WriteMemoryStreamPtr;
+            typedef WriteBuffer<1024>                   WriteBufferType;
+            typedef WriteBufferType::WriteMemoryStreamPtr   WriteMemoryStreamPtr;
             typedef NetCallBack::SessionID              SessionID;
 
             enum {
@@ -146,10 +146,13 @@ namespace BTool
 
                 m_overtime_timer.cancel();
                 m_overtime_timer.expires_from_now(boost::posix_time::milliseconds(2000));
-
+#if BOOST_VERSION >= 108000
+                m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(ip), port)
+                                    ,std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
+#else
                 m_socket.async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(ip), port)
                                     ,std::bind(&TcpSession::handle_connect, shared_from_this(), std::placeholders::_1));
-
+#endif
                 m_overtime_timer.async_wait(std::bind(&TcpSession::handle_overtimer, shared_from_this(), std::placeholders::_1));
             }
 
@@ -167,7 +170,7 @@ namespace BTool
             }
 
             // 同步关闭
-            void shutdown(const boost::beast::error_code& ec = {})
+            void shutdown(const boost::system::error_code& ec = boost::asio::error::operation_aborted)
             {
                 if (!m_atomic_switch.stop())
                     return;
@@ -175,13 +178,36 @@ namespace BTool
                 close(ec);
             }
 
+            // 若为智能指针则可改为获取发送缓存, 这样可以实现发送复用
+            // WriteMemoryStreamPtr acquire_buffer(const char* const msg, size_t len) {
+            //     std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+            //     return m_write_buf.acquire(msg, len);
+            // }
+            // bool write(const WriteMemoryStreamPtr& buffer) {
+            //     std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+            //     if (!m_atomic_switch.has_started()) {
+            //         return false;
+            //     }
+            //     if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + buffer->size() > m_max_wbuffer_size) {
+            //         return false;
+            //     }
+            //     if (!m_write_buf.append(std::move(buffer))) {
+            //         return false;
+            //     }
+            //     // 是否处于发送状态中
+            //     if (m_current_send_msg) {
+            //         return true;
+            //     }
+            //     write();
+            //     return true;
+            // }
+
             // 写入
             bool write(const char* send_msg, size_t size) {
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (!m_atomic_switch.has_started()) {
                     return false;
                 }
-
-                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
                     return false;
                 }
@@ -200,11 +226,10 @@ namespace BTool
             // 在当前消息尾追加
             // max_package_size: 单个消息最大包长
             bool write_tail(const char* send_msg, size_t size, size_t max_package_size = 65535) {
+                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (!m_atomic_switch.has_started()) {
                     return false;
                 }
-
-                std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
                 if (m_max_wbuffer_size > NOLIMIT_WRITE_BUFFER_SIZE && m_write_buf.size() + size > m_max_wbuffer_size) {
                     return false;
                 }
@@ -274,10 +299,18 @@ namespace BTool
             // 处理开始
             void handle_start() {
                 boost::system::error_code ec;
+                
+#if BOOST_VERSION >= 108000
                 if (m_connect_ip.empty())
-					m_connect_ip = m_socket.remote_endpoint(ec).address().to_string(ec);
+                    m_connect_ip = m_socket.remote_endpoint(ec).address().to_string();
                 if(m_connect_port == 0)
                     m_connect_port = m_socket.remote_endpoint(ec).port();
+#else
+                if (m_connect_ip.empty())
+                    m_connect_ip = m_socket.remote_endpoint(ec).address().to_string(ec);
+                if(m_connect_port == 0)
+                    m_connect_port = m_socket.remote_endpoint(ec).port();
+#endif
 
                 if (m_atomic_switch.start() && read() && m_handler.open_cbk_) {
                     m_handler.open_cbk_(m_session_id);
@@ -323,7 +356,7 @@ namespace BTool
                 }
 
                 std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
-                m_current_send_msg.reset();
+                m_write_buf.release(m_current_send_msg);
                 if (m_write_buf.empty()) {
                     return;
                 }
@@ -337,19 +370,19 @@ namespace BTool
                 }
             }
 
-            void close(const boost::beast::error_code& ec) {
-                boost::system::error_code ignored_ec;
-                m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-                m_socket.close(ignored_ec);
-
-                m_read_buf.consume(m_read_buf.size());
+            void close(const boost::system::error_code& ec) {
                 {
+                    boost::system::error_code ignored_ec;
                     std::lock_guard<std::recursive_mutex> lock(m_write_mtx);
+                    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+                    if (m_atomic_switch.has_init())
+                        m_socket.close(ignored_ec);
+
+                    m_atomic_switch.reset();
+                    m_read_buf.consume(m_read_buf.size());
                     m_write_buf.clear();
                     m_current_send_msg.reset();
                 }
-
-                m_atomic_switch.reset();
 
                 if (m_handler.close_cbk_) {
                     auto err = ec.message();

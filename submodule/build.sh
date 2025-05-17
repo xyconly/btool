@@ -1,9 +1,6 @@
 #!/bin/bash
 
 workdir=$(cd $(dirname $0); pwd)
-# concurrentqueue
-cd $workdir/concurrentqueue
-rm -rf tests build c_api benchmarks .gitignore CMakeLists.txt concurrentqueueConfig.cmake.in LICENSE.md README.md samples.md 
 
 # oneTBB
 cd $workdir/oneTBB
@@ -11,16 +8,32 @@ mkdir _build && cd _build
 
 cmake -DTBB_TEST=OFF -DCMAKE_BUILD_TYPE=Debug -DTBB_OUTPUT_DIR_BASE=../libs/share ..
 cmake --build . --config debug
+if [ $? -ne 0 ]; then
+    echo "cmake build oneTBB share debug failed"
+    exit 1
+fi
 cmake -DTBB_TEST=OFF -DCMAKE_BUILD_TYPE=Release -DTBB_OUTPUT_DIR_BASE=../libs/share ..
 cmake --build . --config release
+if [ $? -ne 0 ]; then
+    echo "cmake build oneTBB share release failed"
+    exit 1
+fi
 
 cmake -DTBB_TEST=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DTBB_OUTPUT_DIR_BASE=../libs/static ..
 cmake --build . --config debug
+if [ $? -ne 0 ]; then
+    echo "cmake build oneTBB static debug failed"
+    exit 1
+fi
 cmake -DTBB_TEST=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DTBB_OUTPUT_DIR_BASE=../libs/static ..
 cmake --build . --config release
+if [ $? -ne 0 ]; then
+    echo "cmake build oneTBB static release failed"
+    exit 1
+fi
 
 cd .. 
-rm -rf _build  ./cmake ./integration ./src *.bazel  .bazel*  doc examples test *.md *.txt .github .gitattributes .git .gitignore
+rm -rf _build 
 
 #递归替换头文件开头
 function recursion_replace() {
@@ -57,9 +70,20 @@ recursion $workdir/oneTBB"/include/tbb" "tbb"
 # libgo
 cd $workdir/libgo
 mkdir libs
-mkdir _build && cd _build && cmake ..
+mkdir _build && cd _build
+# 是否为macos
+if [[ "$(uname)" == "Darwin" ]]; then
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DLIBGO_OS_MAC=ON -DLIBGO_NO_EPOLL=ON -DLIBGO_NO_IOURING=ON -DLIBGO_NO_HOOK=OFF
+else
+    cmake ..
+fi
+
 make -j32
+if [ $? -ne 0 ]; then
+    echo "cmake build libgo failed"
+    exit 1
+fi
 mv liblibgo.a ../libs
 mv libstatic_hook.a ../libs
 cd ..
-rm -rf _build imgs .travis_scripts test third_party vs_proj .gitignore .gitmodules .travis.yml CMakeLists.txt LICENSE README.md TODO package.json tutorial
+rm -rf _build

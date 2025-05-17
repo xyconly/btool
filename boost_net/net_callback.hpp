@@ -80,13 +80,22 @@ namespace BTool
 
             boost::asio::io_context ioc;
             boost::asio::ip::tcp::resolver rslv(ioc);
+#if BOOST_VERSION >= 108000
+            try {
+                auto results = rslv.resolve(host, boost::lexical_cast<std::string>(port));
+                if (!results.empty()) {
+                    ec.clear();
+                    return results.begin()->endpoint();
+                }
+#else
             boost::asio::ip::tcp::resolver::query qry(host, boost::lexical_cast<std::string>(port));
             try {
                 auto iter = rslv.resolve(qry);
                 if (iter != boost::asio::ip::tcp::resolver::iterator()) {
                     ec.clear();
-                    return iter->endpoint(); // 返回解析的 IP 地址
+                    return iter->endpoint();
                 }
+#endif
             } catch (...) {
                 ec = boost::asio::error::fault;
             }
