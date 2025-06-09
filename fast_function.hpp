@@ -13,17 +13,17 @@ Demo:
         }
         do_something([x]() {});
 *************************************************/
+#include <cassert>
 #include <cstring>
 #include <type_traits>
 #include <utility>
-#include <cassert>
 
 namespace BTool {
     class FastFunction {
     public:
         // 最大捕获对象大小
-        static constexpr size_t MAX_BUFFER_SIZE = 32;
-        static constexpr size_t MAX_BUFFER_ALIGN = alignof(std::max_align_t);
+        static constexpr size_t MAX_BUFFER_SIZE = 128;
+        static constexpr size_t MAX_BUFFER_ALIGN = alignof(std::max_align_t) * 2;
 
         FastFunction() noexcept = default;
         FastFunction(std::nullptr_t) noexcept : m_invoke_fn(nullptr), m_destroy_fn(nullptr) {}
@@ -43,7 +43,7 @@ namespace BTool {
             };
         }
 
-        FastFunction(const FastFunction&) = delete; // 禁止拷贝
+        FastFunction(const FastFunction&) = delete;  // 禁止拷贝
         FastFunction& operator=(const FastFunction&) = delete;
 
         FastFunction(FastFunction&& other) noexcept {
