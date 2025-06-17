@@ -35,11 +35,16 @@ namespace BTool {
             static_assert(std::is_invocable_r_v<void, TFunction>, "TFunction must be void()");
 
             new (&m_storage) TFunction(std::forward<TFunction>(cb));
+
             m_invoke_fn = [](void* ptr) {
                 (*reinterpret_cast<TFunction*>(ptr))();
             };
             m_destroy_fn = [](void* ptr) {
                 reinterpret_cast<TFunction*>(ptr)->~TFunction();
+            };
+            m_move_fn = [](void* dst, void* src) {
+                new (dst) TFunction(std::move(*reinterpret_cast<TFunction*>(src)));
+                reinterpret_cast<TFunction*>(src)->~TFunction();  // optional
             };
         }
 
@@ -47,21 +52,32 @@ namespace BTool {
         FastFunction& operator=(const FastFunction&) = delete;
 
         FastFunction(FastFunction&& other) noexcept {
-            std::memcpy(&m_storage, &other.m_storage, MAX_BUFFER_SIZE);
-            m_invoke_fn = other.m_invoke_fn;
-            m_destroy_fn = other.m_destroy_fn;
-            other.m_invoke_fn = nullptr;
-            other.m_destroy_fn = nullptr;
+            if (other.m_invoke_fn) {
+                // 定义一个移动构造辅助函数
+                other.m_move_fn(&m_storage, &other.m_storage);
+                m_invoke_fn = other.m_invoke_fn;
+                m_destroy_fn = other.m_destroy_fn;
+                m_move_fn = other.m_move_fn;
+
+                other.m_invoke_fn = nullptr;
+                other.m_destroy_fn = nullptr;
+                other.m_move_fn = nullptr;
+            }
         }
 
         FastFunction& operator=(FastFunction&& other) noexcept {
             if (this != &other) {
                 reset();
-                std::memcpy(&m_storage, &other.m_storage, MAX_BUFFER_SIZE);
-                m_invoke_fn = other.m_invoke_fn;
-                m_destroy_fn = other.m_destroy_fn;
-                other.m_invoke_fn = nullptr;
-                other.m_destroy_fn = nullptr;
+                if (other.m_invoke_fn) {
+                    other.m_move_fn(&m_storage, &other.m_storage);
+                    m_invoke_fn = other.m_invoke_fn;
+                    m_destroy_fn = other.m_destroy_fn;
+                    m_move_fn = other.m_move_fn;
+
+                    other.m_invoke_fn = nullptr;
+                    other.m_destroy_fn = nullptr;
+                    other.m_move_fn = nullptr;
+                }
             }
             return *this;
         }
@@ -92,5 +108,6 @@ namespace BTool {
         alignas(MAX_BUFFER_ALIGN) std::byte m_storage[MAX_BUFFER_SIZE];
         void (*m_invoke_fn)(void*) = nullptr;
         void (*m_destroy_fn)(void*) = nullptr;
+        void (*m_move_fn)(void* dst, void* src) = nullptr;
     };
 }
